@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Asset, Liability } from '../types';
-import { Wallet, Landmark, Monitor, TrendingUp, Plus, X, Briefcase, Activity, AlertCircle, ShieldCheck, Percent } from 'lucide-react';
+import { Wallet, Landmark, Monitor, TrendingUp, Plus, X, Activity, AlertCircle, ShieldCheck, Percent, Briefcase } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+import { normalizeToNGN, formatCurrency } from '../utils/currency';
 
 interface AssetsProps {
   assets: Asset[];
@@ -11,11 +12,12 @@ interface AssetsProps {
 }
 
 const Assets: React.FC<AssetsProps> = ({ assets, liabilities, addAsset, addLiability }) => {
-  const totalAssets = assets.reduce((acc, curr) => acc + curr.value, 0);
-  const totalLiabilities = liabilities.reduce((acc, curr) => acc + curr.amount, 0);
+  // Normalize everything to NGN for aggregation
+  const totalAssets = assets.reduce((acc, curr) => acc + normalizeToNGN(curr.value, curr.currency), 0);
+  const totalLiabilities = liabilities.reduce((acc, curr) => acc + normalizeToNGN(curr.amount, curr.currency), 0);
   const netWorth = totalAssets - totalLiabilities;
 
-  const data = assets.map(a => ({ name: a.type, value: a.value }));
+  const data = assets.map(a => ({ name: a.type, value: normalizeToNGN(a.value, a.currency) }));
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
 
   // Modal State
@@ -26,6 +28,7 @@ const Assets: React.FC<AssetsProps> = ({ assets, liabilities, addAsset, addLiabi
     name: '',
     amount: '',
     type: 'CASH',
+    currency: 'NGN' as 'NGN' | 'USD'
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -37,7 +40,7 @@ const Assets: React.FC<AssetsProps> = ({ assets, liabilities, addAsset, addLiabi
             id: `a_${Date.now()}`,
             name: formData.name,
             value: parseFloat(formData.amount),
-            currency: 'NGN',
+            currency: formData.currency,
             type: formData.type as any
         };
         addAsset(newAsset);
@@ -46,22 +49,20 @@ const Assets: React.FC<AssetsProps> = ({ assets, liabilities, addAsset, addLiabi
             id: `l_${Date.now()}`,
             name: formData.name,
             amount: parseFloat(formData.amount),
-            currency: 'NGN'
+            currency: formData.currency
         };
         addLiability(newLiability);
     }
     setModalType(null);
-    setFormData({ name: '', amount: '', type: 'CASH' });
+    setFormData({ name: '', amount: '', type: 'CASH', currency: 'NGN' });
   };
 
   // Analysis Logic
-  const liquidAssets = assets.filter(a => a.type === 'CASH' || a.type === 'CRYPTO').reduce((acc, curr) => acc + curr.value, 0);
+  const liquidAssets = assets.filter(a => a.type === 'CASH' || a.type === 'CRYPTO').reduce((acc, curr) => acc + normalizeToNGN(curr.value, curr.currency), 0);
   const debtRatio = totalAssets > 0 ? (totalLiabilities / totalAssets) * 100 : 0;
   
-  // Solvency: Can assets cover liabilities?
   const isSolvent = totalAssets >= totalLiabilities;
   
-  // Health Status
   const getHealthStatus = () => {
       if (debtRatio > 70) return { color: 'text-red-600', bg: 'bg-red-50', text: 'Critical', desc: 'High debt leverage. Priority: Debt Reduction.' };
       if (debtRatio > 40) return { color: 'text-amber-600', bg: 'bg-amber-50', text: 'Moderate', desc: 'Manageable debt, but monitor spending.' };
@@ -75,23 +76,23 @@ const Assets: React.FC<AssetsProps> = ({ assets, liabilities, addAsset, addLiabi
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
                 <h1 className="text-3xl font-bold text-slate-900">Assets & Liabilities</h1>
-                <p className="text-slate-500">Your personal balance sheet</p>
+                <p className="text-slate-500">Your personal balance sheet (Base: NGN)</p>
             </div>
             <div className="flex items-center space-x-4">
                 <div className="text-right">
-                    <p className="text-xs text-slate-400 uppercase tracking-wide">Net Worth</p>
-                    <p className="text-2xl font-bold text-slate-800">₦ {netWorth.toLocaleString()}</p>
+                    <p className="text-xs text-slate-400 uppercase tracking-wide">Net Worth (Est.)</p>
+                    <p className="text-2xl font-bold text-slate-800">{formatCurrency(netWorth, 'NGN')}</p>
                 </div>
                  <div className="flex space-x-2">
                     <button 
-                        onClick={() => { setModalType('ASSET'); setFormData({name: '', amount: '', type: 'CASH'}); }}
+                        onClick={() => { setModalType('ASSET'); setFormData({name: '', amount: '', type: 'CASH', currency: 'NGN'}); }}
                         className="bg-blue-600 text-white p-2 rounded-lg hover:bg-blue-700 transition-colors shadow-lg shadow-blue-600/20"
                         title="Add Asset"
                     >
                         <Plus size={20} />
                     </button>
                     <button 
-                        onClick={() => { setModalType('LIABILITY'); setFormData({name: '', amount: '', type: 'CASH'}); }}
+                        onClick={() => { setModalType('LIABILITY'); setFormData({name: '', amount: '', type: 'CASH', currency: 'NGN'}); }}
                         className="bg-red-600 text-white p-2 rounded-lg hover:bg-red-700 transition-colors shadow-lg shadow-red-600/20"
                         title="Add Liability"
                     >
@@ -106,7 +107,7 @@ const Assets: React.FC<AssetsProps> = ({ assets, liabilities, addAsset, addLiabi
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
                 <div className="flex justify-between items-center mb-6">
                     <h3 className="text-lg font-bold text-slate-800">Assets Breakdown</h3>
-                    <span className="text-green-600 font-bold">₦ {totalAssets.toLocaleString()}</span>
+                    <span className="text-green-600 font-bold">{formatCurrency(totalAssets, 'NGN')}</span>
                 </div>
                 <div className="h-64 flex items-center justify-center">
                     {assets.length > 0 ? (
@@ -126,7 +127,7 @@ const Assets: React.FC<AssetsProps> = ({ assets, liabilities, addAsset, addLiabi
                                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                     ))}
                                 </Pie>
-                                <Tooltip formatter={(value: number) => [`₦${value.toLocaleString()}`, 'Value']} />
+                                <Tooltip formatter={(value: number) => [formatCurrency(value, 'NGN'), 'Value']} />
                             </PieChart>
                         </ResponsiveContainer>
                     ) : (
@@ -134,7 +135,7 @@ const Assets: React.FC<AssetsProps> = ({ assets, liabilities, addAsset, addLiabi
                     )}
                 </div>
                 <div className="space-y-3 mt-4 max-h-60 overflow-y-auto">
-                    {assets.map((asset, i) => (
+                    {assets.map((asset) => (
                         <div key={asset.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
                             <div className="flex items-center space-x-3">
                                 <div className="p-2 bg-blue-100 text-blue-600 rounded-lg">
@@ -148,7 +149,7 @@ const Assets: React.FC<AssetsProps> = ({ assets, liabilities, addAsset, addLiabi
                                     <p className="text-xs text-slate-500">{asset.type}</p>
                                 </div>
                             </div>
-                            <div className="font-bold text-slate-700">₦ {asset.value.toLocaleString()}</div>
+                            <div className="font-bold text-slate-700">{formatCurrency(asset.value, asset.currency)}</div>
                         </div>
                     ))}
                 </div>
@@ -159,7 +160,7 @@ const Assets: React.FC<AssetsProps> = ({ assets, liabilities, addAsset, addLiabi
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
                      <div className="flex justify-between items-center mb-6">
                         <h3 className="text-lg font-bold text-slate-800">Liabilities</h3>
-                        <span className="text-red-600 font-bold">₦ {totalLiabilities.toLocaleString()}</span>
+                        <span className="text-red-600 font-bold">{formatCurrency(totalLiabilities, 'NGN')}</span>
                     </div>
                     {liabilities.length === 0 ? (
                         <div className="p-8 text-center text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-200">
@@ -170,7 +171,7 @@ const Assets: React.FC<AssetsProps> = ({ assets, liabilities, addAsset, addLiabi
                              {liabilities.map((l) => (
                                 <div key={l.id} className="flex items-center justify-between p-3 bg-red-50 rounded-xl border border-red-100">
                                     <span className="font-medium text-red-900">{l.name}</span>
-                                    <span className="font-bold text-red-700">₦ {l.amount.toLocaleString()}</span>
+                                    <span className="font-bold text-red-700">{formatCurrency(l.amount, l.currency)}</span>
                                 </div>
                             ))}
                         </div>
@@ -181,7 +182,7 @@ const Assets: React.FC<AssetsProps> = ({ assets, liabilities, addAsset, addLiabi
                     <h3 className="font-semibold mb-2 flex items-center"><TrendingUp className="mr-2"/> Financial Health</h3>
                     <p className="text-green-100 text-sm mb-4">
                         Your debt-to-asset ratio is {debtRatio.toFixed(1)}%. {health.desc}
-                        Based on the 2026 proposed capital gains tax, your crypto assets held for over 12 months may qualify for a reduced rate.
+                        Net Worth is calculated by converting foreign assets to NGN at current rates.
                     </p>
                     <button 
                         onClick={() => setIsAnalysisOpen(true)}
@@ -219,16 +220,29 @@ const Assets: React.FC<AssetsProps> = ({ assets, liabilities, addAsset, addLiabi
                             />
                         </div>
                         
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Value (₦)</label>
-                            <input 
-                                type="number" 
-                                required
-                                className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                                placeholder="0.00"
-                                value={formData.amount}
-                                onChange={e => setFormData({...formData, amount: e.target.value})}
-                            />
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Amount</label>
+                                <input 
+                                    type="number" 
+                                    required
+                                    className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                    placeholder="0.00"
+                                    value={formData.amount}
+                                    onChange={e => setFormData({...formData, amount: e.target.value})}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Currency</label>
+                                <select 
+                                    className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                    value={formData.currency}
+                                    onChange={e => setFormData({...formData, currency: e.target.value as 'NGN' | 'USD'})}
+                                >
+                                    <option value="NGN">NGN</option>
+                                    <option value="USD">USD</option>
+                                </select>
+                            </div>
                         </div>
 
                         {modalType === 'ASSET' && (
@@ -269,7 +283,7 @@ const Assets: React.FC<AssetsProps> = ({ assets, liabilities, addAsset, addLiabi
                              </div>
                              <div>
                                  <h3 className="text-xl font-bold text-slate-900">Financial Health Report</h3>
-                                 <p className="text-xs text-slate-500">Real-time analysis based on your ledger.</p>
+                                 <p className="text-xs text-slate-500">Real-time analysis based on your ledger (Normalized to NGN).</p>
                              </div>
                         </div>
                         <button onClick={() => setIsAnalysisOpen(false)} className="text-slate-400 hover:text-slate-600">
@@ -296,8 +310,8 @@ const Assets: React.FC<AssetsProps> = ({ assets, liabilities, addAsset, addLiabi
                                 </h4>
                                 <p className="text-xs text-slate-500 mt-2 leading-relaxed">
                                     {isSolvent 
-                                     ? `You have ₦${(totalAssets - totalLiabilities).toLocaleString()} in surplus capital.` 
-                                     : `Liabilities exceed assets by ₦${(totalLiabilities - totalAssets).toLocaleString()}.`}
+                                     ? `You have ${formatCurrency(totalAssets - totalLiabilities, 'NGN')} in surplus capital.` 
+                                     : `Liabilities exceed assets by ${formatCurrency(totalLiabilities - totalAssets, 'NGN')}.`}
                                 </p>
                              </div>
                         </div>
@@ -322,7 +336,7 @@ const Assets: React.FC<AssetsProps> = ({ assets, liabilities, addAsset, addLiabi
                                 <div>
                                      <div className="flex justify-between mb-1">
                                         <span className="text-sm font-medium text-slate-700">Liquidity (Cash & Crypto)</span>
-                                        <span className="text-sm font-bold text-slate-900">₦ {liquidAssets.toLocaleString()}</span>
+                                        <span className="text-sm font-bold text-slate-900">{formatCurrency(liquidAssets, 'NGN')}</span>
                                     </div>
                                     <div className="w-full bg-slate-100 rounded-full h-2.5">
                                          <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${Math.min((liquidAssets / totalAssets) * 100, 100)}%` }}></div>
@@ -352,7 +366,7 @@ const Assets: React.FC<AssetsProps> = ({ assets, liabilities, addAsset, addLiabi
                                 )}
                                  <li className="flex items-start">
                                     <span className="mr-2 mt-1 w-1.5 h-1.5 bg-indigo-500 rounded-full flex-shrink-0"></span>
-                                    <span><strong>Net Worth:</strong> Your net worth of ₦{netWorth.toLocaleString()} puts you in the {netWorth > 10000000 ? 'High' : 'Standard'} Net Worth Individual bracket for tax assessment.</span>
+                                    <span><strong>Net Worth:</strong> Your net worth of {formatCurrency(netWorth, 'NGN')} puts you in the {netWorth > 10000000 ? 'High' : 'Standard'} Net Worth Individual bracket for tax assessment.</span>
                                 </li>
                              </ul>
                         </div>

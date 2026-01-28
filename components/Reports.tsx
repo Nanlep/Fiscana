@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Transaction, Asset, Liability } from '../types';
-import { Download, Calendar, TrendingUp, TrendingDown, Scale, Printer } from 'lucide-react';
+import { Printer } from 'lucide-react';
+import { normalizeToNGN, formatCurrency, EXCHANGE_RATE } from '../utils/currency';
 
 interface ReportsProps {
   transactions: Transaction[];
@@ -12,10 +13,9 @@ interface ReportsProps {
 const Reports: React.FC<ReportsProps> = ({ transactions, assets, liabilities, companyName }) => {
   const [reportType, setReportType] = useState<'PL' | 'BS'>('PL');
   
-  // Calculations for Profit & Loss
+  // Calculations for Profit & Loss (Normalized)
   const incomeTransactions = transactions.filter(t => t.type === 'INCOME');
   
-  // Separate Operating Expenses from Withdrawals/Transfers
   const expenseTransactions = transactions.filter(t => 
     t.type === 'EXPENSE' && t.category !== 'Transfer' && t.category !== 'Drawings'
   );
@@ -24,29 +24,29 @@ const Reports: React.FC<ReportsProps> = ({ transactions, assets, liabilities, co
     t.type === 'EXPENSE' && (t.category === 'Transfer' || t.category === 'Drawings')
   );
 
-  const totalRevenue = incomeTransactions.reduce((sum, t) => sum + t.amount, 0); 
-  const totalOperatingExpenses = expenseTransactions.reduce((sum, t) => sum + t.amount, 0);
-  const totalTransfers = transferTransactions.reduce((sum, t) => sum + t.amount, 0);
+  const totalRevenue = incomeTransactions.reduce((sum, t) => sum + normalizeToNGN(t.amount, t.currency), 0); 
+  const totalOperatingExpenses = expenseTransactions.reduce((sum, t) => sum + normalizeToNGN(t.amount, t.currency), 0);
+  const totalTransfers = transferTransactions.reduce((sum, t) => sum + normalizeToNGN(t.amount, t.currency), 0);
   const netIncome = totalRevenue - totalOperatingExpenses;
 
-  // Group by Category
+  // Group by Category (Normalized)
   const incomeByCategory = incomeTransactions.reduce((acc, t) => {
-      acc[t.category] = (acc[t.category] || 0) + t.amount;
+      acc[t.category] = (acc[t.category] || 0) + normalizeToNGN(t.amount, t.currency);
       return acc;
   }, {} as Record<string, number>);
 
   const expensesByCategory = expenseTransactions.reduce((acc, t) => {
-      acc[t.category] = (acc[t.category] || 0) + t.amount;
+      acc[t.category] = (acc[t.category] || 0) + normalizeToNGN(t.amount, t.currency);
       return acc;
   }, {} as Record<string, number>);
 
-  // Calculations for Balance Sheet
-  const totalAssets = assets.reduce((sum, a) => sum + a.value, 0);
-  const totalLiabilities = liabilities.reduce((sum, l) => sum + l.amount, 0);
+  // Calculations for Balance Sheet (Normalized)
+  const totalAssets = assets.reduce((sum, a) => sum + normalizeToNGN(a.value, a.currency), 0);
+  const totalLiabilities = liabilities.reduce((sum, l) => sum + normalizeToNGN(l.amount, l.currency), 0);
   const equity = totalAssets - totalLiabilities;
 
   const assetsByType = assets.reduce((acc, a) => {
-      acc[a.type] = (acc[a.type] || 0) + a.value;
+      acc[a.type] = (acc[a.type] || 0) + normalizeToNGN(a.value, a.currency);
       return acc;
   }, {} as Record<string, number>);
 
@@ -95,7 +95,7 @@ const Reports: React.FC<ReportsProps> = ({ transactions, assets, liabilities, co
                 <h2 className="text-2xl font-bold text-slate-900 uppercase tracking-widest mb-1">{companyName || 'Taiwo Doe (Individual)'}</h2>
                 <h3 className="text-xl font-medium text-slate-600">{reportType === 'PL' ? 'Statement of Profit or Loss' : 'Statement of Financial Position'}</h3>
                 <p className="text-sm text-slate-400 mt-2">As of {new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
-                <p className="text-xs text-slate-300 mt-1">Currency: NGN (Nigerian Naira)</p>
+                <p className="text-xs text-slate-500 mt-1">Base Reporting Currency: NGN (Rate Used: ₦{EXCHANGE_RATE}/$)</p>
             </div>
 
             {reportType === 'PL' ? (
@@ -107,12 +107,12 @@ const Reports: React.FC<ReportsProps> = ({ transactions, assets, liabilities, co
                             {Object.entries(incomeByCategory).map(([cat, val]) => (
                                 <div key={cat} className="flex justify-between text-sm">
                                     <span className="text-slate-600">{cat}</span>
-                                    <span className="text-slate-900">₦ {val.toLocaleString()}</span>
+                                    <span className="text-slate-900">{formatCurrency(val, 'NGN')}</span>
                                 </div>
                             ))}
                             <div className="flex justify-between text-sm font-bold pt-2 border-t border-slate-200 mt-2">
                                 <span>Total Revenue</span>
-                                <span>₦ {totalRevenue.toLocaleString()}</span>
+                                <span>{formatCurrency(totalRevenue, 'NGN')}</span>
                             </div>
                         </div>
                     </div>
@@ -124,12 +124,12 @@ const Reports: React.FC<ReportsProps> = ({ transactions, assets, liabilities, co
                              {Object.entries(expensesByCategory).map(([cat, val]) => (
                                 <div key={cat} className="flex justify-between text-sm">
                                     <span className="text-slate-600">{cat}</span>
-                                    <span className="text-slate-900">(₦ {val.toLocaleString()})</span>
+                                    <span className="text-slate-900">({formatCurrency(val, 'NGN')})</span>
                                 </div>
                             ))}
                              <div className="flex justify-between text-sm font-bold pt-2 border-t border-slate-200 mt-2">
                                 <span>Total Operating Expenses</span>
-                                <span className="text-red-600">(₦ {totalOperatingExpenses.toLocaleString()})</span>
+                                <span className="text-red-600">({formatCurrency(totalOperatingExpenses, 'NGN')})</span>
                             </div>
                         </div>
                     </div>
@@ -139,18 +139,18 @@ const Reports: React.FC<ReportsProps> = ({ transactions, assets, liabilities, co
                          <div className="flex justify-between text-lg font-bold">
                             <span>Net Income (Before Tax)</span>
                             <span className={netIncome >= 0 ? 'text-slate-900' : 'text-red-600'}>
-                                ₦ {netIncome.toLocaleString()}
+                                {formatCurrency(netIncome, 'NGN')}
                             </span>
                         </div>
                     </div>
 
-                    {/* Transfers / Drawings (Not P&L Items, but Cash Flow) */}
+                    {/* Transfers / Drawings */}
                     <div>
                         <h4 className="text-sm font-bold text-slate-500 uppercase border-b border-slate-200 pb-2 mb-4 mt-8">Cash Withdrawals & Distributions</h4>
                         <div className="space-y-2">
                              <div className="flex justify-between text-sm">
                                 <span className="text-slate-600">Transfers / Drawings</span>
-                                <span className="text-slate-900">(₦ {totalTransfers.toLocaleString()})</span>
+                                <span className="text-slate-900">({formatCurrency(totalTransfers, 'NGN')})</span>
                             </div>
                         </div>
                         <p className="text-[10px] text-slate-400 mt-2 italic">* Drawings are distributions of equity and do not reduce taxable Net Income.</p>
@@ -165,12 +165,12 @@ const Reports: React.FC<ReportsProps> = ({ transactions, assets, liabilities, co
                             {Object.entries(assetsByType).map(([type, val]) => (
                                 <div key={type} className="flex justify-between text-sm">
                                     <span className="text-slate-600">{type}</span>
-                                    <span className="text-slate-900">₦ {val.toLocaleString()}</span>
+                                    <span className="text-slate-900">{formatCurrency(val, 'NGN')}</span>
                                 </div>
                             ))}
                             <div className="flex justify-between text-sm font-bold pt-2 border-t border-slate-200 mt-2">
                                 <span>Total Assets</span>
-                                <span>₦ {totalAssets.toLocaleString()}</span>
+                                <span>{formatCurrency(totalAssets, 'NGN')}</span>
                             </div>
                         </div>
                     </div>
@@ -182,14 +182,14 @@ const Reports: React.FC<ReportsProps> = ({ transactions, assets, liabilities, co
                             {liabilities.length > 0 ? liabilities.map(l => (
                                  <div key={l.id} className="flex justify-between text-sm">
                                     <span className="text-slate-600">{l.name}</span>
-                                    <span className="text-slate-900">₦ {l.amount.toLocaleString()}</span>
+                                    <span className="text-slate-900">{formatCurrency(normalizeToNGN(l.amount, l.currency), 'NGN')}</span>
                                 </div>
                             )) : (
                                 <div className="text-sm text-slate-400 italic">No liabilities recorded</div>
                             )}
                              <div className="flex justify-between text-sm font-bold pt-2 border-t border-slate-200 mt-2">
                                 <span>Total Liabilities</span>
-                                <span>₦ {totalLiabilities.toLocaleString()}</span>
+                                <span>{formatCurrency(totalLiabilities, 'NGN')}</span>
                             </div>
                         </div>
                     </div>
@@ -199,11 +199,11 @@ const Reports: React.FC<ReportsProps> = ({ transactions, assets, liabilities, co
                         <h4 className="text-sm font-bold text-slate-900 uppercase border-b border-slate-200 pb-2 mb-4">Equity</h4>
                          <div className="flex justify-between text-sm">
                             <span className="text-slate-600">Owner's Equity</span>
-                            <span className="text-slate-900">₦ {equity.toLocaleString()}</span>
+                            <span className="text-slate-900">{formatCurrency(equity, 'NGN')}</span>
                         </div>
                         <div className="flex justify-between text-sm font-bold pt-2 border-t border-slate-200 mt-2">
                             <span>Total Equity</span>
-                            <span>₦ {equity.toLocaleString()}</span>
+                            <span>{formatCurrency(equity, 'NGN')}</span>
                         </div>
                     </div>
 
@@ -211,7 +211,7 @@ const Reports: React.FC<ReportsProps> = ({ transactions, assets, liabilities, co
                      <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 mt-8 flex justify-between items-center">
                          <div className="text-xs text-slate-500 uppercase font-bold">Accounting Equation Check</div>
                          <div className="text-sm font-bold text-slate-900">
-                            Total Assets (₦ {totalAssets.toLocaleString()}) = Liabilities + Equity (₦ {(totalLiabilities + equity).toLocaleString()})
+                            Total Assets ({formatCurrency(totalAssets, 'NGN')}) = Liabilities + Equity ({formatCurrency(totalLiabilities + equity, 'NGN')})
                          </div>
                     </div>
                 </div>

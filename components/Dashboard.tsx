@@ -1,7 +1,8 @@
 import React, { useMemo } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
-import { ArrowUpRight, ArrowDownRight, Activity, PieChart } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { ArrowUpRight, ArrowDownRight, Activity } from 'lucide-react';
 import { Transaction, Invoice, UserProfile } from '../types';
+import { normalizeToNGN, formatCurrency, EXCHANGE_RATE } from '../utils/currency';
 
 interface DashboardProps {
   transactions: Transaction[];
@@ -10,26 +11,24 @@ interface DashboardProps {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ transactions, invoices, user }) => {
-  // Real data calculations
+  // Real data calculations with Currency Normalization
   const totalIncome = transactions
     .filter(t => t.type === 'INCOME')
-    .reduce((acc, curr) => acc + curr.amount, 0);
+    .reduce((acc, curr) => acc + normalizeToNGN(curr.amount, curr.currency), 0);
 
-  // World-Class Accounting: Exclude 'Transfer' and 'Drawings' from Operating Expenses
-  // Withdrawals are Balance Sheet movements (Equity/Asset reduction), not P&L Expenses.
+  // Exclude 'Transfer' and 'Drawings' from Operating Expenses
   const operatingExpenses = transactions
     .filter(t => t.type === 'EXPENSE' && t.category !== 'Transfer' && t.category !== 'Drawings')
-    .reduce((acc, curr) => acc + curr.amount, 0);
+    .reduce((acc, curr) => acc + normalizeToNGN(curr.amount, curr.currency), 0);
 
   const netIncome = totalIncome - operatingExpenses;
 
-  // Process transactions for the chart
+  // Process transactions for the chart (Normalized to NGN)
   const chartData = useMemo(() => {
     const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     const data: Record<string, { name: string, income: number, expense: number }> = {};
     
     transactions.forEach(t => {
-        // Skip transfers in the chart to show true business performance
         if (t.category === 'Transfer' || t.category === 'Drawings') return;
 
         const date = new Date(t.date);
@@ -39,10 +38,13 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, invoices, user }) =
             data[monthName] = { name: monthName, income: 0, expense: 0 };
         }
         
+        // Normalize amounts for chart consistency
+        const normalizedAmount = normalizeToNGN(t.amount, t.currency);
+
         if (t.type === 'INCOME') {
-            data[monthName].income += t.amount;
+            data[monthName].income += normalizedAmount;
         } else {
-            data[monthName].expense += t.amount;
+            data[monthName].expense += normalizedAmount;
         }
     });
 
@@ -58,9 +60,12 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, invoices, user }) =
           <h1 className="text-3xl font-bold text-slate-900">Financial Overview</h1>
           <p className="text-slate-500">Welcome back, {user?.name.split(' ')[0] || 'User'}</p>
         </div>
-        <div className="flex space-x-3">
-            <span className="px-3 py-1 bg-green-100 text-green-700 text-sm font-medium rounded-full border border-green-200">
+        <div className="flex flex-col items-end">
+             <span className="px-3 py-1 bg-green-100 text-green-700 text-sm font-medium rounded-full border border-green-200 mb-1">
                 Tax Compliant (2026 Draft)
+            </span>
+            <span className="text-xs text-slate-400 font-mono">
+                Base Rate: ₦{EXCHANGE_RATE}/$
             </span>
         </div>
       </header>
@@ -74,8 +79,8 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, invoices, user }) =
             </div>
             <span className="text-xs font-semibold text-green-600 bg-green-50 px-2 py-1 rounded">YTD Revenue</span>
           </div>
-          <p className="text-slate-500 text-sm font-medium">Total Income</p>
-          <h3 className="text-2xl font-bold text-slate-900 mt-1">₦ {totalIncome.toLocaleString()}</h3>
+          <p className="text-slate-500 text-sm font-medium">Total Income (NGN Eqv)</p>
+          <h3 className="text-2xl font-bold text-slate-900 mt-1">{formatCurrency(totalIncome, 'NGN')}</h3>
         </div>
 
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 transition-all hover:shadow-md">
@@ -85,8 +90,8 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, invoices, user }) =
             </div>
             <span className="text-xs font-semibold text-red-600 bg-red-50 px-2 py-1 rounded">Operating Costs</span>
           </div>
-          <p className="text-slate-500 text-sm font-medium">Total Expenses</p>
-          <h3 className="text-2xl font-bold text-slate-900 mt-1">₦ {operatingExpenses.toLocaleString()}</h3>
+          <p className="text-slate-500 text-sm font-medium">Total Expenses (NGN Eqv)</p>
+          <h3 className="text-2xl font-bold text-slate-900 mt-1">{formatCurrency(operatingExpenses, 'NGN')}</h3>
         </div>
 
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 transition-all hover:shadow-md">
@@ -98,7 +103,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, invoices, user }) =
           </div>
           <p className="text-slate-500 text-sm font-medium">Net Profit (Before Tax)</p>
           <h3 className={`text-2xl font-bold mt-1 ${netIncome >= 0 ? 'text-slate-900' : 'text-red-600'}`}>
-            ₦ {netIncome.toLocaleString()}
+            {formatCurrency(netIncome, 'NGN')}
           </h3>
         </div>
       </div>
@@ -106,17 +111,17 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, invoices, user }) =
       {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-          <h3 className="text-lg font-bold text-slate-800 mb-6">Cash Flow Analysis (Operating)</h3>
+          <h3 className="text-lg font-bold text-slate-800 mb-6">Cash Flow Analysis (Normalized NGN)</h3>
           <div className="h-72">
             {chartData.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                     <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748b'}} />
-                    <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b'}} />
+                    <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b'}} tickFormatter={(val) => `₦${val/1000}k`} />
                     <Tooltip 
-                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                    formatter={(value: number) => [`₦${value.toLocaleString()}`, '']}
+                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                        formatter={(value: number) => [formatCurrency(value, 'NGN'), '']}
                     />
                     <Bar dataKey="income" fill="#22c55e" radius={[6, 6, 0, 0]} barSize={20} name="Income" />
                     <Bar dataKey="expense" fill="#ef4444" radius={[6, 6, 0, 0]} barSize={20} name="Op. Expense" />
@@ -147,7 +152,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, invoices, user }) =
                   </div>
                 </div>
                 <div className={`font-bold ${t.type === 'INCOME' ? 'text-green-600' : 'text-slate-800'}`}>
-                  {t.type === 'INCOME' ? '+' : '-'} {t.currency === 'NGN' ? '₦' : '$'}{t.amount.toLocaleString()}
+                  {t.type === 'INCOME' ? '+' : '-'} {formatCurrency(t.amount, t.currency)}
                 </div>
               </div>
             ))}

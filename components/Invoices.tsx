@@ -7,9 +7,10 @@ interface InvoicesProps {
   addInvoice: (inv: Invoice) => void;
   addTransaction: (t: Transaction) => void;
   markAsPaid: (id: string) => void;
+  notify: (type: 'SUCCESS' | 'ERROR' | 'INFO', message: string) => void;
 }
 
-const Invoices: React.FC<InvoicesProps> = ({ invoices, addInvoice, addTransaction, markAsPaid }) => {
+const Invoices: React.FC<InvoicesProps> = ({ invoices, addInvoice, addTransaction, markAsPaid, notify }) => {
   const [isCreating, setIsCreating] = useState(false);
   
   // Form State
@@ -34,7 +35,10 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, addInvoice, addTransactio
   const totalAmount = baseAmount + vatAmount;
 
   const handleCreate = () => {
-    if (!clientName || !amount) return;
+    if (!clientName || !amount) {
+        notify('ERROR', 'Please fill in Client Name and Amount');
+        return;
+    }
     
     const items = [{
         id: '1',
@@ -91,14 +95,15 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, addInvoice, addTransactio
     setAmount('');
     setDescription('');
     setAddVat(false);
+    notify('SUCCESS', 'Invoice created and payment link generated');
   };
 
   const handleSendReminder = (id: string) => {
-      alert(`Reminder email sent to client for Invoice #${id}`);
+      notify('INFO', `Reminder email sent to client for Invoice #${id}`);
   };
 
   const handleDownload = (id: string) => {
-      alert(`Downloading Invoice #${id} as PDF...`);
+      notify('INFO', `Downloading Invoice #${id} as PDF...`);
   };
 
   return (

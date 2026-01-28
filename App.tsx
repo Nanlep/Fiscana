@@ -9,6 +9,7 @@ import TaxAdvisor from './components/TaxAdvisor';
 import LandingPage from './components/LandingPage';
 import AdminDashboard from './components/AdminDashboard';
 import WithdrawModal from './components/WithdrawModal';
+import Toast, { ToastMessage, ToastType } from './components/Toast';
 import { ViewState, Transaction, Invoice, TransactionType, InvoiceStatus, PaymentMethod, Asset, Liability, UserProfile, UserRole, UserType } from './types';
 import { Menu } from 'lucide-react';
 
@@ -27,6 +28,16 @@ function App() {
   const [currentView, setView] = useState<ViewState>('DASHBOARD');
   const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // Toast State
+  const [toasts, setToasts] = useState<ToastMessage[]>([]);
+  const notify = (type: ToastType, message: string) => {
+    const id = Math.random().toString(36).substring(2, 9);
+    setToasts((prev) => [...prev, { id, type, message }]);
+  };
+  const removeToast = (id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  };
 
   // --- Persistence Effects for Auth ---
   useEffect(() => {
@@ -132,6 +143,7 @@ function App() {
       });
       setIsAuthenticated(true);
       setView('DASHBOARD');
+      notify('SUCCESS', `Welcome back, ${name}`);
   };
 
   const handleLogout = () => {
@@ -139,6 +151,7 @@ function App() {
       setUserProfile(null);
       localStorage.removeItem('fiscana_auth');
       localStorage.removeItem('fiscana_profile');
+      notify('INFO', 'Logged out successfully');
   };
 
   // Helper to update wallet balance based on transaction
@@ -194,6 +207,7 @@ function App() {
           tags: ['#Withdrawal']
       };
       setTransactions([newTx, ...transactions]);
+      notify('SUCCESS', `Withdrawal of ${currency === 'NGN' ? '₦' : '$'}${amount} successful`);
   };
 
   const addInvoice = (inv: Invoice) => {
@@ -215,9 +229,7 @@ function App() {
     
     // Invoices are Accrual, but Payment is Cash Event.
     updateWalletForTransaction(totalAmount, invoice.currency, TransactionType.INCOME);
-    
-    // NOTE: Invoice transactions are created at invoice creation time (Accrual). 
-    // Payment status change strictly affects Cash Asset, not P&L Revenue (already recognized).
+    notify('SUCCESS', 'Invoice marked as paid and wallet updated');
   };
 
   // Base add transaction (just log)
@@ -230,23 +242,36 @@ function App() {
     addTransaction(t);
     // Sync with wallet
     updateWalletForTransaction(t.amount, t.currency, t.type);
+    notify('SUCCESS', 'Transaction recorded and synced to wallet');
   };
 
   const addAsset = (a: Asset) => {
     setAssets([a, ...assets]);
+    notify('SUCCESS', 'Asset added successfully');
   };
 
   const addLiability = (l: Liability) => {
     setLiabilities([l, ...liabilities]);
+    notify('SUCCESS', 'Liability recorded');
   };
 
   // Render logic
   if (!isAuthenticated) {
-      return <LandingPage onLogin={handleLogin} />;
+      return (
+        <>
+            <Toast toasts={toasts} removeToast={removeToast} />
+            <LandingPage onLogin={handleLogin} />
+        </>
+      );
   }
 
   if (userProfile?.role === 'ADMIN') {
-      return <AdminDashboard onLogout={handleLogout} adminProfile={userProfile} />;
+      return (
+        <>
+            <Toast toasts={toasts} removeToast={removeToast} />
+            <AdminDashboard onLogout={handleLogout} adminProfile={userProfile} />
+        </>
+      );
   }
 
   // Normal User Dashboard Content
@@ -258,11 +283,12 @@ function App() {
         return <Invoices 
             invoices={invoices} 
             addInvoice={addInvoice} 
-            addTransaction={addTransaction} // Invoices use base addTransaction (Accrual)
-            markAsPaid={markInvoiceAsPaid} 
+            addTransaction={addTransaction} 
+            markAsPaid={markInvoiceAsPaid}
+            notify={notify}
         />;
       case 'LEDGER':
-        return <Ledger transactions={transactions} addTransaction={handleManualTransaction} />; // Ledger uses manual (Cash Sync)
+        return <Ledger transactions={transactions} addTransaction={handleManualTransaction} />; 
       case 'REPORTS':
         return <Reports transactions={transactions} assets={assets} liabilities={liabilities} companyName={userProfile?.companyName || userProfile?.name} />;
       case 'ASSETS':
@@ -276,6 +302,8 @@ function App() {
 
   return (
     <div className="flex min-h-screen bg-slate-50 relative">
+      <Toast toasts={toasts} removeToast={removeToast} />
+      
       {/* Mobile Menu Button */}
       <div className="md:hidden fixed top-0 left-0 w-full bg-white border-b border-slate-200 z-40 px-4 py-3 flex items-center justify-between">
          <div className="flex items-center space-x-2">
