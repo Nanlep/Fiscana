@@ -4,16 +4,15 @@ import { Transaction, TaxReport } from '../types';
 // Initialize the API client
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
 
-const TAX_SYSTEM_INSTRUCTION = `
-You are Fiscana's Chief Tax Officer, an expert in Nigerian financial regulations. 
-Your specialty is the Nigerian Finance Act and the projected 2026 Tax Reforms which focus on:
-1. Simplifying tax compliance for digital workers and freelancers.
-2. Changes in VAT thresholds and rates.
-3. Tax treatment of cryptocurrency assets and income.
-4. Allowable deductions for remote workers (internet, home office, equipment).
+const SYSTEM_INSTRUCTION = `
+You are Fiscana's Chief Financial & Tax Officer. You are an expert in Nigerian financial regulations, tax laws (Finance Act 2026), and personal financial planning.
 
-Always provide advice that helps the user stay compliant while optimizing their tax liability legally.
-When analyzing data, be precise. When giving advice, be clear and actionable.
+Your responsibilities:
+1. Tax Compliance: Estimate taxes, VAT, and deductibles.
+2. Financial Analysis: Analyze spending habits to identify top personal and business expenses based on transaction categories and descriptions.
+3. Strategic Insight: Identify key financial decisions or patterns from the transaction history (e.g., heavy investment in assets, high recurring costs, strategic shifts).
+
+Always provide advice that helps the user stay compliant while optimizing their tax liability and financial health.
 `;
 
 export const analyzeTaxLiability = async (
@@ -21,23 +20,25 @@ export const analyzeTaxLiability = async (
   annualIncome: number
 ): Promise<TaxReport> => {
   const transactionSummary = transactions.map(t => 
-    `${t.date}: ${t.type} - ${t.description} (${t.amount} ${t.currency}) [Category: ${t.category}]`
+    `${t.date}: ${t.type} - ${t.description} (${t.amount} ${t.currency}) [Category: ${t.category}] [Deductible: ${t.taxDeductible}]`
   ).join('\n');
 
   const prompt = `
-    Analyze the following financial summary for a Nigerian freelancer in 2026.
+    Analyze the following financial summary for a Nigerian freelancer/business in 2026.
     Annual Gross Income: ${annualIncome} NGN.
     
     Transactions:
     ${transactionSummary}
 
-    Based on the 2026 Nigerian Tax Reform expectations:
-    1. Estimate Income Tax (CIT or PIT).
-    2. Estimate VAT liability (Standard 7.5% or new proposed rates).
-    3. Identify deductible expenses from the transaction list.
-    4. Calculate Taxable Income.
-    5. Give a compliance score (0-100) based on record keeping quality inferred.
-    6. Provide 3 specific actionable recommendations.
+    Tasks:
+    1. Estimate Income Tax (CIT or PIT) and VAT (Standard 7.5% or new rates) based on 2026 reforms.
+    2. Calculate total deductible expenses.
+    3. Calculate Taxable Income.
+    4. Give a compliance score (0-100) based on record keeping quality.
+    5. Provide 3 specific actionable recommendations.
+    6. Identify the Top 5 Personal Expenses (by amount).
+    7. Identify the Top 5 Business Expenses (by amount).
+    8. Identify the Top 2 Key Financial Decisions/Patterns observed in this period (e.g., "Significant capital expenditure on hardware", "High volume of international crypto income").
 
     Return JSON.
   `;
@@ -47,7 +48,7 @@ export const analyzeTaxLiability = async (
       model: 'gemini-3-flash-preview',
       contents: prompt,
       config: {
-        systemInstruction: TAX_SYSTEM_INSTRUCTION,
+        systemInstruction: SYSTEM_INSTRUCTION,
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
@@ -58,6 +59,32 @@ export const analyzeTaxLiability = async (
             taxableIncome: { type: Type.NUMBER },
             complianceScore: { type: Type.NUMBER },
             recommendations: { 
+              type: Type.ARRAY,
+              items: { type: Type.STRING }
+            },
+            topPersonalExpenses: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  description: { type: Type.STRING },
+                  amount: { type: Type.NUMBER },
+                  category: { type: Type.STRING }
+                }
+              }
+            },
+            topBusinessExpenses: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  description: { type: Type.STRING },
+                  amount: { type: Type.NUMBER },
+                  category: { type: Type.STRING }
+                }
+              }
+            },
+            keyFinancialDecisions: {
               type: Type.ARRAY,
               items: { type: Type.STRING }
             }
@@ -83,6 +110,19 @@ export const analyzeTaxLiability = async (
           "System is currently offline. Showing estimated values.",
           "Check your API Key configuration.",
           "Keep receipts for all equipment."
+      ],
+      topPersonalExpenses: [
+        { description: "Rent", amount: 150000, category: "Housing" },
+        { description: "Groceries", amount: 45000, category: "Food" }
+      ],
+      topBusinessExpenses: [
+        { description: "MacBook Pro", amount: 2400000, category: "Equipment" },
+        { description: "Internet", amount: 48000, category: "Utilities" },
+        { description: "Co-working", amount: 150000, category: "Rent" }
+      ],
+      keyFinancialDecisions: [
+        "Major capital investment in high-end equipment.",
+        "Consistent recurring operational costs."
       ]
     };
   }
@@ -96,7 +136,7 @@ export const chatWithTaxAdvisorStream = async function* (
         const chat = ai.chats.create({
             model: 'gemini-3-flash-preview',
             config: {
-                systemInstruction: TAX_SYSTEM_INSTRUCTION
+                systemInstruction: SYSTEM_INSTRUCTION
             },
             history: history.map(h => ({
                 role: h.role,
@@ -113,6 +153,6 @@ export const chatWithTaxAdvisorStream = async function* (
         }
     } catch (e) {
         console.error(e);
-        yield "I'm having trouble connecting to the tax database right now. Please check your internet connection or API key.";
+        yield "I'm having trouble connecting to the financial intelligence database right now. Please check your internet connection or API key.";
     }
 }

@@ -4,6 +4,8 @@ export enum TransactionType {
   EXPENSE = 'EXPENSE'
 }
 
+export type ExpenseCategoryType = 'BUSINESS' | 'PERSONAL';
+
 export enum PaymentMethod {
   FIAT_NGN = 'FIAT_NGN',
   CRYPTO_USDC = 'CRYPTO_USDC',
@@ -37,6 +39,7 @@ export interface Transaction {
   amount: number;
   currency: 'NGN' | 'USD';
   type: TransactionType;
+  expenseCategory?: ExpenseCategoryType; // New Field: BUSINESS or PERSONAL
   category: string;
   tags?: string[]; // For Project or Cost Center tracking
   receiptUrl?: string;
@@ -80,6 +83,12 @@ export interface Liability {
   dueDate?: string;
 }
 
+export interface ExpenseInsight {
+  description: string;
+  amount: number;
+  category: string;
+}
+
 export interface TaxReport {
   estimatedIncomeTax: number;
   estimatedVAT: number;
@@ -87,6 +96,10 @@ export interface TaxReport {
   taxableIncome: number;
   complianceScore: number; // 0-100
   recommendations: string[];
+  // Deep Financial Insights
+  topPersonalExpenses: ExpenseInsight[];
+  topBusinessExpenses: ExpenseInsight[];
+  keyFinancialDecisions: string[];
 }
 
 export type ViewState = 'DASHBOARD' | 'INVOICES' | 'LEDGER' | 'REPORTS' | 'ASSETS' | 'TAX_AI';

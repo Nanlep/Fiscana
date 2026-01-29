@@ -16,26 +16,29 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, invoices, user }) =
     .filter(t => t.type === 'INCOME')
     .reduce((acc, curr) => acc + normalizeToNGN(curr.amount, curr.currency), 0);
 
-  // Exclude 'Transfer' and 'Drawings' from Operating Expenses
+  // Filter only BUSINESS expenses for Operating Expenses
   const operatingExpenses = transactions
-    .filter(t => t.type === 'EXPENSE' && t.category !== 'Transfer' && t.category !== 'Drawings')
+    .filter(t => t.type === 'EXPENSE' && t.expenseCategory === 'BUSINESS')
+    .reduce((acc, curr) => acc + normalizeToNGN(curr.amount, curr.currency), 0);
+    
+  // Personal Spend Calculation (for tracking, though not shown in Business KPI)
+  const personalExpenses = transactions
+    .filter(t => t.type === 'EXPENSE' && t.expenseCategory === 'PERSONAL')
     .reduce((acc, curr) => acc + normalizeToNGN(curr.amount, curr.currency), 0);
 
-  const netIncome = totalIncome - operatingExpenses;
+  const netBusinessIncome = totalIncome - operatingExpenses;
 
   // Process transactions for the chart (Normalized to NGN)
   const chartData = useMemo(() => {
     const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    const data: Record<string, { name: string, income: number, expense: number }> = {};
+    const data: Record<string, { name: string, income: number, expense: number, personal: number }> = {};
     
     transactions.forEach(t => {
-        if (t.category === 'Transfer' || t.category === 'Drawings') return;
-
         const date = new Date(t.date);
         const monthName = date.toLocaleString('default', { month: 'short' });
         
         if (!data[monthName]) {
-            data[monthName] = { name: monthName, income: 0, expense: 0 };
+            data[monthName] = { name: monthName, income: 0, expense: 0, personal: 0 };
         }
         
         // Normalize amounts for chart consistency
@@ -43,8 +46,12 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, invoices, user }) =
 
         if (t.type === 'INCOME') {
             data[monthName].income += normalizedAmount;
-        } else {
-            data[monthName].expense += normalizedAmount;
+        } else if (t.type === 'EXPENSE') {
+            if (t.expenseCategory === 'BUSINESS') {
+                 data[monthName].expense += normalizedAmount;
+            } else {
+                 data[monthName].personal += normalizedAmount;
+            }
         }
     });
 
@@ -61,9 +68,6 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, invoices, user }) =
           <p className="text-slate-500">Welcome back, {user?.name.split(' ')[0] || 'User'}</p>
         </div>
         <div className="flex flex-col items-end">
-             <span className="px-3 py-1 bg-green-100 text-green-700 text-sm font-medium rounded-full border border-green-200 mb-1">
-                Tax Compliant (2026 Draft)
-            </span>
             <span className="text-xs text-slate-400 font-mono">
                 Base Rate: ₦{EXCHANGE_RATE}/$
             </span>
@@ -79,7 +83,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, invoices, user }) =
             </div>
             <span className="text-xs font-semibold text-green-600 bg-green-50 px-2 py-1 rounded">YTD Revenue</span>
           </div>
-          <p className="text-slate-500 text-sm font-medium">Total Income (NGN Eqv)</p>
+          <p className="text-slate-500 text-sm font-medium">Total Business Income</p>
           <h3 className="text-2xl font-bold text-slate-900 mt-1">{formatCurrency(totalIncome, 'NGN')}</h3>
         </div>
 
@@ -90,7 +94,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, invoices, user }) =
             </div>
             <span className="text-xs font-semibold text-red-600 bg-red-50 px-2 py-1 rounded">Operating Costs</span>
           </div>
-          <p className="text-slate-500 text-sm font-medium">Total Expenses (NGN Eqv)</p>
+          <p className="text-slate-500 text-sm font-medium">Business Expenses Only</p>
           <h3 className="text-2xl font-bold text-slate-900 mt-1">{formatCurrency(operatingExpenses, 'NGN')}</h3>
         </div>
 
@@ -101,9 +105,9 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, invoices, user }) =
             </div>
             <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-1 rounded">Net Margin</span>
           </div>
-          <p className="text-slate-500 text-sm font-medium">Net Profit (Before Tax)</p>
-          <h3 className={`text-2xl font-bold mt-1 ${netIncome >= 0 ? 'text-slate-900' : 'text-red-600'}`}>
-            {formatCurrency(netIncome, 'NGN')}
+          <p className="text-slate-500 text-sm font-medium">Business Profit (Before Tax)</p>
+          <h3 className={`text-2xl font-bold mt-1 ${netBusinessIncome >= 0 ? 'text-slate-900' : 'text-red-600'}`}>
+            {formatCurrency(netBusinessIncome, 'NGN')}
           </h3>
         </div>
       </div>
@@ -111,7 +115,14 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, invoices, user }) =
       {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-          <h3 className="text-lg font-bold text-slate-800 mb-6">Cash Flow Analysis (Normalized NGN)</h3>
+          <div className="flex justify-between items-center mb-6">
+             <h3 className="text-lg font-bold text-slate-800">Income vs Expense (Business)</h3>
+             <div className="flex space-x-3 text-xs font-medium">
+                <span className="flex items-center"><div className="w-2 h-2 rounded-full bg-green-500 mr-1"></div> Income</span>
+                <span className="flex items-center"><div className="w-2 h-2 rounded-full bg-blue-500 mr-1"></div> Biz Exp</span>
+                <span className="flex items-center"><div className="w-2 h-2 rounded-full bg-purple-300 mr-1"></div> Pers. Exp</span>
+             </div>
+          </div>
           <div className="h-72">
             {chartData.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
@@ -123,8 +134,9 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, invoices, user }) =
                         contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                         formatter={(value: number) => [formatCurrency(value, 'NGN'), '']}
                     />
-                    <Bar dataKey="income" fill="#22c55e" radius={[6, 6, 0, 0]} barSize={20} name="Income" />
-                    <Bar dataKey="expense" fill="#ef4444" radius={[6, 6, 0, 0]} barSize={20} name="Op. Expense" />
+                    <Bar dataKey="income" stackId="a" fill="#22c55e" radius={[0, 0, 4, 4]} barSize={20} name="Income" />
+                    <Bar dataKey="expense" stackId="b" fill="#3b82f6" radius={[0, 0, 4, 4]} barSize={20} name="Business Expense" />
+                    <Bar dataKey="personal" stackId="b" fill="#d8b4fe" radius={[4, 4, 0, 0]} barSize={20} name="Personal Expense" />
                 </BarChart>
                 </ResponsiveContainer>
             ) : (
@@ -142,13 +154,17 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, invoices, user }) =
               <div key={t.id} className="flex items-center justify-between p-3 hover:bg-slate-50 rounded-lg transition-colors cursor-pointer">
                 <div className="flex items-center space-x-3">
                   <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                    t.type === 'INCOME' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'
+                    t.type === 'INCOME' 
+                    ? 'bg-green-100 text-green-600' 
+                    : t.expenseCategory === 'BUSINESS' ? 'bg-blue-100 text-blue-600' : 'bg-purple-100 text-purple-600'
                   }`}>
                     {t.type === 'INCOME' ? <ArrowUpRight size={18} /> : <ArrowDownRight size={18} />}
                   </div>
                   <div>
                     <p className="font-semibold text-slate-800">{t.description}</p>
-                    <p className="text-xs text-slate-500">{t.date} • {t.category}</p>
+                    <p className="text-xs text-slate-500">
+                        {t.date} • {t.expenseCategory === 'PERSONAL' ? 'Personal' : 'Business'} • {t.category}
+                    </p>
                   </div>
                 </div>
                 <div className={`font-bold ${t.type === 'INCOME' ? 'text-green-600' : 'text-slate-800'}`}>

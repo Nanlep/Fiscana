@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { analyzeTaxLiability, chatWithTaxAdvisorStream } from '../services/geminiService';
 import { Transaction, TaxReport } from '../types';
-import { Calculator, ShieldCheck, AlertTriangle, Send, Loader2, Bot } from 'lucide-react';
+import { Calculator, ShieldCheck, AlertTriangle, Send, Loader2, Bot, TrendingUp, Briefcase, User, Lightbulb } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import { formatCurrency } from '../utils/currency';
 
 interface TaxAdvisorProps {
   transactions: Transaction[];
@@ -15,7 +16,7 @@ const TaxAdvisor: React.FC<TaxAdvisorProps> = ({ transactions }) => {
   
   // Chat State
   const [chatHistory, setChatHistory] = useState<{role: 'user' | 'model', text: string}[]>([
-      {role: 'model', text: 'Hello! I am your 2026 Tax Reform compliance assistant. Ask me about VAT thresholds, crypto tax, or deductible expenses.'}
+      {role: 'model', text: 'Hello! I am your 2026 Financial & Tax Intelligence assistant. I have analyzed your ledger. Ask me about your spending patterns, tax liabilities, or strategic financial moves.'}
   ]);
   const [inputMessage, setInputMessage] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
@@ -80,19 +81,19 @@ const TaxAdvisor: React.FC<TaxAdvisorProps> = ({ transactions }) => {
     <div className="p-8 h-full flex flex-col space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">Tax Advisor AI</h1>
-          <p className="text-slate-500">Compliance engine compliant with Nigeria's 2026 Tax Reforms</p>
+          <h1 className="text-3xl font-bold text-slate-900">AI Financial Advisor</h1>
+          <p className="text-slate-500">Deep insights into your financial behavior & tax compliance</p>
         </div>
         <div className="flex items-center space-x-2">
             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
             <span className="text-xs font-medium text-green-700 bg-green-50 px-2 py-1 rounded-full border border-green-200">
-                Live Advisor
+                Live Analysis
             </span>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-12rem)]">
-        {/* Left Column: Tax Liability Summary */}
+        {/* Left Column: Tax Liability & Financial Insights */}
         <div className="lg:col-span-1 space-y-6 overflow-y-auto pr-2 custom-scrollbar">
           {loading ? (
              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-center h-64">
@@ -100,11 +101,12 @@ const TaxAdvisor: React.FC<TaxAdvisorProps> = ({ transactions }) => {
              </div>
           ) : report ? (
             <>
+              {/* Score Card */}
               <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 relative overflow-hidden group hover:shadow-md transition-all">
                 <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                    <ShieldCheck size={100} />
                 </div>
-                <h3 className="text-lg font-bold text-slate-800 mb-4">Compliance Score</h3>
+                <h3 className="text-lg font-bold text-slate-800 mb-4">Financial Health Score</h3>
                 <div className="flex items-end space-x-2">
                   <span className={`text-5xl font-bold ${report.complianceScore > 80 ? 'text-green-600' : 'text-amber-500'}`}>
                     {report.complianceScore}
@@ -112,37 +114,90 @@ const TaxAdvisor: React.FC<TaxAdvisorProps> = ({ transactions }) => {
                   <span className="text-xl text-slate-400 mb-2">/ 100</span>
                 </div>
                 <p className="text-sm text-slate-500 mt-2">
-                  {report.complianceScore > 80 ? 'You are well positioned for the 2026 fiscal year.' : 'Attention needed for record keeping.'}
+                  {report.complianceScore > 80 ? 'Excellent financial record keeping and compliance.' : 'Attention needed for record keeping optimization.'}
                 </p>
               </div>
+              
+              {/* Key Financial Decisions */}
+              <div className="bg-indigo-50 p-6 rounded-2xl border border-indigo-100">
+                 <h3 className="text-sm font-bold text-indigo-900 mb-3 flex items-center uppercase tracking-wide">
+                    <Lightbulb className="mr-2 text-indigo-600" size={18}/> Strategic Observations
+                </h3>
+                <ul className="space-y-3">
+                    {report.keyFinancialDecisions.map((decision, i) => (
+                        <li key={i} className="text-sm text-indigo-800 flex items-start">
+                             <div className="mr-2 mt-0.5 min-w-[6px] min-h-[6px] w-1.5 h-1.5 bg-indigo-500 rounded-full"></div>
+                            <span className="leading-snug">{decision}</span>
+                        </li>
+                    ))}
+                </ul>
+              </div>
 
+              {/* Top Business Expenses */}
+              <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+                <h3 className="text-sm font-bold text-slate-800 mb-4 flex items-center uppercase tracking-wide">
+                    <Briefcase className="mr-2 text-blue-600" size={18}/> Top Business Spend
+                </h3>
+                <div className="space-y-3">
+                    {report.topBusinessExpenses.length > 0 ? report.topBusinessExpenses.map((exp, i) => (
+                         <div key={i} className="flex justify-between items-center text-sm border-b border-slate-50 pb-2 last:border-0 last:pb-0">
+                            <div>
+                                <p className="font-medium text-slate-700">{exp.description}</p>
+                                <p className="text-xs text-slate-400">{exp.category}</p>
+                            </div>
+                            <span className="font-mono font-bold text-slate-900">{formatCurrency(exp.amount, 'NGN')}</span>
+                        </div>
+                    )) : <p className="text-xs text-slate-400 italic">No significant business expenses found.</p>}
+                </div>
+              </div>
+
+              {/* Top Personal Expenses */}
+               <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+                <h3 className="text-sm font-bold text-slate-800 mb-4 flex items-center uppercase tracking-wide">
+                    <User className="mr-2 text-purple-600" size={18}/> Top Personal Spend
+                </h3>
+                <div className="space-y-3">
+                    {report.topPersonalExpenses.length > 0 ? report.topPersonalExpenses.map((exp, i) => (
+                         <div key={i} className="flex justify-between items-center text-sm border-b border-slate-50 pb-2 last:border-0 last:pb-0">
+                            <div>
+                                <p className="font-medium text-slate-700">{exp.description}</p>
+                                <p className="text-xs text-slate-400">{exp.category}</p>
+                            </div>
+                            <span className="font-mono font-bold text-slate-900">{formatCurrency(exp.amount, 'NGN')}</span>
+                        </div>
+                    )) : <p className="text-xs text-slate-400 italic">No significant personal expenses found.</p>}
+                </div>
+              </div>
+
+              {/* Tax Liability */}
               <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-                <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center">
-                    <Calculator className="mr-2 text-blue-600" size={20}/> Estimated Liability
+                <h3 className="text-sm font-bold text-slate-800 mb-4 flex items-center uppercase tracking-wide">
+                    <Calculator className="mr-2 text-green-600" size={18}/> Estimated Tax Liability
                 </h3>
                 <div className="space-y-3">
                     <div className="flex justify-between py-2 border-b border-slate-50">
-                        <span className="text-slate-600">Taxable Income</span>
-                        <span className="font-medium">₦{report.taxableIncome.toLocaleString()}</span>
+                        <span className="text-slate-600 text-sm">Taxable Income</span>
+                        <span className="font-medium text-sm">₦{report.taxableIncome.toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between py-2 border-b border-slate-50">
-                        <span className="text-slate-600">Income Tax (Est.)</span>
-                        <span className="font-medium text-red-500">₦{report.estimatedIncomeTax.toLocaleString()}</span>
+                        <span className="text-slate-600 text-sm">Income Tax (Est.)</span>
+                        <span className="font-medium text-red-500 text-sm">₦{report.estimatedIncomeTax.toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between py-2 border-b border-slate-50">
-                        <span className="text-slate-600">VAT (Est.)</span>
-                        <span className="font-medium text-red-500">₦{report.estimatedVAT.toLocaleString()}</span>
+                        <span className="text-slate-600 text-sm">VAT (Est.)</span>
+                        <span className="font-medium text-red-500 text-sm">₦{report.estimatedVAT.toLocaleString()}</span>
                     </div>
                      <div className="flex justify-between py-2">
-                        <span className="text-slate-600">Deductibles Identified</span>
-                        <span className="font-medium text-green-600">- ₦{report.deductibleExpenses.toLocaleString()}</span>
+                        <span className="text-slate-600 text-sm">Deductibles Identified</span>
+                        <span className="font-medium text-green-600 text-sm">- ₦{report.deductibleExpenses.toLocaleString()}</span>
                     </div>
                 </div>
               </div>
 
+              {/* Recommendations */}
               <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-                 <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center">
-                    <AlertTriangle className="mr-2 text-amber-500" size={20}/> Recommendations
+                 <h3 className="text-sm font-bold text-slate-800 mb-4 flex items-center uppercase tracking-wide">
+                    <AlertTriangle className="mr-2 text-amber-500" size={18}/> Recommendations
                 </h3>
                 <ul className="space-y-3">
                     {report.recommendations.map((rec, i) => (
@@ -162,7 +217,7 @@ const TaxAdvisor: React.FC<TaxAdvisorProps> = ({ transactions }) => {
             <div className="p-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
                 <div>
                     <h3 className="font-bold text-slate-700 flex items-center">
-                        <Bot size={18} className="mr-2 text-green-600"/> Tax Advisor Chat
+                        <Bot size={18} className="mr-2 text-green-600"/> Financial Intelligence Chat
                     </h3>
                     <p className="text-xs text-slate-500">Powered by Gemini 3 Flash</p>
                 </div>
@@ -203,7 +258,7 @@ const TaxAdvisor: React.FC<TaxAdvisorProps> = ({ transactions }) => {
                         value={inputMessage}
                         onChange={(e) => setInputMessage(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-                        placeholder="Ask about your tax liability..."
+                        placeholder="Ask about expenses, tax strategy, or savings..."
                         disabled={chatLoading}
                         className="flex-1 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all"
                     />

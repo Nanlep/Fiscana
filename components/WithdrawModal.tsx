@@ -4,7 +4,7 @@ import { X, Building2, Wallet, Loader2, CheckCircle } from 'lucide-react';
 interface WithdrawModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onWithdraw: (amount: number, currency: 'NGN' | 'USDC') => void;
+  onWithdraw: (amount: number, currency: 'NGN' | 'USDC', narration: string) => void;
   balanceNGN: number;
   balanceUSDC: number;
 }
@@ -12,6 +12,7 @@ interface WithdrawModalProps {
 const WithdrawModal: React.FC<WithdrawModalProps> = ({ isOpen, onClose, onWithdraw, balanceNGN, balanceUSDC }) => {
   const [currency, setCurrency] = useState<'NGN' | 'USDC'>('NGN');
   const [amount, setAmount] = useState('');
+  const [narration, setNarration] = useState('');
   const [step, setStep] = useState<'INPUT' | 'PROCESSING' | 'SUCCESS'>('INPUT');
   
   // Bank Details
@@ -39,7 +40,7 @@ const WithdrawModal: React.FC<WithdrawModalProps> = ({ isOpen, onClose, onWithdr
 
     setStep('PROCESSING');
     setTimeout(() => {
-        onWithdraw(val, currency);
+        onWithdraw(val, currency, narration);
         setStep('SUCCESS');
     }, 2000);
   };
@@ -47,6 +48,7 @@ const WithdrawModal: React.FC<WithdrawModalProps> = ({ isOpen, onClose, onWithdr
   const reset = () => {
     setStep('INPUT');
     setAmount('');
+    setNarration('');
     onClose();
   };
 
@@ -171,6 +173,18 @@ const WithdrawModal: React.FC<WithdrawModalProps> = ({ isOpen, onClose, onWithdr
                             </div>
                         </div>
                     )}
+
+                    {/* Narration Input */}
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Narration (Optional)</label>
+                        <input 
+                            type="text" 
+                            value={narration}
+                            onChange={(e) => setNarration(e.target.value)}
+                            className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-green-500 outline-none"
+                            placeholder="e.g. Salary, Emergency Fund"
+                        />
+                    </div>
 
                     <div className="pt-2">
                         <button 

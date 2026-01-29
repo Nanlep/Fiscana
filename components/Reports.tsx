@@ -16,18 +16,25 @@ const Reports: React.FC<ReportsProps> = ({ transactions, assets, liabilities, co
   // Calculations for Profit & Loss (Normalized)
   const incomeTransactions = transactions.filter(t => t.type === 'INCOME');
   
-  const expenseTransactions = transactions.filter(t => 
-    t.type === 'EXPENSE' && t.category !== 'Transfer' && t.category !== 'Drawings'
+  // Business Operating Expenses (Strictly BUSINESS category)
+  const businessExpenseTransactions = transactions.filter(t => 
+    t.type === 'EXPENSE' && t.expenseCategory === 'BUSINESS'
   );
   
-  const transferTransactions = transactions.filter(t => 
-    t.type === 'EXPENSE' && (t.category === 'Transfer' || t.category === 'Drawings')
+  // Personal Expenses & Transfers (Strictly PERSONAL category)
+  const personalTransactions = transactions.filter(t => 
+    t.type === 'EXPENSE' && (t.expenseCategory === 'PERSONAL' || !t.expenseCategory)
   );
 
   const totalRevenue = incomeTransactions.reduce((sum, t) => sum + normalizeToNGN(t.amount, t.currency), 0); 
-  const totalOperatingExpenses = expenseTransactions.reduce((sum, t) => sum + normalizeToNGN(t.amount, t.currency), 0);
-  const totalTransfers = transferTransactions.reduce((sum, t) => sum + normalizeToNGN(t.amount, t.currency), 0);
-  const netIncome = totalRevenue - totalOperatingExpenses;
+  const totalOperatingExpenses = businessExpenseTransactions.reduce((sum, t) => sum + normalizeToNGN(t.amount, t.currency), 0);
+  const totalPersonalOutflows = personalTransactions.reduce((sum, t) => sum + normalizeToNGN(t.amount, t.currency), 0);
+  
+  // Net Business Income (Revenue - Business Expenses)
+  const netBusinessIncome = totalRevenue - totalOperatingExpenses;
+  
+  // Net Cash Flow (Net Business Income - Personal Outflows)
+  const netCashFlow = netBusinessIncome - totalPersonalOutflows;
 
   // Group by Category (Normalized)
   const incomeByCategory = incomeTransactions.reduce((acc, t) => {
@@ -35,7 +42,12 @@ const Reports: React.FC<ReportsProps> = ({ transactions, assets, liabilities, co
       return acc;
   }, {} as Record<string, number>);
 
-  const expensesByCategory = expenseTransactions.reduce((acc, t) => {
+  const businessExpensesByCategory = businessExpenseTransactions.reduce((acc, t) => {
+      acc[t.category] = (acc[t.category] || 0) + normalizeToNGN(t.amount, t.currency);
+      return acc;
+  }, {} as Record<string, number>);
+  
+  const personalExpensesByCategory = personalTransactions.reduce((acc, t) => {
       acc[t.category] = (acc[t.category] || 0) + normalizeToNGN(t.amount, t.currency);
       return acc;
   }, {} as Record<string, number>);
@@ -119,9 +131,9 @@ const Reports: React.FC<ReportsProps> = ({ transactions, assets, liabilities, co
 
                     {/* Expense Section */}
                     <div>
-                        <h4 className="text-sm font-bold text-slate-900 uppercase border-b border-slate-200 pb-2 mb-4">Operating Expenses</h4>
+                        <h4 className="text-sm font-bold text-slate-900 uppercase border-b border-slate-200 pb-2 mb-4">Operating Expenses (Business)</h4>
                         <div className="space-y-2">
-                             {Object.entries(expensesByCategory).map(([cat, val]) => (
+                             {Object.entries(businessExpensesByCategory).map(([cat, val]) => (
                                 <div key={cat} className="flex justify-between text-sm">
                                     <span className="text-slate-600">{cat}</span>
                                     <span className="text-slate-900">({formatCurrency(val, 'NGN')})</span>
@@ -134,32 +146,48 @@ const Reports: React.FC<ReportsProps> = ({ transactions, assets, liabilities, co
                         </div>
                     </div>
 
-                    {/* Net Income */}
+                    {/* Net Business Income */}
                     <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 mt-8">
                          <div className="flex justify-between text-lg font-bold">
-                            <span>Net Income (Before Tax)</span>
-                            <span className={netIncome >= 0 ? 'text-slate-900' : 'text-red-600'}>
-                                {formatCurrency(netIncome, 'NGN')}
+                            <span>Net Business Income</span>
+                            <span className={netBusinessIncome >= 0 ? 'text-slate-900' : 'text-red-600'}>
+                                {formatCurrency(netBusinessIncome, 'NGN')}
                             </span>
                         </div>
                     </div>
 
-                    {/* Transfers / Drawings */}
+                    {/* Personal Expenses / Draws */}
                     <div>
-                        <h4 className="text-sm font-bold text-slate-500 uppercase border-b border-slate-200 pb-2 mb-4 mt-8">Cash Withdrawals & Distributions</h4>
+                        <h4 className="text-sm font-bold text-slate-500 uppercase border-b border-slate-200 pb-2 mb-4 mt-8">Personal Expenses & Withdrawals</h4>
                         <div className="space-y-2">
-                             <div className="flex justify-between text-sm">
-                                <span className="text-slate-600">Transfers / Drawings</span>
-                                <span className="text-slate-900">({formatCurrency(totalTransfers, 'NGN')})</span>
+                             {Object.entries(personalExpensesByCategory).map(([cat, val]) => (
+                                <div key={cat} className="flex justify-between text-sm">
+                                    <span className="text-slate-600">{cat}</span>
+                                    <span className="text-slate-900">({formatCurrency(val, 'NGN')})</span>
+                                </div>
+                            ))}
+                             <div className="flex justify-between text-sm font-bold pt-2 border-t border-slate-200 mt-2">
+                                <span className="text-slate-600">Total Personal Outflows</span>
+                                <span className="text-slate-900">({formatCurrency(totalPersonalOutflows, 'NGN')})</span>
                             </div>
                         </div>
-                        <p className="text-[10px] text-slate-400 mt-2 italic">* Drawings are distributions of equity and do not reduce taxable Net Income.</p>
+                        <p className="text-[10px] text-slate-400 mt-2 italic">* Personal expenses are treated as equity drawings and do not reduce business taxable income.</p>
+                    </div>
+
+                     {/* Net Cash Flow */}
+                     <div className="bg-slate-900 text-white p-4 rounded-lg border border-slate-900 mt-8">
+                         <div className="flex justify-between text-lg font-bold">
+                            <span>Net Cash Flow</span>
+                            <span className={netCashFlow >= 0 ? 'text-green-400' : 'text-red-400'}>
+                                {formatCurrency(netCashFlow, 'NGN')}
+                            </span>
+                        </div>
                     </div>
                 </div>
             ) : (
                 <div className="space-y-8 font-mono">
-                     {/* Assets Section */}
-                     <div>
+                    {/* Assets */}
+                    <div>
                         <h4 className="text-sm font-bold text-slate-900 uppercase border-b border-slate-200 pb-2 mb-4">Assets</h4>
                         <div className="space-y-2">
                             {Object.entries(assetsByType).map(([type, val]) => (
@@ -175,50 +203,55 @@ const Reports: React.FC<ReportsProps> = ({ transactions, assets, liabilities, co
                         </div>
                     </div>
 
-                    {/* Liabilities Section */}
-                    <div>
+                    {/* Liabilities */}
+                     <div>
                         <h4 className="text-sm font-bold text-slate-900 uppercase border-b border-slate-200 pb-2 mb-4">Liabilities</h4>
                         <div className="space-y-2">
-                            {liabilities.length > 0 ? liabilities.map(l => (
-                                 <div key={l.id} className="flex justify-between text-sm">
+                            {liabilities.map((l) => (
+                                <div key={l.id} className="flex justify-between text-sm">
                                     <span className="text-slate-600">{l.name}</span>
                                     <span className="text-slate-900">{formatCurrency(normalizeToNGN(l.amount, l.currency), 'NGN')}</span>
                                 </div>
-                            )) : (
-                                <div className="text-sm text-slate-400 italic">No liabilities recorded</div>
-                            )}
-                             <div className="flex justify-between text-sm font-bold pt-2 border-t border-slate-200 mt-2">
+                            ))}
+                            {liabilities.length === 0 && <div className="text-sm text-slate-400 italic">No liabilities recorded.</div>}
+                            
+                            <div className="flex justify-between text-sm font-bold pt-2 border-t border-slate-200 mt-2">
                                 <span>Total Liabilities</span>
                                 <span>{formatCurrency(totalLiabilities, 'NGN')}</span>
                             </div>
                         </div>
                     </div>
 
-                     {/* Equity Section */}
-                     <div>
-                        <h4 className="text-sm font-bold text-slate-900 uppercase border-b border-slate-200 pb-2 mb-4">Equity</h4>
-                         <div className="flex justify-between text-sm">
-                            <span className="text-slate-600">Owner's Equity</span>
-                            <span className="text-slate-900">{formatCurrency(equity, 'NGN')}</span>
-                        </div>
-                        <div className="flex justify-between text-sm font-bold pt-2 border-t border-slate-200 mt-2">
-                            <span>Total Equity</span>
-                            <span>{formatCurrency(equity, 'NGN')}</span>
+                    {/* Equity */}
+                    <div>
+                        <h4 className="text-sm font-bold text-slate-900 uppercase border-b border-slate-200 pb-2 mb-4">Owner's Equity</h4>
+                        <div className="space-y-2">
+                             <div className="flex justify-between text-sm">
+                                <span className="text-slate-600">Net Assets</span>
+                                <span className="text-slate-900">{formatCurrency(equity, 'NGN')}</span>
+                            </div>
+                            <div className="flex justify-between text-sm font-bold pt-2 border-t border-slate-200 mt-2">
+                                <span>Total Equity</span>
+                                <span>{formatCurrency(equity, 'NGN')}</span>
+                            </div>
                         </div>
                     </div>
-
-                     {/* Validation */}
-                     <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 mt-8 flex justify-between items-center">
-                         <div className="text-xs text-slate-500 uppercase font-bold">Accounting Equation Check</div>
-                         <div className="text-sm font-bold text-slate-900">
-                            Total Assets ({formatCurrency(totalAssets, 'NGN')}) = Liabilities + Equity ({formatCurrency(totalLiabilities + equity, 'NGN')})
-                         </div>
+                    
+                    <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 mt-8 text-center text-xs text-slate-500">
+                        <p>Total Liabilities & Equity: {formatCurrency(totalLiabilities + equity, 'NGN')}</p>
                     </div>
                 </div>
             )}
 
-            <div className="mt-16 text-center">
-                <p className="text-[10px] text-slate-400">Generated by Fiscana Financial OS. This document is compliant with Nigeria Finance Act provisions for record keeping.</p>
+            <div className="mt-16 pt-8 border-t border-slate-100 flex justify-between items-end text-xs text-slate-400">
+                <div>
+                    <p>Generated by Fiscana Financial OS</p>
+                    <p>{new Date().toISOString()}</p>
+                </div>
+                <div className="text-right">
+                    <p>Authorized Signature</p>
+                    <div className="w-48 border-b border-slate-300 mt-8"></div>
+                </div>
             </div>
         </div>
     </div>

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Transaction, TransactionType } from '../types';
-import { Search, Filter, Plus, ArrowUpRight, ArrowDownRight, X, Check, Upload, FileText, Paperclip, Download, Tag } from 'lucide-react';
+import { Transaction, TransactionType, ExpenseCategoryType } from '../types';
+import { Search, Filter, Plus, ArrowUpRight, ArrowDownRight, X, Check, Upload, FileText, Paperclip, Download, Tag, Briefcase, User } from 'lucide-react';
 
 interface LedgerProps {
   transactions: Transaction[];
@@ -20,6 +20,7 @@ const Ledger: React.FC<LedgerProps> = ({ transactions, addTransaction }) => {
     amount: '',
     currency: 'NGN' as 'NGN' | 'USD',
     category: '',
+    expenseCategory: 'BUSINESS' as ExpenseCategoryType,
     tags: '',
     date: new Date().toISOString().split('T')[0],
     isDeductible: false
@@ -37,11 +38,12 @@ const Ledger: React.FC<LedgerProps> = ({ transactions, addTransaction }) => {
   });
 
   const handleExportCSV = () => {
-      const headers = ['ID', 'Date', 'Type', 'Payee', 'Description', 'Amount', 'Currency', 'Category', 'Tags', 'Deductible'];
+      const headers = ['ID', 'Date', 'Type', 'Category Type', 'Payee', 'Description', 'Amount', 'Currency', 'Category', 'Tags', 'Deductible'];
       const rows = filtered.map(t => [
           t.id,
           t.date,
           t.type,
+          t.expenseCategory || 'N/A',
           `"${t.payee}"`, // Quote to handle commas
           `"${t.description}"`,
           t.amount,
@@ -72,6 +74,7 @@ const Ledger: React.FC<LedgerProps> = ({ transactions, addTransaction }) => {
         amount: '',
         currency: 'NGN',
         category: '',
+        expenseCategory: 'BUSINESS',
         tags: '',
         date: new Date().toISOString().split('T')[0],
         isDeductible: false
@@ -97,6 +100,7 @@ const Ledger: React.FC<LedgerProps> = ({ transactions, addTransaction }) => {
         amount: parseFloat(formData.amount),
         currency: formData.currency,
         type: newTxType,
+        expenseCategory: newTxType === TransactionType.EXPENSE ? formData.expenseCategory : undefined,
         category: formData.category || 'General',
         tags: tagsArray,
         taxDeductible: formData.isDeductible,
@@ -171,9 +175,9 @@ const Ledger: React.FC<LedgerProps> = ({ transactions, addTransaction }) => {
                     <tr>
                         <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase">Date</th>
                         <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase">Payee / Description</th>
-                        <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase">Category & Tags</th>
+                        <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase">Category</th>
                         <th className="px-6 py-4 text-right text-xs font-semibold text-slate-500 uppercase">Amount</th>
-                        <th className="px-6 py-4 text-center text-xs font-semibold text-slate-500 uppercase">Compliance</th>
+                        <th className="px-6 py-4 text-center text-xs font-semibold text-slate-500 uppercase">Type</th>
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -222,8 +226,15 @@ const Ledger: React.FC<LedgerProps> = ({ transactions, addTransaction }) => {
                                 {t.type === 'INCOME' ? '+' : '-'} {t.currency === 'NGN' ? '₦' : '$'}{t.amount.toLocaleString()}
                             </td>
                             <td className="px-6 py-4 text-center">
-                                {t.taxDeductible && (
-                                    <span className="text-green-600 text-[10px] font-bold bg-green-50 px-2 py-1 rounded border border-green-100 uppercase">Deductible</span>
+                                {t.expenseCategory === 'BUSINESS' && (
+                                    <span className="text-blue-600 text-[10px] font-bold bg-blue-50 px-2 py-1 rounded border border-blue-100 uppercase flex items-center justify-center gap-1">
+                                        <Briefcase size={10} /> Business
+                                    </span>
+                                )}
+                                {t.expenseCategory === 'PERSONAL' && (
+                                    <span className="text-purple-600 text-[10px] font-bold bg-purple-50 px-2 py-1 rounded border border-purple-100 uppercase flex items-center justify-center gap-1">
+                                        <User size={10} /> Personal
+                                    </span>
                                 )}
                             </td>
                         </tr>
@@ -317,6 +328,34 @@ const Ledger: React.FC<LedgerProps> = ({ transactions, addTransaction }) => {
                         </div>
                     </div>
 
+                    {/* Expense Category Toggle */}
+                    {newTxType === TransactionType.EXPENSE && (
+                        <div className="bg-slate-50 p-1 rounded-lg flex space-x-1">
+                            <button
+                                type="button"
+                                onClick={() => setFormData({...formData, expenseCategory: 'BUSINESS', category: ''})}
+                                className={`flex-1 flex items-center justify-center space-x-2 py-2 rounded-md text-sm font-bold transition-all ${
+                                    formData.expenseCategory === 'BUSINESS' 
+                                    ? 'bg-white shadow-sm text-blue-700' 
+                                    : 'text-slate-500 hover:text-slate-700'
+                                }`}
+                            >
+                                <Briefcase size={16} /> <span>Business</span>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setFormData({...formData, expenseCategory: 'PERSONAL', category: ''})}
+                                className={`flex-1 flex items-center justify-center space-x-2 py-2 rounded-md text-sm font-bold transition-all ${
+                                    formData.expenseCategory === 'PERSONAL' 
+                                    ? 'bg-white shadow-sm text-purple-700' 
+                                    : 'text-slate-500 hover:text-slate-700'
+                                }`}
+                            >
+                                <User size={16} /> <span>Personal</span>
+                            </button>
+                        </div>
+                    )}
+
                     {/* Categorization */}
                     <div className="grid grid-cols-2 gap-4">
                         <div className="col-span-2 md:col-span-1">
@@ -346,26 +385,43 @@ const Ledger: React.FC<LedgerProps> = ({ transactions, addTransaction }) => {
                                         </optgroup>
                                     </>
                                 ) : (
-                                    <>
-                                        <optgroup label="Operational">
-                                            <option value="Rent">Rent</option>
-                                            <option value="Utilities">Utilities</option>
-                                            <option value="Office Supplies">Office Supplies</option>
-                                            <option value="Equipment">Equipment</option>
-                                            <option value="Software">Software & SaaS</option>
-                                        </optgroup>
-                                        <optgroup label="Professional">
-                                            <option value="Marketing">Marketing</option>
-                                            <option value="Legal">Legal & Accounting</option>
-                                            <option value="Education">Education</option>
-                                            <option value="Bank Fees">Bank Fees</option>
-                                        </optgroup>
-                                        <optgroup label="Personal/Other">
-                                            <option value="Travel">Travel</option>
-                                            <option value="Meals">Meals</option>
-                                            <option value="Drawings">Owner Drawings</option>
-                                        </optgroup>
-                                    </>
+                                    formData.expenseCategory === 'BUSINESS' ? (
+                                        <>
+                                            <optgroup label="Operational">
+                                                <option value="Rent">Rent (Office)</option>
+                                                <option value="Utilities">Utilities (Internet/Power)</option>
+                                                <option value="Office Supplies">Office Supplies</option>
+                                                <option value="Equipment">Equipment / Hardware</option>
+                                                <option value="Software">Software & SaaS</option>
+                                            </optgroup>
+                                            <optgroup label="Professional">
+                                                <option value="Marketing">Marketing / Ads</option>
+                                                <option value="Legal">Legal & Accounting</option>
+                                                <option value="Education">Training & Courses</option>
+                                                <option value="Bank Fees">Bank Fees</option>
+                                                <option value="Travel">Business Travel</option>
+                                                <option value="Contractors">Contractors / Labour</option>
+                                            </optgroup>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <optgroup label="Personal Living">
+                                                <option value="Groceries">Groceries</option>
+                                                <option value="Housing">Housing / Rent (Personal)</option>
+                                                <option value="Utilities">Utilities (Home)</option>
+                                                <option value="Healthcare">Healthcare</option>
+                                                <option value="Transportation">Transportation</option>
+                                            </optgroup>
+                                            <optgroup label="Discretionary">
+                                                <option value="Entertainment">Entertainment</option>
+                                                <option value="Dining Out">Dining Out</option>
+                                                <option value="Shopping">Shopping</option>
+                                                <option value="Travel">Personal Travel</option>
+                                                <option value="Drawings">Owner Drawings</option>
+                                                <option value="Transfer">Transfer / Withdrawal</option>
+                                            </optgroup>
+                                        </>
+                                    )
                                 )}
                             </select>
                         </div>
@@ -374,14 +430,14 @@ const Ledger: React.FC<LedgerProps> = ({ transactions, addTransaction }) => {
                             <input 
                                 type="text" 
                                 className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
-                                placeholder="#ProjectA, #Personal"
+                                placeholder="#ProjectA, #Q1"
                                 value={formData.tags}
                                 onChange={e => setFormData({...formData, tags: e.target.value})}
                             />
                         </div>
                     </div>
 
-                    {newTxType === TransactionType.EXPENSE && (
+                    {newTxType === TransactionType.EXPENSE && formData.expenseCategory === 'BUSINESS' && (
                         <div className="space-y-4">
                             <div className="flex items-center space-x-2 p-3 bg-slate-50 rounded-lg border border-slate-100">
                                 <input 

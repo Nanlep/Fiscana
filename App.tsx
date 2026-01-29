@@ -58,12 +58,12 @@ function App() {
     },
     {
       id: 'tx_2', date: '2025-05-14', description: 'MacBook Pro M4', payee: 'iStore Ikeja', amount: 2400000,
-      currency: 'NGN', type: TransactionType.EXPENSE, category: 'Equipment', taxDeductible: true, receiptUrl: '#',
+      currency: 'NGN', type: TransactionType.EXPENSE, expenseCategory: 'BUSINESS', category: 'Equipment', taxDeductible: true, receiptUrl: '#',
       tags: ['#Hardware', '#Asset']
     },
     {
       id: 'tx_3', date: '2025-05-15', description: 'Monthly Subscription', payee: 'Starlink Nigeria', amount: 48000,
-      currency: 'NGN', type: TransactionType.EXPENSE, category: 'Utilities', taxDeductible: true,
+      currency: 'NGN', type: TransactionType.EXPENSE, expenseCategory: 'BUSINESS', category: 'Utilities', taxDeductible: true,
       tags: ['#Recurring', '#Office']
     },
     {
@@ -73,8 +73,13 @@ function App() {
     },
     {
       id: 'tx_5', date: '2025-06-01', description: 'Co-working Space Fee', payee: 'WorkStation NG', amount: 150000,
-      currency: 'NGN', type: TransactionType.EXPENSE, category: 'Rent', taxDeductible: true,
+      currency: 'NGN', type: TransactionType.EXPENSE, expenseCategory: 'BUSINESS', category: 'Rent', taxDeductible: true,
       tags: ['#Office', '#Recurring']
+    },
+    {
+      id: 'tx_6', date: '2025-06-02', description: 'Groceries & Home Supplies', payee: 'Shoprite', amount: 65000,
+      currency: 'NGN', type: TransactionType.EXPENSE, expenseCategory: 'PERSONAL', category: 'Groceries', taxDeductible: false,
+      tags: ['#Personal', '#Home']
     }
   ];
 
@@ -183,7 +188,7 @@ function App() {
       });
   };
 
-  const handleWithdraw = (amount: number, currency: 'NGN' | 'USDC') => {
+  const handleWithdraw = (amount: number, currency: 'NGN' | 'USDC', narration: string) => {
       // 1. Update Asset
       const targetAssetName = currency === 'NGN' ? 'Wallet Balance' : 'USDC Balance';
       setAssets(assets.map(asset => {
@@ -197,12 +202,13 @@ function App() {
       const newTx: Transaction = {
           id: `wd_${Date.now()}`,
           date: new Date().toISOString().split('T')[0],
-          description: `Withdrawal to ${currency === 'NGN' ? 'Bank' : 'External Wallet'}`,
+          description: narration ? `Withdrawal: ${narration}` : `Withdrawal to ${currency === 'NGN' ? 'Bank' : 'External Wallet'}`,
           payee: 'Self',
           amount: amount,
           currency: currency === 'NGN' ? 'NGN' : 'USD',
           type: TransactionType.EXPENSE,
           category: 'Transfer',
+          expenseCategory: 'PERSONAL', // Default withdrawals to Personal unless specified otherwise
           taxDeductible: false,
           tags: ['#Withdrawal']
       };
