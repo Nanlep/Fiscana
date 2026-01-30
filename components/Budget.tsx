@@ -17,7 +17,8 @@ const BudgetModule: React.FC<BudgetProps> = ({ transactions, budgets, addBudget,
   const [isModalOpen, setIsModalOpen] = useState(false);
   
   // New Budget Form State
-  const [newCategory, setNewCategory] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('');
+  const [customCategory, setCustomCategory] = useState('');
   const [newLimit, setNewLimit] = useState('');
   const [newCurrency, setNewCurrency] = useState<'NGN' | 'USD'>('NGN');
 
@@ -47,17 +48,41 @@ const BudgetModule: React.FC<BudgetProps> = ({ transactions, budgets, addBudget,
   const totalVariance = totalBudgeted - totalSpent;
   const percentageUsed = totalBudgeted > 0 ? (totalSpent / totalBudgeted) * 100 : 0;
 
-  // Categories for Form
-  const businessCategories = ['Rent', 'Utilities', 'Office Supplies', 'Equipment', 'Software', 'Marketing', 'Legal', 'Education', 'Bank Fees', 'Travel', 'Contractors'];
-  const personalCategories = ['Groceries', 'Housing', 'Utilities', 'Healthcare', 'Transportation', 'Entertainment', 'Dining Out', 'Shopping', 'Travel', 'Drawings'];
+  // Extensive Categories Lists
+  const businessCategories = [
+    'Rent', 'Utilities', 'Internet & Phone', 'Office Supplies', 'Co-working Space',
+    'Salaries', 'Contractors', 'Employee Benefits', 'Training & Education',
+    'Legal Fees', 'Accounting', 'Consulting',
+    'Marketing & Ads', 'Social Media', 'Website & Hosting', 'Events',
+    'Bank Fees', 'Insurance', 'Taxes', 'Loan Repayments',
+    'Travel', 'Hotels', 'Transportation', 'Meals & Entertainment',
+    'Software & SaaS', 'Licenses',
+    'Equipment & Hardware', 'Furniture', 'Repairs & Maintenance',
+    'Shipping & Logistics', 'Depreciation'
+  ].sort();
+
+  const personalCategories = [
+    'Rent / Mortgage', 'Property Tax', 'Home Insurance', 'Home Repairs',
+    'Electricity', 'Water', 'Gas/Fuel', 'Internet', 'Phone Bill',
+    'Groceries', 'Dining Out', 'Coffee & Snacks',
+    'Fuel / Petrol', 'Public Transport', 'Car Maintenance', 'Ride Hailing (Uber/Bolt)', 'Car Insurance',
+    'Medical', 'Dental', 'Pharmacy', 'Gym & Fitness', 'Health Insurance',
+    'Clothing', 'Personal Care', 'Salon / Barber',
+    'Entertainment', 'Movies & Events', 'Hobbies', 'Subscriptions (Netflix/Spotify)',
+    'Childcare', 'School Fees', 'Baby Supplies',
+    'Savings', 'Investments', 'Debt Repayment', 'Charity', 'Gifts',
+    'Travel / Vacation'
+  ].sort();
 
   const handleCreate = (e: React.FormEvent) => {
       e.preventDefault();
-      if (!newCategory || !newLimit) return;
+      
+      const finalCategory = selectedCategory === 'Other' ? customCategory.trim() : selectedCategory;
+      if (!finalCategory || !newLimit) return;
 
       const budget: Budget = {
           id: `bdg_${Date.now()}`,
-          category: newCategory,
+          category: finalCategory,
           limit: parseFloat(newLimit),
           currency: newCurrency,
           type: viewType,
@@ -66,7 +91,8 @@ const BudgetModule: React.FC<BudgetProps> = ({ transactions, budgets, addBudget,
       
       addBudget(budget);
       setIsModalOpen(false);
-      setNewCategory('');
+      setSelectedCategory('');
+      setCustomCategory('');
       setNewLimit('');
   };
 
@@ -87,7 +113,6 @@ const BudgetModule: React.FC<BudgetProps> = ({ transactions, budgets, addBudget,
       { name: 'Spent', value: totalSpent },
       { name: 'Remaining', value: Math.max(0, totalVariance) }
   ];
-  const CHART_COLORS = ['#3b82f6', '#e2e8f0'];
 
   return (
     <div className="p-8 space-y-8 animate-fade-in">
@@ -267,7 +292,7 @@ const BudgetModule: React.FC<BudgetProps> = ({ transactions, budgets, addBudget,
         {/* Create Modal */}
         {isModalOpen && (
              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in">
-                <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl">
+                <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl overflow-y-auto max-h-[90vh]">
                     <div className="flex justify-between items-center mb-6">
                         <h3 className="text-xl font-bold text-slate-900">
                             Set {viewType === 'BUSINESS' ? 'Operating' : 'Living'} Budget
@@ -282,8 +307,8 @@ const BudgetModule: React.FC<BudgetProps> = ({ transactions, budgets, addBudget,
                             <label className="block text-sm font-medium text-slate-700 mb-1">Category</label>
                             <select 
                                 className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
-                                value={newCategory}
-                                onChange={e => setNewCategory(e.target.value)}
+                                value={selectedCategory}
+                                onChange={e => setSelectedCategory(e.target.value)}
                                 required
                             >
                                 <option value="">Select Category...</option>
@@ -292,8 +317,23 @@ const BudgetModule: React.FC<BudgetProps> = ({ transactions, budgets, addBudget,
                                         {cat} {activeBudgets.some(b => b.category === cat) ? '(Set)' : ''}
                                     </option>
                                 ))}
+                                <option value="Other">Other (Specify below)</option>
                             </select>
                         </div>
+
+                        {selectedCategory === 'Other' && (
+                            <div className="animate-in fade-in slide-in-from-top-2">
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Specify Category Name</label>
+                                <input 
+                                    type="text" 
+                                    required
+                                    className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
+                                    placeholder="e.g. Charity, Annual Fees"
+                                    value={customCategory}
+                                    onChange={e => setCustomCategory(e.target.value)}
+                                />
+                            </div>
+                        )}
                         
                          <div className="grid grid-cols-2 gap-4">
                             <div>
