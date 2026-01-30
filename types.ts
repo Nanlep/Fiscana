@@ -98,6 +98,15 @@ export interface Liability {
   dueDate?: string;
 }
 
+export interface Budget {
+  id: string;
+  category: string;
+  limit: number;
+  currency: 'NGN' | 'USD';
+  type: ExpenseCategoryType; // BUSINESS or PERSONAL
+  period: 'MONTHLY'; // Currently support monthly budgets
+}
+
 export interface ExpenseInsight {
   description: string;
   amount: number;
@@ -117,4 +126,4 @@ export interface TaxReport {
   keyFinancialDecisions: string[];
 }
 
-export type ViewState = 'DASHBOARD' | 'INVOICES' | 'LEDGER' | 'REPORTS' | 'ASSETS' | 'TAX_AI' | 'KYC';
+export type ViewState = 'DASHBOARD' | 'INVOICES' | 'LEDGER' | 'REPORTS' | 'ASSETS' | 'BUDGETS' | 'TAX_AI' | 'KYC';

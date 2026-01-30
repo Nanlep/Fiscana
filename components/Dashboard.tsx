@@ -2,29 +2,30 @@ import React, { useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { ArrowUpRight, ArrowDownRight, Activity } from 'lucide-react';
 import { Transaction, Invoice, UserProfile } from '../types';
-import { normalizeToNGN, formatCurrency, EXCHANGE_RATE } from '../utils/currency';
+import { normalizeToNGN, formatCurrency } from '../utils/currency';
 
 interface DashboardProps {
   transactions: Transaction[];
   invoices: Invoice[];
   user: UserProfile | null;
+  exchangeRate: number;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ transactions, invoices, user }) => {
+const Dashboard: React.FC<DashboardProps> = ({ transactions, invoices, user, exchangeRate }) => {
   // Real data calculations with Currency Normalization
   const totalIncome = transactions
     .filter(t => t.type === 'INCOME')
-    .reduce((acc, curr) => acc + normalizeToNGN(curr.amount, curr.currency), 0);
+    .reduce((acc, curr) => acc + normalizeToNGN(curr.amount, curr.currency, exchangeRate), 0);
 
   // Filter only BUSINESS expenses for Operating Expenses
   const operatingExpenses = transactions
     .filter(t => t.type === 'EXPENSE' && t.expenseCategory === 'BUSINESS')
-    .reduce((acc, curr) => acc + normalizeToNGN(curr.amount, curr.currency), 0);
+    .reduce((acc, curr) => acc + normalizeToNGN(curr.amount, curr.currency, exchangeRate), 0);
     
   // Personal Spend Calculation (for tracking, though not shown in Business KPI)
   const personalExpenses = transactions
     .filter(t => t.type === 'EXPENSE' && t.expenseCategory === 'PERSONAL')
-    .reduce((acc, curr) => acc + normalizeToNGN(curr.amount, curr.currency), 0);
+    .reduce((acc, curr) => acc + normalizeToNGN(curr.amount, curr.currency, exchangeRate), 0);
 
   const netBusinessIncome = totalIncome - operatingExpenses;
 
@@ -42,7 +43,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, invoices, user }) =
         }
         
         // Normalize amounts for chart consistency
-        const normalizedAmount = normalizeToNGN(t.amount, t.currency);
+        const normalizedAmount = normalizeToNGN(t.amount, t.currency, exchangeRate);
 
         if (t.type === 'INCOME') {
             data[monthName].income += normalizedAmount;
@@ -58,7 +59,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, invoices, user }) =
     return Object.values(data).sort((a, b) => {
         return months.indexOf(a.name) - months.indexOf(b.name);
     });
-  }, [transactions]);
+  }, [transactions, exchangeRate]);
 
   return (
     <div className="p-8 space-y-8 animate-fade-in">
@@ -69,7 +70,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, invoices, user }) =
         </div>
         <div className="flex flex-col items-end">
             <span className="text-xs text-slate-400 font-mono">
-                Base Rate: ₦{EXCHANGE_RATE}/$
+                Base Rate: ₦{exchangeRate}/$
             </span>
         </div>
       </header>

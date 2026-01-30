@@ -1,13 +1,13 @@
 
-export const EXCHANGE_RATE = 1550; // 1 USD = 1550 NGN (Mock Rate)
+export const DEFAULT_EXCHANGE_RATE = 1550; // 1 USD = 1550 NGN (Default)
 
 /**
  * Converts any amount to the Base Reporting Currency (NGN).
  * Used for aggregations (Totals, Charts, Net Worth).
  */
-export const normalizeToNGN = (amount: number, currency: 'NGN' | 'USD'): number => {
+export const normalizeToNGN = (amount: number, currency: 'NGN' | 'USD', rate: number): number => {
   if (currency === 'NGN') return amount;
-  return amount * EXCHANGE_RATE;
+  return amount * rate;
 };
 
 /**

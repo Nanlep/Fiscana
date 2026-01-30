@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowRight, CheckCircle, Shield, Zap, Globe, Lock } from 'lucide-react';
+import { ArrowRight, ArrowLeft, CheckCircle, Shield, Globe, Mail } from 'lucide-react';
 import { UserRole, UserType } from '../types';
 
 interface LandingPageProps {
@@ -7,7 +7,8 @@ interface LandingPageProps {
 }
 
 const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
-  const [authMode, setAuthMode] = useState<'LOGIN' | 'SIGNUP'>('LOGIN');
+  const [authMode, setAuthMode] = useState<'LOGIN' | 'SIGNUP' | 'FORGOT_PASSWORD'>('LOGIN');
+  const [resetSent, setResetSent] = useState(false);
   const [userType, setUserType] = useState<UserType>('INDIVIDUAL');
   
   // Form State
@@ -27,10 +28,18 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
             // Simulate user login
             onLogin(fullName || 'Taiwo Doe', 'USER', userType, companyName);
         }
-    } else {
+    } else if (authMode === 'SIGNUP') {
         // Simulate Signup
         onLogin(fullName, 'USER', userType, companyName);
+    } else if (authMode === 'FORGOT_PASSWORD') {
+        // Simulate Password Reset
+        setResetSent(true);
     }
+  };
+
+  const handleResetNavigation = () => {
+    setAuthMode('LOGIN');
+    setResetSent(false);
   };
 
   return (
@@ -44,12 +53,14 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
              <span className="text-xl font-bold tracking-tight">Fiscana</span>
         </div>
         
-        <button 
-            onClick={() => { setAuthMode('LOGIN'); document.getElementById('auth')?.scrollIntoView({behavior: 'smooth'}); }}
-            className="text-sm font-semibold text-green-600 hover:text-green-700"
-        >
-            Log In
-        </button>
+        {authMode !== 'LOGIN' && (
+            <button 
+                onClick={() => { setAuthMode('LOGIN'); document.getElementById('auth')?.scrollIntoView({behavior: 'smooth'}); }}
+                className="text-sm font-semibold text-green-600 hover:text-green-700"
+            >
+                Log In
+            </button>
+        )}
       </nav>
 
       <div className="flex flex-col lg:flex-row">
@@ -93,113 +104,185 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
 
         {/* Right Side: Auth Form */}
         <div id="auth" className="lg:w-1/2 bg-slate-50 px-8 lg:px-20 py-20 flex flex-col justify-center border-l border-slate-200">
-            <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full mx-auto border border-slate-100">
-                <div className="text-center mb-8">
-                    <h2 className="text-2xl font-bold text-slate-900">
-                        {authMode === 'LOGIN' ? 'Welcome Back' : 'Create your account'}
-                    </h2>
-                    <p className="text-slate-500 text-sm mt-2">
-                        {authMode === 'LOGIN' ? 'Access your dashboard' : 'Start your financial freedom journey'}
-                    </p>
-                </div>
-
-                {authMode === 'SIGNUP' && (
-                    <div className="flex bg-slate-100 p-1 rounded-lg mb-6">
-                        <button 
-                            onClick={() => setUserType('INDIVIDUAL')}
-                            className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${userType === 'INDIVIDUAL' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                        >
-                            Individual
-                        </button>
-                        <button 
-                            onClick={() => setUserType('CORPORATE')}
-                            className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${userType === 'CORPORATE' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                        >
-                            Corporate
-                        </button>
-                    </div>
-                )}
-
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    {authMode === 'SIGNUP' && (
-                        <>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Full Name</label>
-                                <input 
-                                    type="text" 
-                                    required
-                                    className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-green-500 outline-none transition-all"
-                                    placeholder="John Doe"
-                                    value={fullName}
-                                    onChange={(e) => setFullName(e.target.value)}
-                                />
+            <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full mx-auto border border-slate-100 transition-all duration-300">
+                
+                {/* --- FORGOT PASSWORD VIEW --- */}
+                {authMode === 'FORGOT_PASSWORD' ? (
+                    <div className="animate-in fade-in slide-in-from-right duration-300">
+                        {resetSent ? (
+                            <div className="text-center py-8">
+                                <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                                    <Mail size={32} />
+                                </div>
+                                <h2 className="text-2xl font-bold text-slate-900 mb-2">Check your email</h2>
+                                <p className="text-slate-500 mb-8">
+                                    We've sent a password reset link to <span className="font-semibold text-slate-900">{email}</span>.
+                                </p>
+                                <button 
+                                    onClick={handleResetNavigation}
+                                    className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3 rounded-xl transition-all flex items-center justify-center space-x-2"
+                                >
+                                    <ArrowLeft size={18} />
+                                    <span>Back to Log In</span>
+                                </button>
                             </div>
-                            {userType === 'CORPORATE' && (
+                        ) : (
+                            <>
+                                <div className="mb-8">
+                                    <button 
+                                        onClick={() => setAuthMode('LOGIN')}
+                                        className="text-slate-400 hover:text-slate-600 flex items-center space-x-1 mb-6 text-sm"
+                                    >
+                                        <ArrowLeft size={16} /> <span>Back</span>
+                                    </button>
+                                    <h2 className="text-2xl font-bold text-slate-900">Reset Password</h2>
+                                    <p className="text-slate-500 text-sm mt-2">
+                                        Enter the email associated with your account and we'll send you a link to reset your password.
+                                    </p>
+                                </div>
+                                <form onSubmit={handleSubmit} className="space-y-6">
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">Email Address</label>
+                                        <input 
+                                            type="email" 
+                                            required
+                                            className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-green-500 outline-none transition-all"
+                                            placeholder="you@example.com"
+                                            value={email}
+                                            onChange={(e) => setEmail(e.target.value)}
+                                        />
+                                    </div>
+                                    <button 
+                                        type="submit"
+                                        className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3 rounded-xl transition-all shadow-lg flex items-center justify-center space-x-2"
+                                    >
+                                        <span>Send Reset Link</span>
+                                        <ArrowRight size={18} />
+                                    </button>
+                                </form>
+                            </>
+                        )}
+                    </div>
+                ) : (
+                /* --- LOGIN / SIGNUP VIEW --- */
+                <>
+                    <div className="text-center mb-8">
+                        <h2 className="text-2xl font-bold text-slate-900">
+                            {authMode === 'LOGIN' ? 'Welcome Back' : 'Create your account'}
+                        </h2>
+                        <p className="text-slate-500 text-sm mt-2">
+                            {authMode === 'LOGIN' ? 'Access your dashboard' : 'Start your financial freedom journey'}
+                        </p>
+                    </div>
+
+                    {authMode === 'SIGNUP' && (
+                        <div className="flex bg-slate-100 p-1 rounded-lg mb-6">
+                            <button 
+                                onClick={() => setUserType('INDIVIDUAL')}
+                                className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${userType === 'INDIVIDUAL' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                            >
+                                Individual
+                            </button>
+                            <button 
+                                onClick={() => setUserType('CORPORATE')}
+                                className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${userType === 'CORPORATE' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                            >
+                                Corporate
+                            </button>
+                        </div>
+                    )}
+
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                        {authMode === 'SIGNUP' && (
+                            <>
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Company Name</label>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Full Name</label>
                                     <input 
                                         type="text" 
                                         required
                                         className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-green-500 outline-none transition-all"
-                                        placeholder="Acme Ltd"
-                                        value={companyName}
-                                        onChange={(e) => setCompanyName(e.target.value)}
+                                        placeholder="John Doe"
+                                        value={fullName}
+                                        onChange={(e) => setFullName(e.target.value)}
                                     />
                                 </div>
-                            )}
-                        </>
-                    )}
+                                {userType === 'CORPORATE' && (
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">Company Name</label>
+                                        <input 
+                                            type="text" 
+                                            required
+                                            className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-green-500 outline-none transition-all"
+                                            placeholder="Acme Ltd"
+                                            value={companyName}
+                                            onChange={(e) => setCompanyName(e.target.value)}
+                                        />
+                                    </div>
+                                )}
+                            </>
+                        )}
 
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Email Address</label>
-                        <input 
-                            type="email" 
-                            required
-                            className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-green-500 outline-none transition-all"
-                            placeholder="you@example.com"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                        />
-                    </div>
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Email Address</label>
+                            <input 
+                                type="email" 
+                                required
+                                className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-green-500 outline-none transition-all"
+                                placeholder="you@example.com"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                            />
+                        </div>
 
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Password</label>
-                        <input 
-                            type="password" 
-                            required
-                            className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-green-500 outline-none transition-all"
-                            placeholder="••••••••"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                        />
-                    </div>
+                        <div>
+                             <div className="flex justify-between items-center mb-1">
+                                <label className="block text-sm font-medium text-slate-700">Password</label>
+                                {authMode === 'LOGIN' && (
+                                    <button 
+                                        type="button"
+                                        onClick={() => setAuthMode('FORGOT_PASSWORD')}
+                                        className="text-xs font-semibold text-green-600 hover:text-green-700"
+                                    >
+                                        Forgot Password?
+                                    </button>
+                                )}
+                            </div>
+                            <input 
+                                type="password" 
+                                required
+                                className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-green-500 outline-none transition-all"
+                                placeholder="••••••••"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                            />
+                        </div>
 
-                    <button 
-                        type="submit"
-                        className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-green-600/20 flex items-center justify-center space-x-2"
-                    >
-                        <span>{authMode === 'LOGIN' ? 'Sign In' : 'Get Started'}</span>
-                        <ArrowRight size={18} />
-                    </button>
-                </form>
+                        <button 
+                            type="submit"
+                            className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3 rounded-xl transition-all shadow-lg flex items-center justify-center space-x-2"
+                        >
+                            <span>{authMode === 'LOGIN' ? 'Log In' : 'Create Account'}</span>
+                            <ArrowRight size={18} />
+                        </button>
+                    </form>
 
-                <div className="mt-6 text-center text-sm text-slate-500">
-                    {authMode === 'LOGIN' ? (
-                        <p>
-                            Don't have an account? {' '}
-                            <button onClick={() => setAuthMode('SIGNUP')} className="text-green-600 font-semibold hover:underline">
-                                Sign Up
+                    <div className="mt-8 text-center">
+                        <p className="text-slate-500 text-sm">
+                            {authMode === 'LOGIN' ? "Don't have an account?" : "Already have an account?"} 
+                            <button 
+                                onClick={() => { 
+                                    setAuthMode(authMode === 'LOGIN' ? 'SIGNUP' : 'LOGIN');
+                                    setFullName('');
+                                    setCompanyName('');
+                                }}
+                                className="font-bold text-green-600 hover:text-green-700 ml-1"
+                            >
+                                {authMode === 'LOGIN' ? 'Sign up' : 'Log in'}
                             </button>
                         </p>
-                    ) : (
-                        <p>
-                            Already have an account? {' '}
-                            <button onClick={() => setAuthMode('LOGIN')} className="text-green-600 font-semibold hover:underline">
-                                Log In
-                            </button>
-                        </p>
-                    )}
-                </div>
+                    </div>
+                </>
+                )}
             </div>
         </div>
       </div>

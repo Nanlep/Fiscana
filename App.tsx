@@ -6,13 +6,15 @@ import Ledger from './components/Ledger';
 import Reports from './components/Reports';
 import Assets from './components/Assets';
 import TaxAdvisor from './components/TaxAdvisor';
+import BudgetModule from './components/Budget';
 import LandingPage from './components/LandingPage';
 import AdminDashboard from './components/AdminDashboard';
 import WithdrawModal from './components/WithdrawModal';
 import KYCVerification from './components/KYCVerification';
 import Toast, { ToastMessage, ToastType } from './components/Toast';
-import { ViewState, Transaction, Invoice, TransactionType, InvoiceStatus, PaymentMethod, Asset, Liability, UserProfile, UserRole, UserType, KYCRequest } from './types';
+import { ViewState, Transaction, Invoice, TransactionType, InvoiceStatus, PaymentMethod, Asset, Liability, UserProfile, UserRole, UserType, KYCRequest, ExpenseCategoryType, Budget } from './types';
 import { Menu } from 'lucide-react';
+import { DEFAULT_EXCHANGE_RATE } from './utils/currency';
 
 function App() {
   // --- Auth State with Persistence ---
@@ -33,6 +35,16 @@ function App() {
     }
     return null;
   });
+
+  // --- Exchange Rate State ---
+  const [exchangeRate, setExchangeRate] = useState<number>(() => {
+    const saved = localStorage.getItem('fiscana_exchange_rate');
+    return saved ? parseFloat(saved) : DEFAULT_EXCHANGE_RATE;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('fiscana_exchange_rate', exchangeRate.toString());
+  }, [exchangeRate]);
 
   // --- Global State for KYC Requests (Simulating Backend) ---
   const [kycRequests, setKycRequests] = useState<KYCRequest[]>(() => {
@@ -125,6 +137,12 @@ function App() {
     { id: 'a3', name: 'Work Station Setup', value: 3200000, currency: 'NGN', type: 'EQUIPMENT' }
   ];
 
+  const seedBudgets: Budget[] = [
+      { id: 'b1', category: 'Rent', limit: 200000, currency: 'NGN', type: 'BUSINESS', period: 'MONTHLY' },
+      { id: 'b2', category: 'Utilities', limit: 60000, currency: 'NGN', type: 'BUSINESS', period: 'MONTHLY' },
+      { id: 'b3', category: 'Groceries', limit: 100000, currency: 'NGN', type: 'PERSONAL', period: 'MONTHLY' }
+  ];
+
   // --- State Initialization with Persistence ---
   const [transactions, setTransactions] = useState<Transaction[]>(() => {
     const saved = localStorage.getItem('fiscana_transactions');
@@ -146,11 +164,17 @@ function App() {
     return saved ? JSON.parse(saved) : [];
   });
 
+  const [budgets, setBudgets] = useState<Budget[]>(() => {
+      const saved = localStorage.getItem('fiscana_budgets');
+      return saved ? JSON.parse(saved) : seedBudgets;
+  });
+
   // --- Data Persistence Effects ---
   useEffect(() => { localStorage.setItem('fiscana_transactions', JSON.stringify(transactions)); }, [transactions]);
   useEffect(() => { localStorage.setItem('fiscana_invoices', JSON.stringify(invoices)); }, [invoices]);
   useEffect(() => { localStorage.setItem('fiscana_assets', JSON.stringify(assets)); }, [assets]);
   useEffect(() => { localStorage.setItem('fiscana_liabilities', JSON.stringify(liabilities)); }, [liabilities]);
+  useEffect(() => { localStorage.setItem('fiscana_budgets', JSON.stringify(budgets)); }, [budgets]);
 
 
   // Derived Values
@@ -255,7 +279,7 @@ function App() {
       });
   };
 
-  const handleWithdraw = (amount: number, currency: 'NGN' | 'USDC', narration: string) => {
+  const handleWithdraw = (amount: number, currency: 'NGN' | 'USDC', narration: string, category: ExpenseCategoryType) => {
       // 1. Update Asset
       const targetAssetName = currency === 'NGN' ? 'Wallet Balance' : 'USDC Balance';
       setAssets(assets.map(asset => {
@@ -275,7 +299,7 @@ function App() {
           currency: currency === 'NGN' ? 'NGN' : 'USD',
           type: TransactionType.EXPENSE,
           category: 'Transfer',
-          expenseCategory: 'PERSONAL', // Default withdrawals to Personal unless specified otherwise
+          expenseCategory: category,
           taxDeductible: false,
           tags: ['#Withdrawal']
       };
@@ -328,6 +352,16 @@ function App() {
     notify('SUCCESS', 'Liability recorded');
   };
 
+  const addBudget = (b: Budget) => {
+      setBudgets([...budgets, b]);
+      notify('SUCCESS', 'Budget limit set successfully');
+  };
+
+  const deleteBudget = (id: string) => {
+      setBudgets(budgets.filter(b => b.id !== id));
+      notify('INFO', 'Budget removed');
+  };
+
   // Render logic
   if (!isAuthenticated) {
       return (
@@ -347,6 +381,8 @@ function App() {
                 adminProfile={userProfile} 
                 kycRequests={kycRequests}
                 onReviewKYC={handleKYCReview}
+                exchangeRate={exchangeRate}
+                onUpdateExchangeRate={setExchangeRate}
             />
         </>
       );
@@ -356,7 +392,7 @@ function App() {
   const renderUserContent = () => {
     switch (currentView) {
       case 'DASHBOARD':
-        return <Dashboard transactions={transactions} invoices={invoices} user={userProfile} />;
+        return <Dashboard transactions={transactions} invoices={invoices} user={userProfile} exchangeRate={exchangeRate} />;
       case 'INVOICES':
         return <Invoices 
             invoices={invoices} 
@@ -367,16 +403,24 @@ function App() {
         />;
       case 'LEDGER':
         return <Ledger transactions={transactions} addTransaction={handleManualTransaction} />; 
+      case 'BUDGETS':
+        return <BudgetModule 
+            transactions={transactions} 
+            budgets={budgets} 
+            addBudget={addBudget} 
+            deleteBudget={deleteBudget} 
+            exchangeRate={exchangeRate} 
+        />;
       case 'REPORTS':
-        return <Reports transactions={transactions} assets={assets} liabilities={liabilities} companyName={userProfile?.companyName || userProfile?.name} />;
+        return <Reports transactions={transactions} assets={assets} liabilities={liabilities} companyName={userProfile?.companyName || userProfile?.name} exchangeRate={exchangeRate} />;
       case 'ASSETS':
-        return <Assets assets={assets} liabilities={liabilities} addAsset={addAsset} addLiability={addLiability} />;
+        return <Assets assets={assets} liabilities={liabilities} addAsset={addAsset} addLiability={addLiability} exchangeRate={exchangeRate} />;
       case 'TAX_AI':
         return <TaxAdvisor transactions={transactions} />;
       case 'KYC':
         return <KYCVerification user={userProfile!} onSubmit={handleKYCSubmit} />;
       default:
-        return <Dashboard transactions={transactions} invoices={invoices} user={userProfile} />;
+        return <Dashboard transactions={transactions} invoices={invoices} user={userProfile} exchangeRate={exchangeRate} />;
     }
   };
 

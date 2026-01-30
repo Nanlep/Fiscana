@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { X, Building2, Wallet, Loader2, CheckCircle } from 'lucide-react';
+import { X, Building2, Wallet, Loader2, CheckCircle, User, Briefcase } from 'lucide-react';
+import { ExpenseCategoryType } from '../types';
 
 interface WithdrawModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onWithdraw: (amount: number, currency: 'NGN' | 'USDC', narration: string) => void;
+  onWithdraw: (amount: number, currency: 'NGN' | 'USDC', narration: string, category: ExpenseCategoryType) => void;
   balanceNGN: number;
   balanceUSDC: number;
 }
@@ -13,6 +14,7 @@ const WithdrawModal: React.FC<WithdrawModalProps> = ({ isOpen, onClose, onWithdr
   const [currency, setCurrency] = useState<'NGN' | 'USDC'>('NGN');
   const [amount, setAmount] = useState('');
   const [narration, setNarration] = useState('');
+  const [withdrawalType, setWithdrawalType] = useState<ExpenseCategoryType>('PERSONAL');
   const [step, setStep] = useState<'INPUT' | 'PROCESSING' | 'SUCCESS'>('INPUT');
   
   // Bank Details
@@ -40,7 +42,7 @@ const WithdrawModal: React.FC<WithdrawModalProps> = ({ isOpen, onClose, onWithdr
 
     setStep('PROCESSING');
     setTimeout(() => {
-        onWithdraw(val, currency, narration);
+        onWithdraw(val, currency, narration, withdrawalType);
         setStep('SUCCESS');
     }, 2000);
   };
@@ -49,6 +51,7 @@ const WithdrawModal: React.FC<WithdrawModalProps> = ({ isOpen, onClose, onWithdr
     setStep('INPUT');
     setAmount('');
     setNarration('');
+    setWithdrawalType('PERSONAL');
     onClose();
   };
 
@@ -173,6 +176,35 @@ const WithdrawModal: React.FC<WithdrawModalProps> = ({ isOpen, onClose, onWithdr
                             </div>
                         </div>
                     )}
+                    
+                    {/* Withdrawal Category */}
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Withdrawal Type</label>
+                        <div className="bg-slate-100 p-1 rounded-xl flex space-x-1">
+                            <button
+                                type="button"
+                                onClick={() => setWithdrawalType('PERSONAL')}
+                                className={`flex-1 flex items-center justify-center space-x-2 py-2 rounded-lg text-sm font-bold transition-all ${
+                                    withdrawalType === 'PERSONAL' 
+                                    ? 'bg-white shadow-sm text-purple-700' 
+                                    : 'text-slate-500 hover:text-slate-700'
+                                }`}
+                            >
+                                <User size={16} /> <span>Personal</span>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setWithdrawalType('BUSINESS')}
+                                className={`flex-1 flex items-center justify-center space-x-2 py-2 rounded-lg text-sm font-bold transition-all ${
+                                    withdrawalType === 'BUSINESS' 
+                                    ? 'bg-white shadow-sm text-blue-700' 
+                                    : 'text-slate-500 hover:text-slate-700'
+                                }`}
+                            >
+                                <Briefcase size={16} /> <span>Business</span>
+                            </button>
+                        </div>
+                    </div>
 
                     {/* Narration Input */}
                     <div>

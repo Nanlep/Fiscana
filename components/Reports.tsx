@@ -1,18 +1,19 @@
 import React, { useState, useMemo } from 'react';
 import { Transaction, Asset, Liability } from '../types';
 import { Printer, Calendar, ChevronDown, Filter } from 'lucide-react';
-import { normalizeToNGN, formatCurrency, EXCHANGE_RATE } from '../utils/currency';
+import { normalizeToNGN, formatCurrency } from '../utils/currency';
 
 interface ReportsProps {
   transactions: Transaction[];
   assets: Asset[];
   liabilities: Liability[];
   companyName?: string;
+  exchangeRate: number;
 }
 
 type DateRangeOption = 'ALL' | 'THIS_MONTH' | 'LAST_MONTH' | 'YTD' | 'LAST_YEAR' | 'CUSTOM';
 
-const Reports: React.FC<ReportsProps> = ({ transactions, assets, liabilities, companyName }) => {
+const Reports: React.FC<ReportsProps> = ({ transactions, assets, liabilities, companyName, exchangeRate }) => {
   const [reportType, setReportType] = useState<'PL' | 'BS'>('PL');
   
   // Date Logic
@@ -73,9 +74,9 @@ const Reports: React.FC<ReportsProps> = ({ transactions, assets, liabilities, co
     t.type === 'EXPENSE' && (t.expenseCategory === 'PERSONAL' || !t.expenseCategory)
   );
 
-  const totalRevenue = incomeTransactions.reduce((sum, t) => sum + normalizeToNGN(t.amount, t.currency), 0); 
-  const totalOperatingExpenses = businessExpenseTransactions.reduce((sum, t) => sum + normalizeToNGN(t.amount, t.currency), 0);
-  const totalPersonalOutflows = personalTransactions.reduce((sum, t) => sum + normalizeToNGN(t.amount, t.currency), 0);
+  const totalRevenue = incomeTransactions.reduce((sum, t) => sum + normalizeToNGN(t.amount, t.currency, exchangeRate), 0); 
+  const totalOperatingExpenses = businessExpenseTransactions.reduce((sum, t) => sum + normalizeToNGN(t.amount, t.currency, exchangeRate), 0);
+  const totalPersonalOutflows = personalTransactions.reduce((sum, t) => sum + normalizeToNGN(t.amount, t.currency, exchangeRate), 0);
   
   // Net Business Income (Revenue - Business Expenses)
   const netBusinessIncome = totalRevenue - totalOperatingExpenses;
@@ -85,27 +86,27 @@ const Reports: React.FC<ReportsProps> = ({ transactions, assets, liabilities, co
 
   // Group by Category (Normalized)
   const incomeByCategory = incomeTransactions.reduce((acc, t) => {
-      acc[t.category] = (acc[t.category] || 0) + normalizeToNGN(t.amount, t.currency);
+      acc[t.category] = (acc[t.category] || 0) + normalizeToNGN(t.amount, t.currency, exchangeRate);
       return acc;
   }, {} as Record<string, number>);
 
   const businessExpensesByCategory = businessExpenseTransactions.reduce((acc, t) => {
-      acc[t.category] = (acc[t.category] || 0) + normalizeToNGN(t.amount, t.currency);
+      acc[t.category] = (acc[t.category] || 0) + normalizeToNGN(t.amount, t.currency, exchangeRate);
       return acc;
   }, {} as Record<string, number>);
   
   const personalExpensesByCategory = personalTransactions.reduce((acc, t) => {
-      acc[t.category] = (acc[t.category] || 0) + normalizeToNGN(t.amount, t.currency);
+      acc[t.category] = (acc[t.category] || 0) + normalizeToNGN(t.amount, t.currency, exchangeRate);
       return acc;
   }, {} as Record<string, number>);
 
   // Calculations for Balance Sheet (Current State - Snapshot)
-  const totalAssets = assets.reduce((sum, a) => sum + normalizeToNGN(a.value, a.currency), 0);
-  const totalLiabilities = liabilities.reduce((sum, l) => sum + normalizeToNGN(l.amount, l.currency), 0);
+  const totalAssets = assets.reduce((sum, a) => sum + normalizeToNGN(a.value, a.currency, exchangeRate), 0);
+  const totalLiabilities = liabilities.reduce((sum, l) => sum + normalizeToNGN(l.amount, l.currency, exchangeRate), 0);
   const equity = totalAssets - totalLiabilities;
 
   const assetsByType = assets.reduce((acc, a) => {
-      acc[a.type] = (acc[a.type] || 0) + normalizeToNGN(a.value, a.currency);
+      acc[a.type] = (acc[a.type] || 0) + normalizeToNGN(a.value, a.currency, exchangeRate);
       return acc;
   }, {} as Record<string, number>);
 
@@ -214,7 +215,7 @@ const Reports: React.FC<ReportsProps> = ({ transactions, assets, liabilities, co
                         : `As of ${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}`
                     }
                 </p>
-                <p className="text-xs text-slate-500 mt-1">Base Reporting Currency: NGN (Rate Used: ₦{EXCHANGE_RATE}/$)</p>
+                <p className="text-xs text-slate-500 mt-1">Base Reporting Currency: NGN (Rate Used: ₦{exchangeRate}/$)</p>
             </div>
 
             {reportType === 'PL' ? (
@@ -326,7 +327,7 @@ const Reports: React.FC<ReportsProps> = ({ transactions, assets, liabilities, co
                             {liabilities.map((l) => (
                                 <div key={l.id} className="flex justify-between text-sm">
                                     <span className="text-slate-600">{l.name}</span>
-                                    <span className="text-slate-900">{formatCurrency(normalizeToNGN(l.amount, l.currency), 'NGN')}</span>
+                                    <span className="text-slate-900">{formatCurrency(normalizeToNGN(l.amount, l.currency, exchangeRate), 'NGN')}</span>
                                 </div>
                             ))}
                             {liabilities.length === 0 && <div className="text-sm text-slate-400 italic">No liabilities recorded.</div>}

@@ -9,15 +9,16 @@ interface AssetsProps {
   liabilities: Liability[];
   addAsset: (a: Asset) => void;
   addLiability: (l: Liability) => void;
+  exchangeRate: number;
 }
 
-const Assets: React.FC<AssetsProps> = ({ assets, liabilities, addAsset, addLiability }) => {
+const Assets: React.FC<AssetsProps> = ({ assets, liabilities, addAsset, addLiability, exchangeRate }) => {
   // Normalize everything to NGN for aggregation
-  const totalAssets = assets.reduce((acc, curr) => acc + normalizeToNGN(curr.value, curr.currency), 0);
-  const totalLiabilities = liabilities.reduce((acc, curr) => acc + normalizeToNGN(curr.amount, curr.currency), 0);
+  const totalAssets = assets.reduce((acc, curr) => acc + normalizeToNGN(curr.value, curr.currency, exchangeRate), 0);
+  const totalLiabilities = liabilities.reduce((acc, curr) => acc + normalizeToNGN(curr.amount, curr.currency, exchangeRate), 0);
   const netWorth = totalAssets - totalLiabilities;
 
-  const data = assets.map(a => ({ name: a.type, value: normalizeToNGN(a.value, a.currency) }));
+  const data = assets.map(a => ({ name: a.type, value: normalizeToNGN(a.value, a.currency, exchangeRate) }));
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
 
   // Modal State
@@ -58,7 +59,7 @@ const Assets: React.FC<AssetsProps> = ({ assets, liabilities, addAsset, addLiabi
   };
 
   // Analysis Logic
-  const liquidAssets = assets.filter(a => a.type === 'CASH' || a.type === 'CRYPTO').reduce((acc, curr) => acc + normalizeToNGN(curr.value, curr.currency), 0);
+  const liquidAssets = assets.filter(a => a.type === 'CASH' || a.type === 'CRYPTO').reduce((acc, curr) => acc + normalizeToNGN(curr.value, curr.currency, exchangeRate), 0);
   const debtRatio = totalAssets > 0 ? (totalLiabilities / totalAssets) * 100 : 0;
   
   const isSolvent = totalAssets >= totalLiabilities;
