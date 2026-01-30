@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Receipt, BookOpen, Landmark, BrainCircuit, Wallet, LogOut, User, Building2, X, FileBarChart } from 'lucide-react';
+import { LayoutDashboard, Receipt, BookOpen, Landmark, BrainCircuit, Wallet, LogOut, User, Building2, X, FileBarChart, ShieldCheck } from 'lucide-react';
 import { ViewState, UserProfile } from '../types';
 
 interface SidebarProps {
@@ -32,6 +32,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     { id: 'REPORTS', label: 'Financial Reports', icon: FileBarChart },
     { id: 'ASSETS', label: 'Assets & Liabilities', icon: Landmark },
     { id: 'TAX_AI', label: 'Tax Advisor AI', icon: BrainCircuit },
+    { id: 'KYC', label: 'Verification', icon: ShieldCheck },
   ];
 
   const handleSignOut = () => {
@@ -75,8 +76,11 @@ const Sidebar: React.FC<SidebarProps> = ({
                     {user.type === 'CORPORATE' ? <Building2 size={16} /> : <User size={16} />}
                 </div>
                 <div className="overflow-hidden">
-                    <p className="text-sm font-semibold truncate">{user.name}</p>
-                    <p className="text-xs text-slate-400 truncate">{user.type === 'CORPORATE' ? user.companyName : 'Freelancer'}</p>
+                    <div className="flex items-center space-x-1">
+                        <p className="text-sm font-semibold truncate">{user.name}</p>
+                        {user.kycStatus === 'VERIFIED' && <ShieldCheck size={12} className="text-green-500" />}
+                    </div>
+                    <p className="text-xs text-slate-400 truncate">{user.type === 'CORPORATE' ? user.companyName : 'Freelancer'} • {user.tier ? user.tier.replace('_', ' ') : 'Tier 1'}</p>
                 </div>
             </div>
         </div>

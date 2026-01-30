@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Users, Activity, Server, AlertTriangle, LogOut, Search, Building2, User, Trash2, Ban, CheckCircle, RefreshCw, Terminal, X, Power, DollarSign } from 'lucide-react';
-import { UserProfile } from '../types';
+import { Users, Activity, Server, AlertTriangle, LogOut, Search, Building2, User, Trash2, Ban, CheckCircle, RefreshCw, Terminal, X, Power, DollarSign, ShieldCheck, FileText, Clock, XCircle } from 'lucide-react';
+import { UserProfile, KYCRequest } from '../types';
 
 interface AdminDashboardProps {
   onLogout: () => void;
   adminProfile: UserProfile;
+  kycRequests: KYCRequest[];
+  onReviewKYC: (id: string, action: 'APPROVED' | 'REJECTED') => void;
 }
 
 interface AdminUser {
@@ -16,9 +18,9 @@ interface AdminUser {
   joined: string;
 }
 
-type AdminView = 'OVERVIEW' | 'USERS' | 'HEALTH';
+type AdminView = 'OVERVIEW' | 'USERS' | 'HEALTH' | 'KYC';
 
-const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, adminProfile }) => {
+const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, adminProfile, kycRequests, onReviewKYC }) => {
   const [currentView, setCurrentView] = useState<AdminView>('OVERVIEW');
   
   // User Management State
@@ -93,6 +95,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, adminProfile 
       u.email.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const pendingKYC = kycRequests.filter(req => req.status === 'PENDING');
+
   // --- Views ---
 
   const renderOverview = () => (
@@ -109,16 +113,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, adminProfile 
                 <p className="text-slate-500 text-sm font-medium">Total Users</p>
                 <h3 className="text-2xl font-bold text-slate-900">{users.length.toLocaleString()}</h3>
             </div>
-            <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+            <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm cursor-pointer hover:bg-slate-50 transition-colors" onClick={() => setCurrentView('KYC')}>
                  <div className="flex justify-between items-start mb-4">
-                    <div className="p-2 bg-purple-50 text-purple-600 rounded-lg">
-                        <Building2 size={20} />
+                    <div className="p-2 bg-amber-50 text-amber-600 rounded-lg">
+                        <ShieldCheck size={20} />
                     </div>
-                    <span className="text-xs font-bold text-green-600 bg-green-50 px-2 py-1 rounded">+5%</span>
+                    {pendingKYC.length > 0 && <span className="text-xs font-bold text-white bg-red-500 px-2 py-1 rounded-full">{pendingKYC.length} New</span>}
                 </div>
-                <p className="text-slate-500 text-sm font-medium">Corporate Accounts</p>
+                <p className="text-slate-500 text-sm font-medium">Pending KYC</p>
                 <h3 className="text-2xl font-bold text-slate-900">
-                    {users.filter(u => u.type === 'CORPORATE').length}
+                    {pendingKYC.length}
                 </h3>
             </div>
             <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
@@ -133,7 +137,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, adminProfile 
             </div>
             <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
                  <div className="flex justify-between items-start mb-4">
-                    <div className="p-2 bg-amber-50 text-amber-600 rounded-lg">
+                    <div className="p-2 bg-slate-50 text-slate-600 rounded-lg">
                         <AlertTriangle size={20} />
                     </div>
                 </div>
@@ -181,65 +185,29 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, adminProfile 
                         </div>
                         <p className="text-xs text-slate-400 mt-2">Applied to all settled invoices automatically via Bani Rails.</p>
                     </div>
-
-                    <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl">
-                        <div className="flex items-start gap-3">
-                            <Activity className="text-blue-600 mt-0.5" size={18} />
-                            <div>
-                                <p className="text-sm font-bold text-blue-900">Daily Revenue Projection</p>
-                                <p className="text-xs text-blue-700 mt-1">
-                                    Based on 24h volume (₦45.2M), a <strong>{commissionRate}%</strong> markup yields approx <strong>₦{((45200000 * commissionRate) / 100).toLocaleString()}</strong> in daily platform fees.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
                  </div>
             </div>
 
-            {/* Recent Registrations Table Preview */}
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col">
-                <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-white">
-                    <h3 className="text-lg font-bold text-slate-900">Recent Registrations</h3>
-                    <button onClick={() => setCurrentView('USERS')} className="text-sm text-blue-600 hover:underline">View All</button>
+            {/* KYC Preview */}
+             <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                <div className="flex justify-between items-center mb-6">
+                    <h3 className="text-lg font-bold text-slate-900">Pending Approvals</h3>
+                    <button onClick={() => setCurrentView('KYC')} className="text-sm text-blue-600 hover:underline">View All</button>
                 </div>
-                <div className="overflow-x-auto">
-                    <table className="w-full">
-                        <thead className="bg-slate-50 border-b border-slate-200">
-                            <tr>
-                                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase">User</th>
-                                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase">Type</th>
-                                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                            {users.slice(0, 4).map((u) => (
-                                <tr key={u.id} className="hover:bg-slate-50">
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center space-x-3">
-                                            <div className={`p-2 rounded-full ${u.type === 'CORPORATE' ? 'bg-purple-100 text-purple-600' : 'bg-blue-100 text-blue-600'}`}>
-                                                {u.type === 'CORPORATE' ? <Building2 size={16} /> : <User size={16} />}
-                                            </div>
-                                            <div>
-                                                <p className="font-medium text-slate-900 text-sm">{u.name}</p>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <span className={`text-xs font-bold px-2 py-1 rounded-full ${u.type === 'CORPORATE' ? 'bg-purple-50 text-purple-700' : 'bg-blue-50 text-blue-700'}`}>
-                                            {u.type === 'CORPORATE' ? 'CORP' : 'IND'}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                            u.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                                        }`}>
-                                            {u.status}
-                                        </span>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                <div className="space-y-4">
+                    {pendingKYC.length === 0 ? (
+                         <div className="text-center py-8 text-slate-400 text-sm">No pending requests</div>
+                    ) : (
+                        pendingKYC.slice(0, 3).map((req) => (
+                             <div key={req.id} className="flex justify-between items-center p-3 bg-slate-50 rounded-lg">
+                                <div>
+                                    <p className="font-semibold text-sm text-slate-900">{req.userName}</p>
+                                    <p className="text-xs text-slate-500">Submitted: {req.date}</p>
+                                </div>
+                                <span className="text-xs font-bold text-amber-600 bg-amber-100 px-2 py-1 rounded">Pending</span>
+                            </div>
+                        ))
+                    )}
                 </div>
             </div>
         </div>
@@ -335,13 +303,86 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, adminProfile 
                     ))}
                 </tbody>
             </table>
-             {filteredUsers.length === 0 && (
-                <div className="p-12 text-center text-slate-400">
-                    No users found matching "{searchQuery}"
-                </div>
-            )}
         </div>
     </div>
+  );
+
+  const renderKYC = () => (
+      <div className="space-y-6 animate-fade-in">
+           <div className="flex justify-between items-center bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+             <div>
+                <h2 className="text-2xl font-bold text-slate-900">KYC Approvals</h2>
+                <p className="text-slate-500 text-sm">Review identity documents (BVN/NIN) for Tier 3 upgrades.</p>
+             </div>
+             <div className="flex items-center space-x-2">
+                 <span className="text-sm font-medium text-slate-600">Pending Requests:</span>
+                 <span className="bg-amber-100 text-amber-800 text-sm font-bold px-3 py-1 rounded-full">{pendingKYC.length}</span>
+             </div>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+             {pendingKYC.length === 0 ? (
+                <div className="p-12 text-center">
+                    <div className="w-16 h-16 bg-green-50 text-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <CheckCircle size={32} />
+                    </div>
+                    <h3 className="text-lg font-bold text-slate-900">All Caught Up!</h3>
+                    <p className="text-slate-500">No pending verification requests.</p>
+                </div>
+             ) : (
+                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-6">
+                    {pendingKYC.map(req => (
+                        <div key={req.id} className="border border-slate-200 rounded-xl p-5 hover:shadow-md transition-shadow">
+                            <div className="flex justify-between items-start mb-4">
+                                <div className="flex items-center space-x-3">
+                                    <div className="p-2 bg-slate-100 rounded-full text-slate-500">
+                                        <User size={20} />
+                                    </div>
+                                    <div>
+                                        <p className="font-bold text-slate-900">{req.userName}</p>
+                                        <p className="text-xs text-slate-500">{req.userEmail}</p>
+                                    </div>
+                                </div>
+                                <span className="bg-amber-50 text-amber-600 text-[10px] font-bold px-2 py-1 rounded border border-amber-100">
+                                    PENDING
+                                </span>
+                            </div>
+                            
+                            <div className="space-y-3 mb-6 bg-slate-50 p-3 rounded-lg text-sm">
+                                <div className="flex justify-between">
+                                    <span className="text-slate-500">BVN</span>
+                                    <span className="font-mono font-medium">{req.bvn}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-slate-500">NIN</span>
+                                    <span className="font-mono font-medium">{req.nin}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-slate-500">Date</span>
+                                    <span className="text-slate-700">{req.date}</span>
+                                </div>
+                            </div>
+
+                            <div className="flex space-x-2">
+                                <button 
+                                    onClick={() => onReviewKYC(req.id, 'REJECTED')}
+                                    className="flex-1 py-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg text-sm font-medium transition-colors"
+                                >
+                                    Reject
+                                </button>
+                                <button 
+                                    onClick={() => onReviewKYC(req.id, 'APPROVED')}
+                                    className="flex-1 py-2 text-white bg-green-600 hover:bg-green-700 rounded-lg text-sm font-bold transition-colors shadow-md shadow-green-600/20"
+                                >
+                                    Approve
+                                </button>
+                            </div>
+                        </div>
+                    ))}
+                 </div>
+             )}
+        </div>
+      </div>
   );
 
   const renderHealth = () => (
@@ -435,28 +476,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, adminProfile 
                 <div ref={logsEndRef} />
             </div>
         </div>
-
-        {/* Advanced Actions */}
-        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-            <h3 className="text-lg font-bold text-slate-900 mb-4">Danger Zone</h3>
-            <div className="flex items-center justify-between p-4 bg-red-50 rounded-xl border border-red-100">
-                <div className="flex items-center space-x-3">
-                    <div className="p-2 bg-red-100 text-red-600 rounded-full">
-                        <Power size={20} />
-                    </div>
-                    <div>
-                        <h4 className="font-bold text-red-900">Maintenance Mode</h4>
-                        <p className="text-xs text-red-700">Disable platform access for all non-admin users.</p>
-                    </div>
-                </div>
-                <button 
-                    onClick={() => alert('Maintenance Mode triggered. Users will be notified.')}
-                    className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 shadow-lg shadow-red-600/20"
-                >
-                    Activate
-                </button>
-            </div>
-        </div>
     </div>
   );
 
@@ -485,6 +504,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, adminProfile 
             >
                 <Users size={20} />
                 <span className="font-medium">User Management</span>
+            </button>
+            <button 
+                onClick={() => setCurrentView('KYC')}
+                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-colors ${currentView === 'KYC' ? 'bg-slate-800 text-white border-l-4 border-red-600' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
+            >
+                <ShieldCheck size={20} />
+                <div className="flex justify-between w-full items-center">
+                    <span className="font-medium">KYC Approvals</span>
+                    {pendingKYC.length > 0 && <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">{pendingKYC.length}</span>}
+                </div>
             </button>
             <button 
                 onClick={() => setCurrentView('HEALTH')}
@@ -516,11 +545,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, adminProfile 
             <div>
                 <h1 className="text-3xl font-bold text-slate-900">
                     {currentView === 'OVERVIEW' ? 'System Overview' : 
-                     currentView === 'USERS' ? 'User Administration' : 'System Health'}
+                     currentView === 'USERS' ? 'User Administration' :
+                     currentView === 'KYC' ? 'Verification Queue' : 'System Health'}
                 </h1>
                 <p className="text-slate-500">
                     {currentView === 'OVERVIEW' ? 'Real-time platform monitoring' : 
-                     currentView === 'USERS' ? 'Manage global user access' : 'Infrastructure and logs'}
+                     currentView === 'USERS' ? 'Manage global user access' : 
+                     currentView === 'KYC' ? 'Review identity documents' : 'Infrastructure and logs'}
                 </p>
             </div>
             <div className="flex items-center space-x-2 bg-white border border-slate-200 rounded-lg px-3 py-1.5">
@@ -531,6 +562,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, adminProfile 
 
         {currentView === 'OVERVIEW' && renderOverview()}
         {currentView === 'USERS' && renderUsers()}
+        {currentView === 'KYC' && renderKYC()}
         {currentView === 'HEALTH' && renderHealth()}
 
       </main>

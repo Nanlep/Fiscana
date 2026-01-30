@@ -9,8 +9,9 @@ import TaxAdvisor from './components/TaxAdvisor';
 import LandingPage from './components/LandingPage';
 import AdminDashboard from './components/AdminDashboard';
 import WithdrawModal from './components/WithdrawModal';
+import KYCVerification from './components/KYCVerification';
 import Toast, { ToastMessage, ToastType } from './components/Toast';
-import { ViewState, Transaction, Invoice, TransactionType, InvoiceStatus, PaymentMethod, Asset, Liability, UserProfile, UserRole, UserType } from './types';
+import { ViewState, Transaction, Invoice, TransactionType, InvoiceStatus, PaymentMethod, Asset, Liability, UserProfile, UserRole, UserType, KYCRequest } from './types';
 import { Menu } from 'lucide-react';
 
 function App() {
@@ -21,7 +22,22 @@ function App() {
   
   const [userProfile, setUserProfile] = useState<UserProfile | null>(() => {
     const saved = localStorage.getItem('fiscana_profile');
-    return saved ? JSON.parse(saved) : null;
+    if (saved) {
+        const parsed = JSON.parse(saved);
+        // Ensure backward compatibility for existing users in localStorage
+        return {
+            ...parsed,
+            kycStatus: parsed.kycStatus || 'UNVERIFIED',
+            tier: parsed.tier || 'TIER_1'
+        };
+    }
+    return null;
+  });
+
+  // --- Global State for KYC Requests (Simulating Backend) ---
+  const [kycRequests, setKycRequests] = useState<KYCRequest[]>(() => {
+    const saved = localStorage.getItem('fiscana_kyc_requests');
+    return saved ? JSON.parse(saved) : [];
   });
 
   // App View State
@@ -39,7 +55,7 @@ function App() {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   };
 
-  // --- Persistence Effects for Auth ---
+  // --- Persistence Effects for Auth & KYC ---
   useEffect(() => {
     localStorage.setItem('fiscana_auth', String(isAuthenticated));
     if (userProfile) {
@@ -49,7 +65,11 @@ function App() {
     }
   }, [isAuthenticated, userProfile]);
 
-  // --- Seed Data Constants (UPDATED FOR WORLD CLASS STANDARDS) ---
+  useEffect(() => {
+    localStorage.setItem('fiscana_kyc_requests', JSON.stringify(kycRequests));
+  }, [kycRequests]);
+
+  // --- Seed Data Constants ---
   const seedTransactions: Transaction[] = [
     {
       id: 'tx_1', date: '2025-05-12', description: 'Website Redesign Phase 1', payee: 'Alpha Tech Solutions', amount: 850000,
@@ -139,12 +159,17 @@ function App() {
 
   // Handlers
   const handleLogin = (name: string, role: UserRole, type: UserType, companyName?: string) => {
+      // Check for pending KYC to restore status correctly on login
+      const pendingReq = kycRequests.find(r => r.userEmail === `${name.toLowerCase().replace(' ', '.')}@example.com` && r.status === 'PENDING');
+      
       setUserProfile({
           name,
           email: `${name.toLowerCase().replace(' ', '.')}@example.com`,
           role,
           type,
-          companyName
+          companyName,
+          kycStatus: pendingReq ? 'PENDING' : 'UNVERIFIED',
+          tier: 'TIER_1'
       });
       setIsAuthenticated(true);
       setView('DASHBOARD');
@@ -157,6 +182,48 @@ function App() {
       localStorage.removeItem('fiscana_auth');
       localStorage.removeItem('fiscana_profile');
       notify('INFO', 'Logged out successfully');
+  };
+
+  // --- KYC Logic ---
+  const handleKYCSubmit = (bvn: string, nin: string) => {
+      if (!userProfile) return;
+
+      const newRequest: KYCRequest = {
+          id: `kyc_${Date.now()}`,
+          userId: userProfile.email,
+          userName: userProfile.name,
+          userEmail: userProfile.email,
+          bvn,
+          nin,
+          status: 'PENDING',
+          date: new Date().toLocaleDateString()
+      };
+
+      setKycRequests(prev => [...prev, newRequest]);
+      
+      // Update local user state
+      setUserProfile({ ...userProfile, kycStatus: 'PENDING' });
+      
+      notify('SUCCESS', 'KYC Documents submitted for review.');
+  };
+
+  const handleKYCReview = (id: string, action: 'APPROVED' | 'REJECTED') => {
+      setKycRequests(prev => prev.map(req => 
+          req.id === id ? { ...req, status: action } : req
+      ));
+      
+      // If the admin is also the user being reviewed (simulation edge case), update profile immediately
+      // In a real app, this update happens on next user login fetch
+      const request = kycRequests.find(r => r.id === id);
+      if (request && userProfile && request.userEmail === userProfile.email) {
+          if (action === 'APPROVED') {
+              setUserProfile({ ...userProfile, kycStatus: 'VERIFIED', tier: 'TIER_3' });
+          } else {
+              setUserProfile({ ...userProfile, kycStatus: 'REJECTED' });
+          }
+      }
+      
+      notify(action === 'APPROVED' ? 'SUCCESS' : 'INFO', `Request ${action === 'APPROVED' ? 'Approved' : 'Rejected'}`);
   };
 
   // Helper to update wallet balance based on transaction
@@ -275,7 +342,12 @@ function App() {
       return (
         <>
             <Toast toasts={toasts} removeToast={removeToast} />
-            <AdminDashboard onLogout={handleLogout} adminProfile={userProfile} />
+            <AdminDashboard 
+                onLogout={handleLogout} 
+                adminProfile={userProfile} 
+                kycRequests={kycRequests}
+                onReviewKYC={handleKYCReview}
+            />
         </>
       );
   }
@@ -301,6 +373,8 @@ function App() {
         return <Assets assets={assets} liabilities={liabilities} addAsset={addAsset} addLiability={addLiability} />;
       case 'TAX_AI':
         return <TaxAdvisor transactions={transactions} />;
+      case 'KYC':
+        return <KYCVerification user={userProfile!} onSubmit={handleKYCSubmit} />;
       default:
         return <Dashboard transactions={transactions} invoices={invoices} user={userProfile} />;
     }

@@ -22,6 +22,8 @@ export enum InvoiceStatus {
 
 export type UserRole = 'USER' | 'ADMIN';
 export type UserType = 'INDIVIDUAL' | 'CORPORATE';
+export type KYCStatus = 'UNVERIFIED' | 'PENDING' | 'VERIFIED' | 'REJECTED'; // Added REJECTED
+export type AccountTier = 'TIER_1' | 'TIER_2' | 'TIER_3';
 
 export interface UserProfile {
   name: string;
@@ -29,6 +31,19 @@ export interface UserProfile {
   role: UserRole;
   type: UserType;
   companyName?: string;
+  kycStatus: KYCStatus;
+  tier: AccountTier;
+}
+
+export interface KYCRequest {
+  id: string;
+  userId: string;
+  userName: string;
+  userEmail: string;
+  bvn: string;
+  nin: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  date: string;
 }
 
 export interface Transaction {
@@ -102,4 +117,4 @@ export interface TaxReport {
   keyFinancialDecisions: string[];
 }
 
-export type ViewState = 'DASHBOARD' | 'INVOICES' | 'LEDGER' | 'REPORTS' | 'ASSETS' | 'TAX_AI';
+export type ViewState = 'DASHBOARD' | 'INVOICES' | 'LEDGER' | 'REPORTS' | 'ASSETS' | 'TAX_AI' | 'KYC';
