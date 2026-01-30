@@ -334,6 +334,21 @@ function App() {
     setTransactions([t, ...transactions]);
   };
 
+  // Bulk add transactions (from Bank Sync)
+  const addTransactions = (newTxs: Transaction[]) => {
+      setTransactions(prev => [...newTxs, ...prev]);
+      
+      // Also sync these to wallet balance!
+      // This is a simplified simulation. Real accounting would reconcile against existing balances.
+      // Here we assume these are NEW imported transactions that affect the balance.
+      
+      newTxs.forEach(t => {
+          updateWalletForTransaction(t.amount, t.currency, t.type);
+      });
+
+      notify('SUCCESS', `${newTxs.length} transactions synced from bank.`);
+  };
+
   // Manual transaction from Ledger (Log + Update Cash)
   const handleManualTransaction = (t: Transaction) => {
     addTransaction(t);
@@ -402,7 +417,12 @@ function App() {
             notify={notify}
         />;
       case 'LEDGER':
-        return <Ledger transactions={transactions} addTransaction={handleManualTransaction} />; 
+        return <Ledger 
+            transactions={transactions} 
+            addTransaction={handleManualTransaction} 
+            addTransactions={addTransactions} // Pass the bulk handler
+            notify={notify}
+        />; 
       case 'BUDGETS':
         return <BudgetModule 
             transactions={transactions} 

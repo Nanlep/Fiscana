@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type, GenerateContentResponse } from "@google/genai";
-import { Transaction, TaxReport } from '../types';
+import { Transaction, TaxReport, TransactionType, ExpenseCategoryType } from '../types';
 
 // Initialize the API client
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
@@ -156,3 +156,76 @@ export const chatWithTaxAdvisorStream = async function* (
         yield "I'm having trouble connecting to the financial intelligence database right now. Please check your internet connection or API key.";
     }
 }
+
+// --- NEW: Auto-Categorization for Bank Statements ---
+export interface BankTransactionAnalysis {
+  originalDescription: string;
+  cleanedPayee: string;
+  category: string;
+  expenseCategory: ExpenseCategoryType;
+  type: TransactionType;
+  taxDeductible: boolean;
+  tags: string[];
+}
+
+export const autoCategorizeTransactions = async (
+  rawDescriptions: string[]
+): Promise<BankTransactionAnalysis[]> => {
+  const prompt = `
+    You are an accounting AI. I will provide a list of raw bank transaction descriptions. 
+    For each, infer the context and map it to a structured format.
+    
+    Raw Descriptions:
+    ${JSON.stringify(rawDescriptions)}
+
+    Rules:
+    1. cleanedPayee: Extract the merchant or sender name nicely (e.g. "TRF/PAYSTACK/NETFLIX" -> "Netflix").
+    2. category: Choose from standard accounting categories (Rent, Utilities, Groceries, Salary, Software, Transport, Meals, etc.).
+    3. expenseCategory: 'BUSINESS' or 'PERSONAL'. Be smart. Netflix is PERSONAL. AWS is BUSINESS. Uber depends, but default to PERSONAL unless it looks like a logistics delivery.
+    4. type: 'INCOME' or 'EXPENSE'.
+    5. taxDeductible: true if it's a valid business expense.
+
+    Return a JSON array.
+  `;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+            type: Type.ARRAY,
+            items: {
+                type: Type.OBJECT,
+                properties: {
+                    originalDescription: { type: Type.STRING },
+                    cleanedPayee: { type: Type.STRING },
+                    category: { type: Type.STRING },
+                    expenseCategory: { type: Type.STRING, enum: ['BUSINESS', 'PERSONAL'] },
+                    type: { type: Type.STRING, enum: ['INCOME', 'EXPENSE'] },
+                    taxDeductible: { type: Type.BOOLEAN },
+                    tags: { type: Type.ARRAY, items: { type: Type.STRING } }
+                }
+            }
+        }
+      }
+    });
+
+    const text = response.text;
+    if (!text) throw new Error("No response from AI");
+    return JSON.parse(text) as BankTransactionAnalysis[];
+  } catch (error) {
+    console.error("Categorization failed", error);
+    // Fallback: Return mapped based on simple heuristics if AI fails
+    return rawDescriptions.map(desc => ({
+        originalDescription: desc,
+        cleanedPayee: desc.substring(0, 15),
+        category: "Uncategorized",
+        expenseCategory: "PERSONAL",
+        type: TransactionType.EXPENSE,
+        taxDeductible: false,
+        tags: ["#BankImport"]
+    }));
+  }
+};

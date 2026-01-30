@@ -1,18 +1,23 @@
 import React, { useState } from 'react';
 import { Transaction, TransactionType, ExpenseCategoryType } from '../types';
-import { Search, Filter, Plus, ArrowUpRight, ArrowDownRight, X, Check, Upload, FileText, Paperclip, Download, Tag, Briefcase, User } from 'lucide-react';
+import { Search, Filter, Plus, ArrowUpRight, ArrowDownRight, X, Check, Upload, FileText, Paperclip, Download, Tag, Briefcase, User, Landmark } from 'lucide-react';
+import BankConnect from './BankConnect';
 
 interface LedgerProps {
   transactions: Transaction[];
   addTransaction: (t: Transaction) => void;
+  addTransactions?: (t: Transaction[]) => void; // Optional for backward compatibility, but we know we passed it
+  notify?: (type: 'SUCCESS' | 'ERROR' | 'INFO', message: string) => void;
 }
 
-const Ledger: React.FC<LedgerProps> = ({ transactions, addTransaction }) => {
+const Ledger: React.FC<LedgerProps> = ({ transactions, addTransaction, addTransactions, notify }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<'ALL' | 'INCOME' | 'EXPENSE'>('ALL');
   
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isBankModalOpen, setIsBankModalOpen] = useState(false);
+
   const [newTxType, setNewTxType] = useState<TransactionType>(TransactionType.INCOME);
   const [formData, setFormData] = useState({
     description: '',
@@ -119,12 +124,18 @@ const Ledger: React.FC<LedgerProps> = ({ transactions, addTransaction }) => {
           <h1 className="text-3xl font-bold text-slate-900">General Ledger</h1>
           <p className="text-slate-500">Double-entry record of all financial movements</p>
         </div>
-        <div className="flex space-x-2">
+        <div className="flex flex-wrap gap-2">
+            <button 
+                onClick={() => setIsBankModalOpen(true)}
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium flex items-center space-x-2 hover:bg-blue-700 transition-colors shadow-lg shadow-blue-600/20"
+            >
+                <Landmark size={18} /> <span>Sync Bank</span>
+            </button>
             <button 
                 onClick={handleExportCSV}
                 className="bg-white text-slate-700 border border-slate-200 px-4 py-2 rounded-lg font-medium flex items-center space-x-2 hover:bg-slate-50 transition-colors"
             >
-                <Download size={18} /> <span>Export CSV</span>
+                <Download size={18} /> <span>CSV</span>
             </button>
             <button 
                 onClick={() => openModal(TransactionType.INCOME)}
@@ -499,6 +510,18 @@ const Ledger: React.FC<LedgerProps> = ({ transactions, addTransaction }) => {
             </div>
         </div>
       )}
+
+      {/* Bank Connect Modal */}
+      <BankConnect 
+        isOpen={isBankModalOpen} 
+        onClose={() => setIsBankModalOpen(false)}
+        onImportTransactions={(txs) => {
+            if (addTransactions) {
+                addTransactions(txs);
+            }
+        }}
+        notify={notify || (() => {})}
+      />
     </div>
   );
 };
