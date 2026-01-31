@@ -420,6 +420,7 @@ function App() {
       case 'INVOICES':
         return <Invoices 
             invoices={invoices} 
+            user={userProfile}
             addInvoice={addInvoice} 
             addTransaction={addTransaction} 
             markAsPaid={markInvoiceAsPaid}

@@ -1,19 +1,27 @@
 
 import React, { useState } from 'react';
-import { Plus, Send, Download, CreditCard, Bitcoin, CheckCircle, Calculator, FileCheck } from 'lucide-react';
-import { Invoice, InvoiceStatus, PaymentMethod, Transaction, TransactionType } from '../types';
+import { Plus, Send, Download, CreditCard, Bitcoin, CheckCircle, Calculator, FileCheck, Loader2 } from 'lucide-react';
+import { Invoice, InvoiceStatus, PaymentMethod, Transaction, TransactionType, UserProfile } from '../types';
 import { calculateInvoiceTotals } from '../utils/tax';
 
 interface InvoicesProps {
   invoices: Invoice[];
+  user: UserProfile | null;
   addInvoice: (inv: Invoice) => void;
   addTransaction: (t: Transaction) => void;
   markAsPaid: (id: string) => void;
   notify: (type: 'SUCCESS' | 'ERROR' | 'INFO', message: string) => void;
 }
 
-const Invoices: React.FC<InvoicesProps> = ({ invoices, addInvoice, addTransaction, markAsPaid, notify }) => {
+declare global {
+    interface Window {
+        html2pdf: any;
+    }
+}
+
+const Invoices: React.FC<InvoicesProps> = ({ invoices, user, addInvoice, addTransaction, markAsPaid, notify }) => {
   const [isCreating, setIsCreating] = useState(false);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
   
   // Form State
   const [clientName, setClientName] = useState('');
@@ -71,12 +79,6 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, addInvoice, addTransactio
       baniPaymentLink: `https://pay.bani.africa/${Math.random().toString(36).substr(2, 6)}`
     };
 
-    // Accounting Entry:
-    // Revenue = Gross Amount (SubTotal)
-    // Cash Receivable = Total Receivable
-    // We record the Net Amount as the Transaction Amount for Cash Flow, 
-    // but store Gross and Tax info for reporting.
-    
     const newTransaction: Transaction = {
         id: `tx_${invoiceId}`,
         date: issueDate,
@@ -113,126 +115,161 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, addInvoice, addTransactio
     notify('SUCCESS', 'Invoice created and posted to ledger');
   };
 
-  const handleGenerateReceipt = (inv: Invoice) => {
-    const symbol = inv.currency === 'NGN' ? '₦' : '$';
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) {
-        notify('ERROR', 'Pop-up blocked. Please allow pop-ups to generate receipt.');
-        return;
-    }
+  const generatePDF = async (elementId: string, filename: string) => {
+      if (!window.html2pdf) {
+          notify('ERROR', 'PDF generator not loaded. Please refresh.');
+          return;
+      }
+      
+      const element = document.getElementById(elementId);
+      if (!element) return;
 
-    const htmlContent = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>Payment Receipt - ${inv.id}</title>
-        <script src="https://cdn.tailwindcss.com"></script>
-        <style>
-            @media print {
-                @page { margin: 0; }
-                body { margin: 1.6cm; }
-                .no-print { display: none; }
-            }
-        </style>
-    </head>
-    <body class="bg-white text-slate-900 font-sans">
-        <div class="max-w-2xl mx-auto p-8 border border-slate-200 rounded-lg shadow-sm print:border-0 print:shadow-none">
-            
-            <!-- Header -->
-            <div class="flex justify-between items-start mb-8 border-b border-slate-100 pb-8">
-                <div>
-                    <div class="flex items-center space-x-2 mb-2">
-                        <div class="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center">
-                            <span class="font-bold text-white">F</span>
-                        </div>
-                        <span className="text-xl font-bold tracking-tight">Fiscana</span>
-                    </div>
-                    <p class="text-sm text-slate-500">Official Payment Receipt</p>
-                </div>
-                <div class="text-right">
-                    <h1 class="text-2xl font-bold text-slate-900 uppercase tracking-widest text-green-600">PAID</h1>
-                    <p class="text-sm text-slate-500 mt-1">Receipt #: <span class="font-mono font-bold text-slate-900">RCP-${inv.id}</span></p>
-                    <p class="text-sm text-slate-500">Date Paid: <span class="font-semibold text-slate-900">${inv.paidDate || new Date().toISOString().split('T')[0]}</span></p>
-                </div>
-            </div>
+      const opt = {
+          margin: 10,
+          filename: filename,
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: { scale: 2, useCORS: true },
+          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      };
 
-            <!-- Client Info -->
-            <div class="flex justify-between mb-8">
-                <div>
-                    <p class="text-xs font-bold text-slate-400 uppercase mb-1">Received From</p>
-                    <h3 class="text-lg font-bold text-slate-800">${inv.clientName}</h3>
-                    <p class="text-sm text-slate-500">${inv.clientEmail}</p>
-                </div>
-                <div class="text-right">
-                    <p class="text-xs font-bold text-slate-400 uppercase mb-1">Invoice Reference</p>
-                    <p class="font-mono text-slate-700">${inv.id}</p>
-                    <p class="text-xs text-slate-400 mt-1">Due Date: ${inv.dueDate}</p>
-                </div>
-            </div>
-
-            <!-- Line Items -->
-            <table class="w-full mb-8">
-                <thead class="bg-slate-50 border-y border-slate-200">
-                    <tr>
-                        <th class="py-3 px-4 text-left text-xs font-semibold text-slate-500 uppercase">Description</th>
-                        <th class="py-3 px-4 text-center text-xs font-semibold text-slate-500 uppercase">Qty</th>
-                        <th class="py-3 px-4 text-right text-xs font-semibold text-slate-500 uppercase">Amount</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100">
-                    ${inv.items.map(item => `
-                        <tr>
-                            <td class="py-4 px-4 text-sm font-medium text-slate-700">${item.description}</td>
-                            <td class="py-4 px-4 text-center text-sm text-slate-600">${item.quantity}</td>
-                            <td class="py-4 px-4 text-right text-sm font-bold text-slate-900 font-mono">${symbol}${(item.unitPrice * item.quantity).toLocaleString()}</td>
-                        </tr>
-                    `).join('')}
-                </tbody>
-            </table>
-
-            <!-- Totals -->
-            <div class="flex justify-end">
-                <div class="w-1/2 space-y-3">
-                    <div class="flex justify-between text-sm">
-                        <span class="text-slate-500">Subtotal</span>
-                        <span class="font-mono font-medium text-slate-700">${symbol}${inv.subTotal.toLocaleString()}</span>
-                    </div>
-                    <div class="flex justify-between text-sm">
-                        <span class="text-slate-500">VAT (7.5%)</span>
-                        <span class="font-mono font-medium text-slate-700">${symbol}${inv.vatAmount.toLocaleString()}</span>
-                    </div>
-                     <div class="flex justify-between text-sm">
-                        <span class="text-slate-500">WHT (Deducted)</span>
-                        <span class="font-mono font-medium text-red-500">(${symbol}${inv.whtDeduction.toLocaleString()})</span>
-                    </div>
-                    <div class="flex justify-between pt-4 border-t border-slate-200">
-                        <span class="text-base font-bold text-slate-900">Total Received</span>
-                        <span class="text-xl font-bold text-slate-900 font-mono">${symbol}${inv.totalAmount.toLocaleString()}</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Footer -->
-            <div class="mt-12 pt-8 border-t border-slate-100 text-center">
-                <p class="text-xs text-slate-400">
-                    This is a computer-generated receipt and is valid without a signature.
-                </p>
-                <div class="mt-6 flex justify-center space-x-4 no-print">
-                    <button onclick="window.print()" class="bg-slate-900 text-white px-6 py-2 rounded-lg font-bold hover:bg-slate-800">Print Receipt</button>
-                    <button onclick="window.close()" class="bg-white border border-slate-300 text-slate-700 px-6 py-2 rounded-lg font-medium hover:bg-slate-50">Close</button>
-                </div>
-            </div>
-        </div>
-    </body>
-    </html>
-    `;
-
-    printWindow.document.write(htmlContent);
-    printWindow.document.close();
+      setDownloadingId(filename); // Simple way to show loading state if we tracked it by ID, here just boolean essentially
+      
+      try {
+        await window.html2pdf().set(opt).from(element).save();
+        notify('SUCCESS', 'Document downloaded successfully.');
+      } catch (e) {
+        console.error(e);
+        notify('ERROR', 'Failed to generate PDF.');
+      } finally {
+        setDownloadingId(null);
+      }
   };
 
-  const handleDownload = (id: string) => {
-      notify('INFO', `Downloading Invoice #${id} as PDF...`);
+  const getDocTemplate = (inv: Invoice, type: 'INVOICE' | 'RECEIPT') => {
+      const issuerName = user?.type === 'CORPORATE' ? user.companyName || user.name : user?.name || 'Fiscana User';
+      const issuerEmail = user?.email || '';
+      const symbol = inv.currency === 'NGN' ? '₦' : '$';
+      const colorClass = type === 'RECEIPT' ? 'text-green-600' : 'text-blue-600';
+      const title = type;
+      const idPrefix = type === 'RECEIPT' ? 'RCP' : 'INV';
+
+      return (
+        <div id={`pdf-${inv.id}-${type}`} className="hidden">
+             {/* This container will be temporarily rendered for PDF generation */}
+             <div className="p-8 bg-white max-w-[800px] mx-auto text-slate-900 font-sans" style={{ width: '800px' }}>
+                 {/* Header */}
+                <div className="flex justify-between items-start mb-8 border-b border-slate-100 pb-8">
+                    <div>
+                        <h2 className="text-2xl font-bold text-slate-900 tracking-tight mb-1">{issuerName}</h2>
+                        <p className="text-sm text-slate-500">{issuerEmail}</p>
+                        {user?.tin && <p className="text-xs text-slate-400 mt-1">Tax ID: {user.tin}</p>}
+                    </div>
+                    <div className="text-right">
+                        <h1 className={`text-3xl font-bold uppercase tracking-widest ${colorClass}`}>{title}</h1>
+                        <p className="text-sm text-slate-500 mt-1">#{idPrefix}-{inv.id}</p>
+                        <p className="text-sm text-slate-500">
+                            {type === 'RECEIPT' ? 'Date Paid: ' : 'Issue Date: '} 
+                            <span className="font-semibold text-slate-900">
+                                {type === 'RECEIPT' ? (inv.paidDate || new Date().toISOString().split('T')[0]) : inv.issueDate}
+                            </span>
+                        </p>
+                    </div>
+                </div>
+
+                {/* Client Info */}
+                <div className="flex justify-between mb-8">
+                    <div>
+                        <p className="text-xs font-bold text-slate-400 uppercase mb-1">Bill To</p>
+                        <h3 className="text-lg font-bold text-slate-800">{inv.clientName}</h3>
+                        <p className="text-sm text-slate-500">{inv.clientEmail}</p>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-xs font-bold text-slate-400 uppercase mb-1">Payment Status</p>
+                        <p className={`font-mono font-bold ${inv.status === InvoiceStatus.PAID ? 'text-green-600' : 'text-slate-700'}`}>
+                            {inv.status}
+                        </p>
+                        {inv.status !== InvoiceStatus.PAID && <p className="text-xs text-slate-400 mt-1">Due Date: {inv.dueDate}</p>}
+                    </div>
+                </div>
+
+                {/* Line Items */}
+                <table className="w-full mb-8 border-collapse">
+                    <thead className="bg-slate-50 border-y border-slate-200">
+                        <tr>
+                            <th className="py-3 px-4 text-left text-xs font-semibold text-slate-500 uppercase">Description</th>
+                            <th className="py-3 px-4 text-center text-xs font-semibold text-slate-500 uppercase">Qty</th>
+                            <th className="py-3 px-4 text-right text-xs font-semibold text-slate-500 uppercase">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                        {inv.items.map((item, idx) => (
+                            <tr key={idx}>
+                                <td className="py-4 px-4 text-sm font-medium text-slate-700">{item.description}</td>
+                                <td className="py-4 px-4 text-center text-sm text-slate-600">{item.quantity}</td>
+                                <td className="py-4 px-4 text-right text-sm font-bold text-slate-900 font-mono">
+                                    {symbol}{(item.unitPrice * item.quantity).toLocaleString()}
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+
+                {/* Totals */}
+                <div className="flex justify-end">
+                    <div className="w-1/2 space-y-3">
+                        <div className="flex justify-between text-sm">
+                            <span className="text-slate-500">Subtotal</span>
+                            <span className="font-mono font-medium text-slate-700">{symbol}{inv.subTotal.toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                            <span className="text-slate-500">VAT (7.5%)</span>
+                            <span className="font-mono font-medium text-slate-700">{symbol}{inv.vatAmount.toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                            <span className="text-slate-500">WHT (Deducted)</span>
+                            <span className="font-mono font-medium text-red-500">({symbol}{inv.whtDeduction.toLocaleString()})</span>
+                        </div>
+                        <div className="flex justify-between pt-4 border-t border-slate-200">
+                            <span className="text-base font-bold text-slate-900">Total {type === 'RECEIPT' ? 'Received' : 'Due'}</span>
+                            <span className="text-xl font-bold text-slate-900 font-mono">{symbol}{inv.totalAmount.toLocaleString()}</span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Footer */}
+                <div className="mt-12 pt-8 border-t border-slate-100 text-center">
+                    <div className="flex items-center justify-center space-x-1 mb-2 opacity-50">
+                        <span className="text-xs font-bold text-slate-500">Powered by Fiscana</span>
+                    </div>
+                    <p className="text-xs text-slate-400">
+                        {type === 'RECEIPT' 
+                         ? 'This is a computer-generated receipt and is valid without a signature.' 
+                         : 'Please pay into the account details provided or use the payment link.'}
+                    </p>
+                </div>
+             </div>
+        </div>
+      );
+  };
+
+  const handleGenerateReceipt = (inv: Invoice) => {
+      // For Receipt, we trigger the PDF download logic directly
+      notify('INFO', 'Generating Receipt PDF...');
+      
+      // We need to render the hidden element first, React handles this via state rendering
+      // But here we can access it if it is already in DOM.
+      // We will mount the hidden templates at the bottom of the component return.
+      
+      setTimeout(() => {
+          generatePDF(`pdf-${inv.id}-RECEIPT`, `Receipt-${inv.id}.pdf`);
+      }, 100);
+  };
+
+  const handleDownloadInvoice = (inv: Invoice) => {
+      notify('INFO', 'Generating Invoice PDF...');
+      setTimeout(() => {
+          generatePDF(`pdf-${inv.id}-INVOICE`, `Invoice-${inv.id}.pdf`);
+      }, 100);
   };
 
   return (
@@ -391,10 +428,11 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, addInvoice, addTransactio
                   {inv.status === InvoiceStatus.PAID ? (
                       <button 
                         onClick={() => handleGenerateReceipt(inv)} 
-                        className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors" 
-                        title="Download Receipt"
+                        disabled={!!downloadingId}
+                        className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors disabled:opacity-50" 
+                        title="Download Receipt PDF"
                       >
-                        <FileCheck size={18} />
+                         {downloadingId && downloadingId.includes(inv.id) && downloadingId.includes('Receipt') ? <Loader2 size={18} className="animate-spin"/> : <FileCheck size={18} />}
                       </button>
                   ) : (
                     <button 
@@ -409,14 +447,29 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, addInvoice, addTransactio
                         <CheckCircle size={18} />
                     </button>
                   )}
-                  <button onClick={() => handleDownload(inv.id)} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Download Invoice PDF">
-                    <Download size={18} />
+                  <button 
+                    onClick={() => handleDownloadInvoice(inv)} 
+                    disabled={!!downloadingId}
+                    className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50" 
+                    title="Download Invoice PDF"
+                  >
+                     {downloadingId && downloadingId.includes(inv.id) && downloadingId.includes('Invoice') ? <Loader2 size={18} className="animate-spin"/> : <Download size={18} />}
                   </button>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* Hidden PDF Templates Area */}
+      <div className="fixed top-0 left-[-10000px] pointer-events-none">
+          {invoices.map(inv => (
+              <React.Fragment key={inv.id}>
+                  {getDocTemplate(inv, 'INVOICE')}
+                  {getDocTemplate(inv, 'RECEIPT')}
+              </React.Fragment>
+          ))}
       </div>
     </div>
   );
