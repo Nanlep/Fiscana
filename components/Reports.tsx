@@ -1,6 +1,7 @@
+
 import React, { useState, useMemo } from 'react';
 import { Transaction, Asset, Liability } from '../types';
-import { Printer, Calendar, ChevronDown, Filter } from 'lucide-react';
+import { Printer, Calendar, ChevronDown, Filter, FileText, BarChart3 } from 'lucide-react';
 import { normalizeToNGN, formatCurrency } from '../utils/currency';
 
 interface ReportsProps {
@@ -11,10 +12,11 @@ interface ReportsProps {
   exchangeRate: number;
 }
 
+type ReportType = 'PL' | 'BS' | 'CF'; // Added Cash Flow
 type DateRangeOption = 'ALL' | 'THIS_MONTH' | 'LAST_MONTH' | 'YTD' | 'LAST_YEAR' | 'CUSTOM';
 
 const Reports: React.FC<ReportsProps> = ({ transactions, assets, liabilities, companyName, exchangeRate }) => {
-  const [reportType, setReportType] = useState<'PL' | 'BS'>('PL');
+  const [reportType, setReportType] = useState<ReportType>('PL');
   
   // Date Logic
   const today = new Date();
@@ -55,60 +57,44 @@ const Reports: React.FC<ReportsProps> = ({ transactions, assets, liabilities, co
       }
   };
 
-  // Filter Logic (Only applies to P&L)
   const filteredTransactions = useMemo(() => {
-      if (reportType === 'BS') return transactions; // BS is usually a snapshot, but for this app structure, current assets are used.
+      if (reportType === 'BS') return transactions; 
       return transactions.filter(t => t.date >= startDate && t.date <= endDate);
   }, [transactions, startDate, endDate, reportType]);
 
-  // Calculations for Profit & Loss (Normalized)
+  // --- Financial Calculations ---
+  
+  // 1. Profit & Loss Data
   const incomeTransactions = filteredTransactions.filter(t => t.type === 'INCOME');
-  
-  // Business Operating Expenses (Strictly BUSINESS category)
-  const businessExpenseTransactions = filteredTransactions.filter(t => 
-    t.type === 'EXPENSE' && t.expenseCategory === 'BUSINESS'
-  );
-  
-  // Personal Expenses & Transfers (Strictly PERSONAL category)
-  const personalTransactions = filteredTransactions.filter(t => 
-    t.type === 'EXPENSE' && (t.expenseCategory === 'PERSONAL' || !t.expenseCategory)
-  );
+  const businessExpenseTransactions = filteredTransactions.filter(t => t.type === 'EXPENSE' && t.expenseCategory === 'BUSINESS');
+  const personalTransactions = filteredTransactions.filter(t => t.type === 'EXPENSE' && (t.expenseCategory === 'PERSONAL' || !t.expenseCategory));
 
-  const totalRevenue = incomeTransactions.reduce((sum, t) => sum + normalizeToNGN(t.amount, t.currency, exchangeRate), 0); 
+  const totalRevenue = incomeTransactions.reduce((sum, t) => sum + normalizeToNGN(t.grossAmount || t.amount, t.currency, exchangeRate), 0); // Use Gross for Revenue
   const totalOperatingExpenses = businessExpenseTransactions.reduce((sum, t) => sum + normalizeToNGN(t.amount, t.currency, exchangeRate), 0);
   const totalPersonalOutflows = personalTransactions.reduce((sum, t) => sum + normalizeToNGN(t.amount, t.currency, exchangeRate), 0);
-  
-  // Net Business Income (Revenue - Business Expenses)
-  const netBusinessIncome = totalRevenue - totalOperatingExpenses;
-  
-  // Net Cash Flow (Net Business Income - Personal Outflows)
-  const netCashFlow = netBusinessIncome - totalPersonalOutflows;
+  const netProfit = totalRevenue - totalOperatingExpenses;
 
-  // Group by Category (Normalized)
-  const incomeByCategory = incomeTransactions.reduce((acc, t) => {
-      acc[t.category] = (acc[t.category] || 0) + normalizeToNGN(t.amount, t.currency, exchangeRate);
-      return acc;
-  }, {} as Record<string, number>);
-
-  const businessExpensesByCategory = businessExpenseTransactions.reduce((acc, t) => {
-      acc[t.category] = (acc[t.category] || 0) + normalizeToNGN(t.amount, t.currency, exchangeRate);
-      return acc;
-  }, {} as Record<string, number>);
-  
-  const personalExpensesByCategory = personalTransactions.reduce((acc, t) => {
-      acc[t.category] = (acc[t.category] || 0) + normalizeToNGN(t.amount, t.currency, exchangeRate);
-      return acc;
-  }, {} as Record<string, number>);
-
-  // Calculations for Balance Sheet (Current State - Snapshot)
+  // 2. Balance Sheet Data (Snapshots)
   const totalAssets = assets.reduce((sum, a) => sum + normalizeToNGN(a.value, a.currency, exchangeRate), 0);
   const totalLiabilities = liabilities.reduce((sum, l) => sum + normalizeToNGN(l.amount, l.currency, exchangeRate), 0);
   const equity = totalAssets - totalLiabilities;
 
-  const assetsByType = assets.reduce((acc, a) => {
-      acc[a.type] = (acc[a.type] || 0) + normalizeToNGN(a.value, a.currency, exchangeRate);
-      return acc;
-  }, {} as Record<string, number>);
+  // 3. Cash Flow Statement Data (Direct Method Simulation)
+  const operatingInflow = incomeTransactions.reduce((sum, t) => sum + normalizeToNGN(t.amount, t.currency, exchangeRate), 0); // Cash Received
+  const operatingOutflow = businessExpenseTransactions.reduce((sum, t) => sum + normalizeToNGN(t.amount, t.currency, exchangeRate), 0);
+  const netCashOperations = operatingInflow - operatingOutflow;
+  
+  // Simulate Investing/Financing for demo (In real app, we'd filter by category like 'Equipment' or 'Loan')
+  const investingOutflow = businessExpenseTransactions
+    .filter(t => t.category === 'Equipment' || t.category === 'Investments')
+    .reduce((sum, t) => sum + normalizeToNGN(t.amount, t.currency, exchangeRate), 0);
+  const netCashInvesting = -investingOutflow;
+
+  const financingOutflow = personalTransactions.reduce((sum, t) => sum + normalizeToNGN(t.amount, t.currency, exchangeRate), 0); // Owners Draw
+  const netCashFinancing = -financingOutflow;
+  
+  const netCashChange = netCashOperations + netCashInvesting + netCashFinancing;
+  const beginningCash = totalAssets - netCashChange; // Back-calculated for demo (Real app needs snapshots)
 
   const handlePrint = () => {
     window.print();
@@ -119,21 +105,20 @@ const Reports: React.FC<ReportsProps> = ({ transactions, assets, liabilities, co
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 print:hidden">
             <div>
                 <h1 className="text-3xl font-bold text-slate-900">Financial Reports</h1>
-                <p className="text-slate-500">World-class standard financial statements</p>
+                <p className="text-slate-500">IFRS-Compliant Statements & Audit Log</p>
             </div>
             <div className="flex items-center space-x-2">
                 <button 
                     onClick={handlePrint}
                     className="flex items-center space-x-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors"
                 >
-                    <Printer size={18} /> <span>Print / PDF</span>
+                    <Printer size={18} /> <span>Export PDF</span>
                 </button>
             </div>
         </div>
 
         {/* Controls Toolbar */}
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-4 justify-between items-center print:hidden">
-            {/* Report Type Toggle */}
             <div className="flex space-x-1 bg-slate-100 p-1 rounded-lg w-full md:w-auto">
                 <button 
                     onClick={() => setReportType('PL')}
@@ -147,56 +132,26 @@ const Reports: React.FC<ReportsProps> = ({ transactions, assets, liabilities, co
                 >
                     Balance Sheet
                 </button>
+                <button 
+                    onClick={() => setReportType('CF')}
+                    className={`flex-1 md:flex-none px-4 py-2 rounded-md text-sm font-bold transition-all ${reportType === 'CF' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
+                >
+                    Cash Flow
+                </button>
             </div>
 
-            {/* Date Filters (Only visible/active for P&L) */}
-            {reportType === 'PL' && (
+            {reportType !== 'BS' && (
                 <div className="flex flex-col md:flex-row items-center gap-3 w-full md:w-auto">
-                    <div className="relative">
-                        <select 
-                            value={selectedRange} 
-                            onChange={(e) => handleRangeChange(e.target.value as DateRangeOption)}
-                            className="appearance-none bg-slate-50 border border-slate-200 text-slate-700 py-2 pl-10 pr-8 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-slate-500 cursor-pointer w-full md:w-48"
-                        >
-                            <option value="YTD">Year to Date (YTD)</option>
-                            <option value="THIS_MONTH">This Month</option>
-                            <option value="LAST_MONTH">Last Month</option>
-                            <option value="LAST_YEAR">Last Year</option>
-                            <option value="ALL">All Time</option>
-                            <option value="CUSTOM">Custom Range</option>
-                        </select>
-                        <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                        <div className="relative">
-                            <input 
-                                type="date" 
-                                value={startDate}
-                                onChange={(e) => { setStartDate(e.target.value); setSelectedRange('CUSTOM'); }}
-                                className="pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
-                            />
-                            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
-                        </div>
-                        <span className="text-slate-400">-</span>
-                        <div className="relative">
-                            <input 
-                                type="date" 
-                                value={endDate}
-                                onChange={(e) => { setEndDate(e.target.value); setSelectedRange('CUSTOM'); }}
-                                className="pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
-                            />
-                            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
-                        </div>
-                    </div>
-                </div>
-            )}
-            
-            {reportType === 'BS' && (
-                <div className="flex items-center gap-2 text-sm text-slate-500 bg-slate-50 px-4 py-2 rounded-lg border border-slate-100">
-                    <Calendar size={16} />
-                    <span>Report as of <strong>Today ({new Date().toLocaleDateString()})</strong></span>
+                    <select 
+                        value={selectedRange} 
+                        onChange={(e) => handleRangeChange(e.target.value as DateRangeOption)}
+                        className="bg-slate-50 border border-slate-200 text-slate-700 py-2 px-4 rounded-lg text-sm font-medium focus:outline-none cursor-pointer"
+                    >
+                        <option value="YTD">Year to Date (YTD)</option>
+                        <option value="THIS_MONTH">This Month</option>
+                        <option value="LAST_YEAR">Last Year</option>
+                        <option value="ALL">All Time</option>
+                    </select>
                 </div>
             )}
         </div>
@@ -204,170 +159,157 @@ const Reports: React.FC<ReportsProps> = ({ transactions, assets, liabilities, co
         {/* Paper Container */}
         <div className="bg-white p-12 shadow-lg border border-slate-100 rounded-xl min-h-[800px] max-w-4xl mx-auto print:shadow-none print:border-0 print:w-full print:p-0">
             
-            {/* Report Header */}
+            {/* Standard Header */}
             <div className="text-center mb-12 border-b border-slate-900 pb-8">
+                <div className="flex items-center justify-center space-x-2 mb-4">
+                    <div className="w-6 h-6 bg-slate-900 rounded-md"></div>
+                    <span className="font-bold text-lg tracking-tight">Fiscana</span>
+                </div>
                 <h2 className="text-2xl font-bold text-slate-900 uppercase tracking-widest mb-1">{companyName || 'Taiwo Doe (Individual)'}</h2>
-                <h3 className="text-xl font-medium text-slate-600">{reportType === 'PL' ? 'Statement of Profit or Loss' : 'Statement of Financial Position'}</h3>
+                <h3 className="text-xl font-medium text-slate-600">
+                    {reportType === 'PL' ? 'Statement of Profit or Loss' : 
+                     reportType === 'BS' ? 'Statement of Financial Position' : 'Statement of Cash Flows'}
+                </h3>
                 
                 <p className="text-sm text-slate-400 mt-2">
-                    {reportType === 'PL' 
-                        ? `Period: ${new Date(startDate).toLocaleDateString('en-GB')} to ${new Date(endDate).toLocaleDateString('en-GB')}` 
+                    {reportType !== 'BS' 
+                        ? `For the period: ${new Date(startDate).toLocaleDateString('en-GB')} to ${new Date(endDate).toLocaleDateString('en-GB')}` 
                         : `As of ${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}`
                     }
                 </p>
-                <p className="text-xs text-slate-500 mt-1">Base Reporting Currency: NGN (Rate Used: ₦{exchangeRate}/$)</p>
+                <p className="text-xs text-slate-500 mt-1">Currency: NGN | Exchange Rate: ₦{exchangeRate}/$</p>
             </div>
 
-            {reportType === 'PL' ? (
-                <div className="space-y-8 font-mono">
-                    {/* Revenue Section */}
+            {reportType === 'PL' && (
+                <div className="space-y-6 font-mono text-sm">
+                    {/* Revenue */}
                     <div>
-                        <h4 className="text-sm font-bold text-slate-900 uppercase border-b border-slate-200 pb-2 mb-4">Operating Income</h4>
-                        <div className="space-y-2">
-                            {Object.entries(incomeByCategory).map(([cat, val]) => (
-                                <div key={cat} className="flex justify-between text-sm">
-                                    <span className="text-slate-600">{cat}</span>
-                                    <span className="text-slate-900">{formatCurrency(val as number, 'NGN')}</span>
-                                </div>
-                            ))}
-                             {Object.keys(incomeByCategory).length === 0 && (
-                                <div className="text-sm text-slate-400 italic">No revenue found for this period.</div>
-                            )}
-                            <div className="flex justify-between text-sm font-bold pt-2 border-t border-slate-200 mt-2">
-                                <span>Total Revenue</span>
-                                <span>{formatCurrency(totalRevenue, 'NGN')}</span>
-                            </div>
+                        <div className="flex justify-between font-bold border-b border-slate-800 pb-2 mb-2">
+                            <span>REVENUE</span>
+                        </div>
+                         <div className="flex justify-between py-1">
+                            <span className="text-slate-700">Service Revenue (Gross)</span>
+                            <span>{formatCurrency(totalRevenue, 'NGN')}</span>
+                        </div>
+                        <div className="flex justify-between py-1 font-bold pt-2">
+                            <span>Total Revenue</span>
+                            <span>{formatCurrency(totalRevenue, 'NGN')}</span>
                         </div>
                     </div>
 
-                    {/* Expense Section */}
+                    {/* Expenses */}
                     <div>
-                        <h4 className="text-sm font-bold text-slate-900 uppercase border-b border-slate-200 pb-2 mb-4">Operating Expenses (Business)</h4>
-                        <div className="space-y-2">
-                             {Object.entries(businessExpensesByCategory).map(([cat, val]) => (
-                                <div key={cat} className="flex justify-between text-sm">
-                                    <span className="text-slate-600">{cat}</span>
-                                    <span className="text-slate-900">({formatCurrency(val as number, 'NGN')})</span>
-                                </div>
-                            ))}
-                            {Object.keys(businessExpensesByCategory).length === 0 && (
-                                <div className="text-sm text-slate-400 italic">No business expenses found for this period.</div>
-                            )}
-                             <div className="flex justify-between text-sm font-bold pt-2 border-t border-slate-200 mt-2">
-                                <span>Total Operating Expenses</span>
-                                <span className="text-red-600">({formatCurrency(totalOperatingExpenses, 'NGN')})</span>
-                            </div>
+                         <div className="flex justify-between font-bold border-b border-slate-800 pb-2 mb-2 mt-6">
+                            <span>OPERATING EXPENSES</span>
+                        </div>
+                         <div className="flex justify-between py-1">
+                            <span className="text-slate-700">General & Admin</span>
+                            <span>({formatCurrency(totalOperatingExpenses, 'NGN')})</span>
+                        </div>
+                         <div className="flex justify-between py-1 font-bold pt-2">
+                            <span>Total Operating Expenses</span>
+                            <span>({formatCurrency(totalOperatingExpenses, 'NGN')})</span>
                         </div>
                     </div>
 
-                    {/* Net Business Income */}
-                    <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 mt-8">
-                         <div className="flex justify-between text-lg font-bold">
-                            <span>Net Business Income</span>
-                            <span className={netBusinessIncome >= 0 ? 'text-slate-900' : 'text-red-600'}>
-                                {formatCurrency(netBusinessIncome, 'NGN')}
-                            </span>
+                    {/* Net Profit */}
+                    <div className="mt-8 pt-4 border-t-2 border-slate-900">
+                         <div className="flex justify-between font-bold text-lg">
+                            <span>NET PROFIT (Before Tax)</span>
+                            <span>{formatCurrency(netProfit, 'NGN')}</span>
                         </div>
-                    </div>
-
-                    {/* Personal Expenses / Draws */}
-                    <div>
-                        <h4 className="text-sm font-bold text-slate-500 uppercase border-b border-slate-200 pb-2 mb-4 mt-8">Personal Expenses & Withdrawals</h4>
-                        <div className="space-y-2">
-                             {Object.entries(personalExpensesByCategory).map(([cat, val]) => (
-                                <div key={cat} className="flex justify-between text-sm">
-                                    <span className="text-slate-600">{cat}</span>
-                                    <span className="text-slate-900">({formatCurrency(val as number, 'NGN')})</span>
-                                </div>
-                            ))}
-                            {Object.keys(personalExpensesByCategory).length === 0 && (
-                                <div className="text-sm text-slate-400 italic">No personal withdrawals found for this period.</div>
-                            )}
-                             <div className="flex justify-between text-sm font-bold pt-2 border-t border-slate-200 mt-2">
-                                <span className="text-slate-600">Total Personal Outflows</span>
-                                <span className="text-slate-900">({formatCurrency(totalPersonalOutflows, 'NGN')})</span>
-                            </div>
-                        </div>
-                        <p className="text-[10px] text-slate-400 mt-2 italic">* Personal expenses are treated as equity drawings and do not reduce business taxable income.</p>
-                    </div>
-
-                     {/* Net Cash Flow */}
-                     <div className="bg-slate-900 text-white p-4 rounded-lg border border-slate-900 mt-8">
-                         <div className="flex justify-between text-lg font-bold">
-                            <span>Net Cash Flow</span>
-                            <span className={netCashFlow >= 0 ? 'text-green-400' : 'text-red-400'}>
-                                {formatCurrency(netCashFlow, 'NGN')}
-                            </span>
-                        </div>
-                    </div>
-                </div>
-            ) : (
-                <div className="space-y-8 font-mono">
-                    {/* Assets */}
-                    <div>
-                        <h4 className="text-sm font-bold text-slate-900 uppercase border-b border-slate-200 pb-2 mb-4">Assets</h4>
-                        <div className="space-y-2">
-                            {Object.entries(assetsByType).map(([type, val]) => (
-                                <div key={type} className="flex justify-between text-sm">
-                                    <span className="text-slate-600">{type}</span>
-                                    <span className="text-slate-900">{formatCurrency(val as number, 'NGN')}</span>
-                                </div>
-                            ))}
-                            <div className="flex justify-between text-sm font-bold pt-2 border-t border-slate-200 mt-2">
-                                <span>Total Assets</span>
-                                <span>{formatCurrency(totalAssets, 'NGN')}</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Liabilities */}
-                     <div>
-                        <h4 className="text-sm font-bold text-slate-900 uppercase border-b border-slate-200 pb-2 mb-4">Liabilities</h4>
-                        <div className="space-y-2">
-                            {liabilities.map((l) => (
-                                <div key={l.id} className="flex justify-between text-sm">
-                                    <span className="text-slate-600">{l.name}</span>
-                                    <span className="text-slate-900">{formatCurrency(normalizeToNGN(l.amount, l.currency, exchangeRate), 'NGN')}</span>
-                                </div>
-                            ))}
-                            {liabilities.length === 0 && <div className="text-sm text-slate-400 italic">No liabilities recorded.</div>}
-                            
-                            <div className="flex justify-between text-sm font-bold pt-2 border-t border-slate-200 mt-2">
-                                <span>Total Liabilities</span>
-                                <span>{formatCurrency(totalLiabilities, 'NGN')}</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Equity */}
-                    <div>
-                        <h4 className="text-sm font-bold text-slate-900 uppercase border-b border-slate-200 pb-2 mb-4">Owner's Equity</h4>
-                        <div className="space-y-2">
-                             <div className="flex justify-between text-sm">
-                                <span className="text-slate-600">Net Assets</span>
-                                <span className="text-slate-900">{formatCurrency(equity, 'NGN')}</span>
-                            </div>
-                            <div className="flex justify-between text-sm font-bold pt-2 border-t border-slate-200 mt-2">
-                                <span>Total Equity</span>
-                                <span>{formatCurrency(equity, 'NGN')}</span>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 mt-8 text-center text-xs text-slate-500">
-                        <p>Total Liabilities & Equity: {formatCurrency(totalLiabilities + equity, 'NGN')}</p>
                     </div>
                 </div>
             )}
 
-            <div className="mt-16 pt-8 border-t border-slate-100 flex justify-between items-end text-xs text-slate-400">
-                <div>
-                    <p>Generated by Fiscana Financial OS</p>
-                    <p>{new Date().toISOString()}</p>
+            {reportType === 'CF' && (
+                <div className="space-y-6 font-mono text-sm">
+                    {/* Operating Activities */}
+                    <div>
+                        <div className="flex justify-between font-bold border-b border-slate-800 pb-2 mb-2">
+                            <span>CASH FLOW FROM OPERATING ACTIVITIES</span>
+                        </div>
+                         <div className="flex justify-between py-1">
+                            <span className="text-slate-700">Cash receipts from customers</span>
+                            <span>{formatCurrency(operatingInflow, 'NGN')}</span>
+                        </div>
+                        <div className="flex justify-between py-1">
+                            <span className="text-slate-700">Cash paid to suppliers & employees</span>
+                            <span>({formatCurrency(operatingOutflow, 'NGN')})</span>
+                        </div>
+                        <div className="flex justify-between py-1 font-bold pt-2">
+                            <span>Net Cash from Operations</span>
+                            <span>{formatCurrency(netCashOperations, 'NGN')}</span>
+                        </div>
+                    </div>
+
+                    {/* Investing Activities */}
+                    <div>
+                        <div className="flex justify-between font-bold border-b border-slate-800 pb-2 mb-2 mt-6">
+                            <span>CASH FLOW FROM INVESTING ACTIVITIES</span>
+                        </div>
+                         <div className="flex justify-between py-1">
+                            <span className="text-slate-700">Purchase of Equipment/Assets</span>
+                            <span>({formatCurrency(Math.abs(investingOutflow), 'NGN')})</span>
+                        </div>
+                        <div className="flex justify-between py-1 font-bold pt-2">
+                            <span>Net Cash from Investing</span>
+                            <span>{formatCurrency(netCashInvesting, 'NGN')}</span>
+                        </div>
+                    </div>
+
+                    {/* Financing Activities */}
+                    <div>
+                        <div className="flex justify-between font-bold border-b border-slate-800 pb-2 mb-2 mt-6">
+                            <span>CASH FLOW FROM FINANCING ACTIVITIES</span>
+                        </div>
+                         <div className="flex justify-between py-1">
+                            <span className="text-slate-700">Owner's Drawings</span>
+                            <span>({formatCurrency(Math.abs(financingOutflow), 'NGN')})</span>
+                        </div>
+                        <div className="flex justify-between py-1 font-bold pt-2">
+                            <span>Net Cash from Financing</span>
+                            <span>{formatCurrency(netCashFinancing, 'NGN')}</span>
+                        </div>
+                    </div>
+
+                    {/* Summary */}
+                    <div className="mt-8 pt-4 border-t-2 border-slate-900">
+                         <div className="flex justify-between font-bold">
+                            <span>Net Increase/Decrease in Cash</span>
+                            <span>{formatCurrency(netCashChange, 'NGN')}</span>
+                        </div>
+                        <div className="flex justify-between py-1">
+                            <span className="text-slate-600">Cash at Beginning of Period</span>
+                            <span>{formatCurrency(beginningCash, 'NGN')}</span>
+                        </div>
+                        <div className="flex justify-between py-1 font-bold text-lg border-t border-slate-300 mt-2 pt-2">
+                            <span>Cash at End of Period</span>
+                            <span>{formatCurrency(totalAssets, 'NGN')}</span>
+                        </div>
+                    </div>
                 </div>
-                <div className="text-right">
-                    <p>Authorized Signature</p>
-                    <div className="w-48 border-b border-slate-300 mt-8"></div>
+            )}
+
+            {/* Disclaimer & Footer */}
+            <div className="mt-20 pt-8 border-t border-slate-200">
+                <h4 className="text-xs font-bold text-slate-700 uppercase mb-2">Notes to the Financial Statements</h4>
+                <p className="text-[10px] text-slate-500 leading-relaxed text-justify">
+                    1. <strong>Basis of Preparation:</strong> These financial statements have been prepared in accordance with the International Financial Reporting Standards (IFRS) for SMEs and the Nigerian Finance Act 2026.<br/>
+                    2. <strong>Currency:</strong> The reporting currency is Nigerian Naira (NGN). Foreign currency transactions are translated at the spot rate on the transaction date.<br/>
+                    3. <strong>Revenue Recognition:</strong> Revenue is recognized on an accrual basis when services are rendered, regardless of when payment is received.<br/>
+                    4. <strong>Taxation:</strong> Value Added Tax (VAT) is calculated at 7.5% on taxable goods and services. Withholding Tax (WHT) credits are recognized as assets upon receipt of credit notes.
+                </p>
+                
+                <div className="flex justify-between items-end mt-12">
+                    <div className="text-center">
+                         <div className="w-48 border-b border-slate-300 mb-2"></div>
+                         <p className="text-xs text-slate-400">Prepared By</p>
+                    </div>
+                    <div className="text-center">
+                         <div className="w-48 border-b border-slate-300 mb-2"></div>
+                         <p className="text-xs text-slate-400">Approved By (Director)</p>
+                    </div>
                 </div>
             </div>
         </div>

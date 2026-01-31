@@ -22,7 +22,7 @@ export enum InvoiceStatus {
 
 export type UserRole = 'USER' | 'ADMIN';
 export type UserType = 'INDIVIDUAL' | 'CORPORATE';
-export type KYCStatus = 'UNVERIFIED' | 'PENDING' | 'VERIFIED' | 'REJECTED'; // Added REJECTED
+export type KYCStatus = 'UNVERIFIED' | 'PENDING' | 'VERIFIED' | 'REJECTED'; 
 export type AccountTier = 'TIER_1' | 'TIER_2' | 'TIER_3';
 
 export interface UserProfile {
@@ -33,6 +33,7 @@ export interface UserProfile {
   companyName?: string;
   kycStatus: KYCStatus;
   tier: AccountTier;
+  tin?: string; // Tax Identification Number
 }
 
 export interface KYCRequest {
@@ -46,20 +47,39 @@ export interface KYCRequest {
   date: string;
 }
 
+// Global Standard: Detailed Tax Breakdown
+export interface TaxDetails {
+  vatAmount: number; // 7.5% Standard
+  whtAmount: number; // 5% or 10% Withholding
+  isRemitted: boolean;
+}
+
+// Global Standard: Audit Trail
+export interface AuditLog {
+  createdAt: string;
+  createdBy: string;
+  modifiedAt?: string;
+  source: 'MANUAL' | 'BANK_IMPORT' | 'INVOICE_GENERATED' | 'SYSTEM';
+}
+
 export interface Transaction {
   id: string;
   date: string;
   description: string;
-  payee: string; // Vendor or Client Name (Crucial for Audits)
-  amount: number;
+  payee: string; 
+  amount: number; // Net Amount (Cash impact)
+  grossAmount?: number; // Amount before WHT deduction (for Revenue recognition)
   currency: 'NGN' | 'USD';
+  exchangeRateSnapshot?: number; // IAS 21: The rate at the date of transaction
   type: TransactionType;
-  expenseCategory?: ExpenseCategoryType; // New Field: BUSINESS or PERSONAL
+  expenseCategory?: ExpenseCategoryType; 
   category: string;
-  tags?: string[]; // For Project or Cost Center tracking
+  tags?: string[];
   receiptUrl?: string;
   taxDeductible: boolean;
-  status?: 'CLEARED' | 'PENDING';
+  taxDetails?: TaxDetails; // Compliance Data
+  auditLog?: AuditLog; // Accountability
+  status?: 'CLEARED' | 'PENDING' | 'VOID';
 }
 
 export interface InvoiceItem {
@@ -77,8 +97,13 @@ export interface Invoice {
   dueDate: string;
   items: InvoiceItem[];
   currency: 'NGN' | 'USD';
+  subTotal: number;
+  vatAmount: number;
+  whtDeduction: number; // Estimated deduction by client
+  totalAmount: number; // Receivable Amount
   status: InvoiceStatus;
-  paymentMethods: PaymentMethod[]; // Supported methods for this invoice via Bani
+  paidDate?: string; // Date payment was confirmed
+  paymentMethods: PaymentMethod[]; 
   baniPaymentLink?: string;
 }
 
@@ -103,8 +128,8 @@ export interface Budget {
   category: string;
   limit: number;
   currency: 'NGN' | 'USD';
-  type: ExpenseCategoryType; // BUSINESS or PERSONAL
-  period: 'MONTHLY'; // Currently support monthly budgets
+  type: ExpenseCategoryType;
+  period: 'MONTHLY';
 }
 
 export interface ExpenseInsight {
@@ -118,9 +143,8 @@ export interface TaxReport {
   estimatedVAT: number;
   deductibleExpenses: number;
   taxableIncome: number;
-  complianceScore: number; // 0-100
+  complianceScore: number; 
   recommendations: string[];
-  // Deep Financial Insights
   topPersonalExpenses: ExpenseInsight[];
   topBusinessExpenses: ExpenseInsight[];
   keyFinancialDecisions: string[];

@@ -120,13 +120,21 @@ function App() {
       id: 'INV-001', clientName: 'TechNext Ltd', clientEmail: 'accounts@technext.ng',
       issueDate: '2025-06-01', dueDate: '2025-06-15', currency: 'NGN',
       status: InvoiceStatus.SENT, paymentMethods: [PaymentMethod.FIAT_NGN, PaymentMethod.CRYPTO_USDC],
-      items: [{ id: 'i1', description: 'Frontend Architecture', quantity: 1, unitPrice: 1500000 }]
+      items: [{ id: 'i1', description: 'Frontend Architecture', quantity: 1, unitPrice: 1500000 }],
+      subTotal: 1500000,
+      vatAmount: 112500,
+      whtDeduction: 75000,
+      totalAmount: 1537500
     },
     {
       id: 'INV-002', clientName: 'Global Corp', clientEmail: 'billing@global.com',
       issueDate: '2025-05-20', dueDate: '2025-06-05', currency: 'USD',
-      status: InvoiceStatus.PAID, paymentMethods: [PaymentMethod.CRYPTO_USDC, PaymentMethod.CRYPTO_BTC],
-      items: [{ id: 'i2', description: 'Smart Contract Audit', quantity: 10, unitPrice: 150 }]
+      status: InvoiceStatus.PAID, paidDate: '2025-05-22', paymentMethods: [PaymentMethod.CRYPTO_USDC, PaymentMethod.CRYPTO_BTC],
+      items: [{ id: 'i2', description: 'Smart Contract Audit', quantity: 10, unitPrice: 150 }],
+      subTotal: 1500,
+      vatAmount: 0,
+      whtDeduction: 0,
+      totalAmount: 1500
     }
   ];
 
@@ -316,9 +324,10 @@ function App() {
     const invoice = invoices.find(i => i.id === id);
     if (!invoice || invoice.status === InvoiceStatus.PAID) return;
 
-    // 1. Update Invoice Status
+    // 1. Update Invoice Status AND Record Payment Date
+    const todayStr = new Date().toISOString().split('T')[0];
     setInvoices(invoices.map(inv => 
-        inv.id === id ? { ...inv, status: InvoiceStatus.PAID } : inv
+        inv.id === id ? { ...inv, status: InvoiceStatus.PAID, paidDate: todayStr } : inv
     ));
 
     // 2. Update Assets (Wallet)
