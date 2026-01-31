@@ -23,6 +23,25 @@ Fiscana is a comprehensive financial management platform designed for freelancer
 
 ---
 
+## 💳 Bani.africa Payment Rails
+
+Fiscana uses **Bani.africa** to handle all money movements: Payouts (Withdrawals) and Collections (Invoices).
+
+### 1. Payouts (Withdrawals)
+Located in `services/baniService.ts`.
+- **Fiat**: Supports transfers to all Nigerian banks via NIP.
+  - Requires `bank_code` and `account_number`.
+  - Includes an Account Lookup step to verify the beneficiary name before transfer.
+- **Crypto**: Supports stablecoin withdrawals (USDC, USDT).
+  - Requires `wallet_address` and `network` (e.g., SOL, TRC20).
+
+### 2. Collections (Invoices)
+- Invoices generated in `components/Invoices.tsx` utilize Bani's **Payment Links**.
+- Supports payment via Bank Transfer, Mobile Money, and Crypto.
+- The link format: `https://pay.bani.africa/pay/{reference}`.
+
+---
+
 ## 🏦 Mono Open Banking Integration Guide
 
 Fiscana uses **Mono Connect** to link user bank accounts securely.

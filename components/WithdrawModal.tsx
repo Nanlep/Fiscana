@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
-import { X, Building2, Wallet, Loader2, CheckCircle, User, Briefcase } from 'lucide-react';
+
+import React, { useState, useEffect } from 'react';
+import { X, Building2, Wallet, Loader2, CheckCircle, User, Briefcase, ShieldCheck } from 'lucide-react';
 import { ExpenseCategoryType } from '../types';
+import { resolveBankAccount, initiatePayout } from '../services/baniService';
 
 interface WithdrawModalProps {
   isOpen: boolean;
@@ -18,18 +20,43 @@ const WithdrawModal: React.FC<WithdrawModalProps> = ({ isOpen, onClose, onWithdr
   const [step, setStep] = useState<'INPUT' | 'PROCESSING' | 'SUCCESS'>('INPUT');
   
   // Bank Details
-  const [bankName, setBankName] = useState('');
+  const [bankCode, setBankCode] = useState('');
   const [accountNumber, setAccountNumber] = useState('');
+  const [accountName, setAccountName] = useState('');
+  const [isVerifying, setIsVerifying] = useState(false);
   
   // Crypto Details
   const [walletAddress, setWalletAddress] = useState('');
   const [network, setNetwork] = useState('SOL');
 
+  useEffect(() => {
+      // Auto-verify account when 10 digits entered
+      if (currency === 'NGN' && accountNumber.length === 10 && bankCode) {
+          verifyAccount();
+      } else {
+          setAccountName('');
+      }
+  }, [accountNumber, bankCode, currency]);
+
+  const verifyAccount = async () => {
+      setIsVerifying(true);
+      try {
+          const name = await resolveBankAccount(accountNumber, bankCode);
+          setAccountName(name);
+      } catch (error) {
+          setAccountName('');
+      } finally {
+          setIsVerifying(false);
+      }
+  };
+
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const val = parseFloat(amount);
+    
+    // Validations
     if (!val || val <= 0) return;
     if (currency === 'NGN' && val > balanceNGN) {
         alert("Insufficient NGN Balance");
@@ -39,12 +66,38 @@ const WithdrawModal: React.FC<WithdrawModalProps> = ({ isOpen, onClose, onWithdr
         alert("Insufficient USDC Balance");
         return;
     }
+    if (currency === 'NGN' && !accountName) {
+        alert("Please wait for account verification");
+        return;
+    }
 
     setStep('PROCESSING');
-    setTimeout(() => {
+
+    try {
+        // Call Bani Service
+        await initiatePayout({
+            amount: val,
+            currency: currency,
+            destination: currency === 'NGN' ? {
+                type: 'BANK',
+                bankCode,
+                accountNumber
+            } : {
+                type: 'CRYPTO_WALLET',
+                walletAddress,
+                network
+            },
+            narration: narration || 'Withdrawal from Fiscana'
+        });
+
+        // If successful, update local app state
         onWithdraw(val, currency, narration, withdrawalType);
         setStep('SUCCESS');
-    }, 2000);
+
+    } catch (error) {
+        alert("Withdrawal failed. Please try again.");
+        setStep('INPUT');
+    }
   };
 
   const reset = () => {
@@ -52,6 +105,9 @@ const WithdrawModal: React.FC<WithdrawModalProps> = ({ isOpen, onClose, onWithdr
     setAmount('');
     setNarration('');
     setWithdrawalType('PERSONAL');
+    setAccountNumber('');
+    setAccountName('');
+    setWalletAddress('');
     onClose();
   };
 
@@ -122,30 +178,45 @@ const WithdrawModal: React.FC<WithdrawModalProps> = ({ isOpen, onClose, onWithdr
                                 <label className="block text-sm font-medium text-slate-700 mb-1">Select Bank</label>
                                 <select 
                                     className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-green-500 outline-none text-sm"
-                                    value={bankName}
-                                    onChange={(e) => setBankName(e.target.value)}
+                                    value={bankCode}
+                                    onChange={(e) => setBankCode(e.target.value)}
                                     required
                                 >
                                     <option value="">Select Bank...</option>
-                                    <option value="GTBank">Guaranty Trust Bank</option>
-                                    <option value="Zenith">Zenith Bank</option>
-                                    <option value="Access">Access Bank</option>
-                                    <option value="Kuda">Kuda Microfinance</option>
-                                    <option value="OPay">OPay</option>
+                                    <option value="058">Guaranty Trust Bank</option>
+                                    <option value="057">Zenith Bank</option>
+                                    <option value="044">Access Bank</option>
+                                    <option value="50211">Kuda Microfinance</option>
+                                    <option value="99999">OPay</option>
                                 </select>
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-1">Account Number</label>
-                                <input 
-                                    type="text" 
-                                    maxLength={10}
-                                    minLength={10}
-                                    value={accountNumber}
-                                    onChange={(e) => setAccountNumber(e.target.value)}
-                                    className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-green-500 outline-none"
-                                    placeholder="0123456789"
-                                    required
-                                />
+                                <div className="relative">
+                                    <input 
+                                        type="text" 
+                                        maxLength={10}
+                                        minLength={10}
+                                        value={accountNumber}
+                                        onChange={(e) => setAccountNumber(e.target.value.replace(/\D/g, ''))}
+                                        className={`w-full px-4 py-2 border rounded-xl focus:ring-2 outline-none transition-colors ${
+                                            accountName ? 'border-green-500 focus:ring-green-500' : 'border-slate-200 focus:ring-green-500'
+                                        }`}
+                                        placeholder="0123456789"
+                                        required
+                                    />
+                                    {isVerifying && (
+                                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                            <Loader2 size={16} className="animate-spin text-slate-400" />
+                                        </div>
+                                    )}
+                                </div>
+                                {accountName && (
+                                    <div className="mt-2 flex items-center space-x-1 text-xs text-green-700 bg-green-50 px-2 py-1 rounded w-fit animate-in fade-in slide-in-from-top-1">
+                                        <ShieldCheck size={12} />
+                                        <span className="font-bold">{accountName}</span>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     ) : (
@@ -221,7 +292,8 @@ const WithdrawModal: React.FC<WithdrawModalProps> = ({ isOpen, onClose, onWithdr
                     <div className="pt-2">
                         <button 
                             type="submit"
-                            className="w-full py-3 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-colors shadow-lg"
+                            disabled={currency === 'NGN' && !accountName}
+                            className="w-full py-3 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             Withdraw Funds
                         </button>
@@ -233,8 +305,8 @@ const WithdrawModal: React.FC<WithdrawModalProps> = ({ isOpen, onClose, onWithdr
         {step === 'PROCESSING' && (
             <div className="flex flex-col items-center justify-center py-10 text-center">
                 <Loader2 size={48} className="text-green-600 animate-spin mb-4" />
-                <h3 className="text-xl font-bold text-slate-900 mb-2">Processing Withdrawal</h3>
-                <p className="text-slate-500">Communicating with Bani Rails...</p>
+                <h3 className="text-xl font-bold text-slate-900 mb-2">Processing via Bani</h3>
+                <p className="text-slate-500">Initiating secure payout rails...</p>
             </div>
         )}
 
@@ -243,9 +315,10 @@ const WithdrawModal: React.FC<WithdrawModalProps> = ({ isOpen, onClose, onWithdr
                 <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-4">
                     <CheckCircle size={32} />
                 </div>
-                <h3 className="text-2xl font-bold text-slate-900 mb-2">Withdrawal Successful</h3>
+                <h3 className="text-2xl font-bold text-slate-900 mb-2">Withdrawal Initiated</h3>
                 <p className="text-slate-500 mb-6">
-                    {currency === 'NGN' ? '₦' : '$'}{parseFloat(amount).toLocaleString()} has been sent to your {currency === 'NGN' ? 'bank account' : 'wallet'}.
+                    {currency === 'NGN' ? '₦' : '$'}{parseFloat(amount).toLocaleString()} has been sent. <br/>
+                    <span className="text-xs text-slate-400">Powered by Bani.africa</span>
                 </p>
                 <button 
                     onClick={reset}

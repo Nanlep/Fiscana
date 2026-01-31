@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Plus, Send, Download, CreditCard, Bitcoin, CheckCircle, Calculator, FileCheck, Loader2 } from 'lucide-react';
 import { Invoice, InvoiceStatus, PaymentMethod, Transaction, TransactionType, UserProfile } from '../types';
 import { calculateInvoiceTotals } from '../utils/tax';
+import { createCollectionLink } from '../services/baniService';
 
 interface InvoicesProps {
   invoices: Invoice[];
@@ -21,10 +22,12 @@ declare global {
 
 const Invoices: React.FC<InvoicesProps> = ({ invoices, user, addInvoice, addTransaction, markAsPaid, notify }) => {
   const [isCreating, setIsCreating] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false); // New state for loading link
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   
   // Form State
   const [clientName, setClientName] = useState('');
+  const [clientEmail, setClientEmail] = useState('');
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [currency, setCurrency] = useState<'NGN' | 'USD'>('NGN');
@@ -32,7 +35,7 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, user, addInvoice, addTran
   
   // Tax Configuration
   const [addVat, setAddVat] = useState(true);
-  const [expectWht, setExpectWht] = useState(false); // Does client deduct WHT?
+  const [expectWht, setExpectWht] = useState(false); 
 
   const toggleMethod = (method: PaymentMethod) => {
     if (baniMethods.includes(method)) {
@@ -44,75 +47,94 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, user, addInvoice, addTran
 
   // Calculations
   const subTotal = parseFloat(amount) || 0;
-  const { vat, wht, totalReceivable } = calculateInvoiceTotals(subTotal, addVat, expectWht, 'INDIVIDUAL'); // Defaulting to Individual for now
+  const { vat, wht, totalReceivable } = calculateInvoiceTotals(subTotal, addVat, expectWht, 'INDIVIDUAL');
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     if (!clientName || !amount) {
         notify('ERROR', 'Please fill in Client Name and Amount');
         return;
     }
     
-    const items = [{
-        id: '1',
-        description,
-        quantity: 1,
-        unitPrice: subTotal
-    }];
+    setIsGenerating(true);
 
-    const invoiceId = Math.random().toString(36).substr(2, 9).toUpperCase();
-    const issueDate = new Date().toISOString().split('T')[0];
+    try {
+        const items = [{
+            id: '1',
+            description,
+            quantity: 1,
+            unitPrice: subTotal
+        }];
 
-    const newInvoice: Invoice = {
-      id: invoiceId,
-      clientName,
-      clientEmail: 'client@example.com',
-      issueDate: issueDate,
-      dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      items: items,
-      currency,
-      subTotal: subTotal,
-      vatAmount: vat,
-      whtDeduction: wht,
-      totalAmount: totalReceivable,
-      status: InvoiceStatus.SENT,
-      paymentMethods: baniMethods,
-      baniPaymentLink: `https://pay.bani.africa/${Math.random().toString(36).substr(2, 6)}`
-    };
+        const invoiceId = Math.random().toString(36).substr(2, 9).toUpperCase();
+        const issueDate = new Date().toISOString().split('T')[0];
 
-    const newTransaction: Transaction = {
-        id: `tx_${invoiceId}`,
-        date: issueDate,
-        description: `Invoice #${invoiceId} - ${description || 'Services Rendered'}`,
-        payee: clientName,
-        amount: totalReceivable, // Net Cash Expectation
-        grossAmount: subTotal, // For Revenue Recognition
-        currency: currency,
-        exchangeRateSnapshot: 1550, // Ideally pulled from global context
-        type: TransactionType.INCOME,
-        category: 'Service Revenue',
-        taxDeductible: false,
-        taxDetails: {
+        // --- BANI INTEGRATION START ---
+        // Generate a real/simulated Bani Payment Link
+        const paymentLink = await createCollectionLink(
+            totalReceivable, 
+            currency, 
+            clientEmail || 'client@example.com'
+        );
+        // --- BANI INTEGRATION END ---
+
+        const newInvoice: Invoice = {
+            id: invoiceId,
+            clientName,
+            clientEmail: clientEmail || 'client@example.com',
+            issueDate: issueDate,
+            dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+            items: items,
+            currency,
+            subTotal: subTotal,
             vatAmount: vat,
-            whtAmount: wht,
-            isRemitted: false
-        },
-        auditLog: {
-            createdAt: new Date().toISOString(),
-            createdBy: 'System (Invoice Module)',
-            source: 'INVOICE_GENERATED'
-        },
-        tags: ['#Invoiced', '#Receivable'],
-        status: 'PENDING'
-    };
+            whtDeduction: wht,
+            totalAmount: totalReceivable,
+            status: InvoiceStatus.SENT,
+            paymentMethods: baniMethods,
+            baniPaymentLink: paymentLink
+        };
 
-    addInvoice(newInvoice);
-    addTransaction(newTransaction);
+        const newTransaction: Transaction = {
+            id: `tx_${invoiceId}`,
+            date: issueDate,
+            description: `Invoice #${invoiceId} - ${description || 'Services Rendered'}`,
+            payee: clientName,
+            amount: totalReceivable, 
+            grossAmount: subTotal, 
+            currency: currency,
+            exchangeRateSnapshot: 1550, 
+            type: TransactionType.INCOME,
+            category: 'Service Revenue',
+            taxDeductible: false,
+            taxDetails: {
+                vatAmount: vat,
+                whtAmount: wht,
+                isRemitted: false
+            },
+            auditLog: {
+                createdAt: new Date().toISOString(),
+                createdBy: 'System (Invoice Module)',
+                source: 'INVOICE_GENERATED'
+            },
+            tags: ['#Invoiced', '#Receivable'],
+            status: 'PENDING'
+        };
 
-    setIsCreating(false);
-    setClientName('');
-    setAmount('');
-    setDescription('');
-    notify('SUCCESS', 'Invoice created and posted to ledger');
+        addInvoice(newInvoice);
+        addTransaction(newTransaction);
+
+        setIsCreating(false);
+        setClientName('');
+        setClientEmail('');
+        setAmount('');
+        setDescription('');
+        notify('SUCCESS', 'Invoice created with Bani Payment Link');
+
+    } catch (e) {
+        notify('ERROR', 'Failed to generate payment link');
+    } finally {
+        setIsGenerating(false);
+    }
   };
 
   const generatePDF = async (elementId: string, filename: string) => {
@@ -132,7 +154,7 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, user, addInvoice, addTran
           jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
       };
 
-      setDownloadingId(filename); // Simple way to show loading state if we tracked it by ID, here just boolean essentially
+      setDownloadingId(filename); 
       
       try {
         await window.html2pdf().set(opt).from(element).save();
@@ -244,8 +266,13 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, user, addInvoice, addTran
                     <p className="text-xs text-slate-400">
                         {type === 'RECEIPT' 
                          ? 'This is a computer-generated receipt and is valid without a signature.' 
-                         : 'Please pay into the account details provided or use the payment link.'}
+                         : 'Please pay into the account details provided or use the payment link below.'}
                     </p>
+                    {type === 'INVOICE' && inv.baniPaymentLink && (
+                        <div className="mt-4">
+                             <span className="text-xs font-mono bg-slate-100 p-2 rounded">{inv.baniPaymentLink}</span>
+                        </div>
+                    )}
                 </div>
              </div>
         </div>
@@ -253,13 +280,7 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, user, addInvoice, addTran
   };
 
   const handleGenerateReceipt = (inv: Invoice) => {
-      // For Receipt, we trigger the PDF download logic directly
       notify('INFO', 'Generating Receipt PDF...');
-      
-      // We need to render the hidden element first, React handles this via state rendering
-      // But here we can access it if it is already in DOM.
-      // We will mount the hidden templates at the bottom of the component return.
-      
       setTimeout(() => {
           generatePDF(`pdf-${inv.id}-RECEIPT`, `Receipt-${inv.id}.pdf`);
       }, 100);
@@ -304,6 +325,16 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, user, addInvoice, addTran
                   onChange={(e) => setClientName(e.target.value)}
                   className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
                   placeholder="e.g. Acme Corp"
+                />
+              </div>
+               <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Client Email (For Payment Link)</label>
+                <input 
+                  type="email" 
+                  value={clientEmail}
+                  onChange={(e) => setClientEmail(e.target.value)}
+                  className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
+                  placeholder="billing@client.com"
                 />
               </div>
               <div>
@@ -381,7 +412,14 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, user, addInvoice, addTran
 
           <div className="mt-6 flex justify-end space-x-3 border-t border-slate-100 pt-6">
              <button onClick={() => setIsCreating(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">Cancel</button>
-             <button onClick={handleCreate} className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-lg">Generate Invoice</button>
+             <button 
+                onClick={handleCreate} 
+                disabled={isGenerating}
+                className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-lg flex items-center space-x-2 disabled:opacity-70 disabled:cursor-not-allowed"
+             >
+                {isGenerating && <Loader2 size={16} className="animate-spin" />}
+                <span>{isGenerating ? 'Generating Link...' : 'Generate Invoice'}</span>
+             </button>
           </div>
         </div>
       )}
