@@ -1,6 +1,7 @@
+
 import React, { useState } from 'react';
-import { Asset, Liability } from '../types';
-import { Wallet, Landmark, Monitor, TrendingUp, Plus, X, Activity, AlertCircle, ShieldCheck, Percent, Briefcase } from 'lucide-react';
+import { Asset, Liability, AssetType, LiabilityType } from '../types';
+import { Wallet, Landmark, Monitor, TrendingUp, Plus, X, Activity, AlertCircle, ShieldCheck, Percent, Briefcase, Home, Car, CreditCard, FileText, Box, Lightbulb, Smartphone, ShoppingCart, Layers } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { normalizeToNGN, formatCurrency } from '../utils/currency';
 
@@ -12,14 +13,29 @@ interface AssetsProps {
   exchangeRate: number;
 }
 
+const ASSET_CATEGORIES: Record<string, AssetType[]> = {
+    "Liquid Assets": ["CASH", "BANK_ACCOUNT", "MONEY_MARKET"],
+    "Digital Assets": ["CRYPTO", "NFT", "DIGITAL_WALLET"],
+    "Investments": ["STOCKS", "BONDS", "MUTUAL_FUNDS", "ETF", "REIT", "INVESTMENT"],
+    "Fixed Assets": ["REAL_ESTATE", "VEHICLE", "EQUIPMENT", "ELECTRONICS", "FURNITURE"],
+    "Business Assets": ["INVENTORY", "RECEIVABLE", "INTELLECTUAL_PROPERTY"],
+    "Other": ["OTHER"]
+};
+
+const LIABILITY_CATEGORIES: Record<string, LiabilityType[]> = {
+    "Short Term Debt": ["CREDIT_CARD", "OVERDRAFT", "LOAN_SHORT_TERM", "PAYABLE", "TAX_LIABILITY"],
+    "Long Term Debt": ["MORTGAGE", "LOAN", "LOAN_STUDENT", "LOAN_VEHICLE"],
+    "Other": ["OTHER"]
+};
+
 const Assets: React.FC<AssetsProps> = ({ assets, liabilities, addAsset, addLiability, exchangeRate }) => {
   // Normalize everything to NGN for aggregation
   const totalAssets = assets.reduce((acc, curr) => acc + normalizeToNGN(curr.value, curr.currency, exchangeRate), 0);
   const totalLiabilities = liabilities.reduce((acc, curr) => acc + normalizeToNGN(curr.amount, curr.currency, exchangeRate), 0);
   const netWorth = totalAssets - totalLiabilities;
 
-  const data = assets.map(a => ({ name: a.type, value: normalizeToNGN(a.value, a.currency, exchangeRate) }));
-  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
+  const data = assets.map(a => ({ name: a.name, value: normalizeToNGN(a.value, a.currency, exchangeRate) }));
+  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d', '#ffc658'];
 
   // Modal State
   const [modalType, setModalType] = useState<'ASSET' | 'LIABILITY' | null>(null);
@@ -27,8 +43,10 @@ const Assets: React.FC<AssetsProps> = ({ assets, liabilities, addAsset, addLiabi
   
   const [formData, setFormData] = useState({
     name: '',
+    description: '',
     amount: '',
-    type: 'CASH',
+    assetType: 'CASH' as AssetType,
+    liabilityType: 'LOAN' as LiabilityType,
     currency: 'NGN' as 'NGN' | 'USD'
   });
 
@@ -40,26 +58,54 @@ const Assets: React.FC<AssetsProps> = ({ assets, liabilities, addAsset, addLiabi
         const newAsset: Asset = {
             id: `a_${Date.now()}`,
             name: formData.name,
+            description: formData.description,
             value: parseFloat(formData.amount),
             currency: formData.currency,
-            type: formData.type as any
+            type: formData.assetType
         };
         addAsset(newAsset);
     } else {
         const newLiability: Liability = {
             id: `l_${Date.now()}`,
             name: formData.name,
+            description: formData.description,
             amount: parseFloat(formData.amount),
-            currency: formData.currency
+            currency: formData.currency,
+            type: formData.liabilityType
         };
         addLiability(newLiability);
     }
     setModalType(null);
-    setFormData({ name: '', amount: '', type: 'CASH', currency: 'NGN' });
+    setFormData({ name: '', description: '', amount: '', assetType: 'CASH', liabilityType: 'LOAN', currency: 'NGN' });
+  };
+
+  // Helper to get Icon based on type
+  const getIcon = (type: string) => {
+      switch(type) {
+          // Assets
+          case 'CASH': case 'BANK_ACCOUNT': return <Landmark size={18} />;
+          case 'CRYPTO': case 'DIGITAL_WALLET': return <Wallet size={18} />;
+          case 'REAL_ESTATE': case 'REIT': return <Home size={18} />;
+          case 'VEHICLE': return <Car size={18} />;
+          case 'EQUIPMENT': case 'ELECTRONICS': return <Monitor size={18} />;
+          case 'STOCKS': case 'ETF': case 'MUTUAL_FUNDS': return <TrendingUp size={18} />;
+          case 'INTELLECTUAL_PROPERTY': return <Lightbulb size={18} />;
+          case 'INVENTORY': return <Box size={18} />;
+          // Liabilities
+          case 'CREDIT_CARD': return <CreditCard size={18} />;
+          case 'MORTGAGE': return <Home size={18} />;
+          case 'TAX_LIABILITY': return <FileText size={18} />;
+          case 'LOAN_VEHICLE': return <Car size={18} />;
+          default: return <Layers size={18} />;
+      }
+  };
+
+  const getReadableType = (type: string) => {
+      return type.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
   };
 
   // Analysis Logic
-  const liquidAssets = assets.filter(a => a.type === 'CASH' || a.type === 'CRYPTO').reduce((acc, curr) => acc + normalizeToNGN(curr.value, curr.currency, exchangeRate), 0);
+  const liquidAssets = assets.filter(a => ['CASH', 'BANK_ACCOUNT', 'MONEY_MARKET', 'CRYPTO'].includes(a.type)).reduce((acc, curr) => acc + normalizeToNGN(curr.value, curr.currency, exchangeRate), 0);
   const debtRatio = totalAssets > 0 ? (totalLiabilities / totalAssets) * 100 : 0;
   
   const isSolvent = totalAssets >= totalLiabilities;
@@ -77,7 +123,7 @@ const Assets: React.FC<AssetsProps> = ({ assets, liabilities, addAsset, addLiabi
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
                 <h1 className="text-3xl font-bold text-slate-900">Assets & Liabilities</h1>
-                <p className="text-slate-500">Your personal balance sheet (Base: NGN)</p>
+                <p className="text-slate-500">Your detailed personal balance sheet (Base: NGN)</p>
             </div>
             <div className="flex items-center space-x-4">
                 <div className="text-right">
@@ -86,14 +132,14 @@ const Assets: React.FC<AssetsProps> = ({ assets, liabilities, addAsset, addLiabi
                 </div>
                  <div className="flex space-x-2">
                     <button 
-                        onClick={() => { setModalType('ASSET'); setFormData({name: '', amount: '', type: 'CASH', currency: 'NGN'}); }}
+                        onClick={() => { setModalType('ASSET'); setFormData({name: '', description: '', amount: '', assetType: 'CASH', liabilityType: 'LOAN', currency: 'NGN'}); }}
                         className="bg-blue-600 text-white p-2 rounded-lg hover:bg-blue-700 transition-colors shadow-lg shadow-blue-600/20"
                         title="Add Asset"
                     >
                         <Plus size={20} />
                     </button>
                     <button 
-                        onClick={() => { setModalType('LIABILITY'); setFormData({name: '', amount: '', type: 'CASH', currency: 'NGN'}); }}
+                        onClick={() => { setModalType('LIABILITY'); setFormData({name: '', description: '', amount: '', assetType: 'CASH', liabilityType: 'LOAN', currency: 'NGN'}); }}
                         className="bg-red-600 text-white p-2 rounded-lg hover:bg-red-700 transition-colors shadow-lg shadow-red-600/20"
                         title="Add Liability"
                     >
@@ -105,12 +151,12 @@ const Assets: React.FC<AssetsProps> = ({ assets, liabilities, addAsset, addLiabi
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Assets Card */}
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col h-full">
                 <div className="flex justify-between items-center mb-6">
                     <h3 className="text-lg font-bold text-slate-800">Assets Breakdown</h3>
                     <span className="text-green-600 font-bold">{formatCurrency(totalAssets, 'NGN')}</span>
                 </div>
-                <div className="h-64 flex items-center justify-center">
+                <div className="h-64 flex items-center justify-center mb-4">
                     {assets.length > 0 ? (
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
@@ -121,7 +167,7 @@ const Assets: React.FC<AssetsProps> = ({ assets, liabilities, addAsset, addLiabi
                                     innerRadius={60}
                                     outerRadius={80}
                                     fill="#8884d8"
-                                    paddingAngle={5}
+                                    paddingAngle={2}
                                     dataKey="value"
                                 >
                                     {data.map((entry, index) => (
@@ -135,44 +181,65 @@ const Assets: React.FC<AssetsProps> = ({ assets, liabilities, addAsset, addLiabi
                          <div className="text-slate-400">No assets recorded</div>
                     )}
                 </div>
-                <div className="space-y-3 mt-4 max-h-60 overflow-y-auto">
+                <div className="space-y-3 overflow-y-auto flex-1 custom-scrollbar pr-2" style={{maxHeight: '400px'}}>
                     {assets.map((asset) => (
-                        <div key={asset.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
-                            <div className="flex items-center space-x-3">
-                                <div className="p-2 bg-blue-100 text-blue-600 rounded-lg">
-                                    {asset.type === 'CRYPTO' ? <Wallet size={16}/> : 
-                                     asset.type === 'EQUIPMENT' ? <Monitor size={16}/> : 
-                                     asset.type === 'INVESTMENT' ? <TrendingUp size={16}/> :
-                                     <Landmark size={16}/>}
+                        <div key={asset.id} className="group relative p-3 bg-slate-50 rounded-xl border border-slate-100 hover:border-blue-200 transition-all">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center space-x-3">
+                                    <div className="p-2 bg-blue-100 text-blue-600 rounded-lg group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                                        {getIcon(asset.type)}
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold text-slate-800">{asset.name}</p>
+                                        <div className="flex items-center space-x-2">
+                                            <span className="text-xs font-medium text-slate-500 bg-slate-200 px-1.5 py-0.5 rounded">{getReadableType(asset.type)}</span>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div>
-                                    <p className="font-semibold text-slate-800">{asset.name}</p>
-                                    <p className="text-xs text-slate-500">{asset.type}</p>
-                                </div>
+                                <div className="font-bold text-slate-700">{formatCurrency(asset.value, asset.currency)}</div>
                             </div>
-                            <div className="font-bold text-slate-700">{formatCurrency(asset.value, asset.currency)}</div>
+                            {asset.description && (
+                                <p className="text-xs text-slate-500 mt-2 pl-12 border-l-2 border-slate-200 ml-3 italic">
+                                    {asset.description}
+                                </p>
+                            )}
                         </div>
                     ))}
                 </div>
             </div>
 
             {/* Liabilities & Net Worth */}
-             <div className="space-y-6">
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+             <div className="space-y-6 flex flex-col h-full">
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex-1 flex flex-col">
                      <div className="flex justify-between items-center mb-6">
                         <h3 className="text-lg font-bold text-slate-800">Liabilities</h3>
                         <span className="text-red-600 font-bold">{formatCurrency(totalLiabilities, 'NGN')}</span>
                     </div>
                     {liabilities.length === 0 ? (
-                        <div className="p-8 text-center text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                        <div className="p-8 text-center text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-200 flex-1 flex items-center justify-center">
                             Debt free! No liabilities recorded.
                         </div>
                     ) : (
-                        <div className="space-y-3 max-h-60 overflow-y-auto">
+                        <div className="space-y-3 overflow-y-auto custom-scrollbar pr-2" style={{maxHeight: '400px'}}>
                              {liabilities.map((l) => (
-                                <div key={l.id} className="flex items-center justify-between p-3 bg-red-50 rounded-xl border border-red-100">
-                                    <span className="font-medium text-red-900">{l.name}</span>
-                                    <span className="font-bold text-red-700">{formatCurrency(l.amount, l.currency)}</span>
+                                <div key={l.id} className="p-3 bg-red-50 rounded-xl border border-red-100 group">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center space-x-3">
+                                            <div className="p-2 bg-white text-red-500 rounded-lg border border-red-100">
+                                                {getIcon(l.type || 'LOAN')}
+                                            </div>
+                                            <div>
+                                                <p className="font-semibold text-red-900">{l.name}</p>
+                                                {l.type && <span className="text-xs text-red-400 font-medium bg-white px-1.5 py-0.5 rounded border border-red-100">{getReadableType(l.type)}</span>}
+                                            </div>
+                                        </div>
+                                        <span className="font-bold text-red-700">{formatCurrency(l.amount, l.currency)}</span>
+                                    </div>
+                                    {l.description && (
+                                        <p className="text-xs text-red-600/70 mt-2 pl-12 border-l-2 border-red-200 ml-3 italic">
+                                            {l.description}
+                                        </p>
+                                    )}
                                 </div>
                             ))}
                         </div>
@@ -198,7 +265,7 @@ const Assets: React.FC<AssetsProps> = ({ assets, liabilities, addAsset, addLiabi
         {/* Input Modal */}
         {modalType && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in">
-                <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl">
+                <div className="bg-white rounded-2xl p-6 w-full max-w-lg shadow-2xl overflow-y-auto max-h-[90vh]">
                     <div className="flex justify-between items-center mb-6">
                         <h3 className="text-xl font-bold text-slate-900">
                             Add {modalType === 'ASSET' ? 'Asset' : 'Liability'}
@@ -215,15 +282,47 @@ const Assets: React.FC<AssetsProps> = ({ assets, liabilities, addAsset, addLiabi
                                 type="text" 
                                 required
                                 className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                                placeholder={modalType === 'ASSET' ? "e.g. Bitcoin, Laptop" : "e.g. Loan, Credit Card"}
+                                placeholder={modalType === 'ASSET' ? "e.g. Bitcoin Wallet, Toyota Camry" : "e.g. Student Loan, Credit Card Balance"}
                                 value={formData.name}
                                 onChange={e => setFormData({...formData, name: e.target.value})}
                             />
                         </div>
+
+                         <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">
+                                Category / Type
+                            </label>
+                            <select 
+                                className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none custom-select"
+                                value={modalType === 'ASSET' ? formData.assetType : formData.liabilityType}
+                                onChange={e => {
+                                    if (modalType === 'ASSET') setFormData({...formData, assetType: e.target.value as AssetType});
+                                    else setFormData({...formData, liabilityType: e.target.value as LiabilityType});
+                                }}
+                            >
+                                {modalType === 'ASSET' ? (
+                                    Object.entries(ASSET_CATEGORIES).map(([group, types]) => (
+                                        <optgroup key={group} label={group}>
+                                            {types.map(t => (
+                                                <option key={t} value={t}>{getReadableType(t)}</option>
+                                            ))}
+                                        </optgroup>
+                                    ))
+                                ) : (
+                                    Object.entries(LIABILITY_CATEGORIES).map(([group, types]) => (
+                                        <optgroup key={group} label={group}>
+                                            {types.map(t => (
+                                                <option key={t} value={t}>{getReadableType(t)}</option>
+                                            ))}
+                                        </optgroup>
+                                    ))
+                                )}
+                            </select>
+                        </div>
                         
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Amount</label>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Value / Amount</label>
                                 <input 
                                     type="number" 
                                     required
@@ -246,21 +345,15 @@ const Assets: React.FC<AssetsProps> = ({ assets, liabilities, addAsset, addLiabi
                             </div>
                         </div>
 
-                        {modalType === 'ASSET' && (
-                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Type</label>
-                                <select 
-                                    className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                                    value={formData.type}
-                                    onChange={e => setFormData({...formData, type: e.target.value})}
-                                >
-                                    <option value="CASH">Cash / Bank</option>
-                                    <option value="CRYPTO">Crypto</option>
-                                    <option value="EQUIPMENT">Equipment</option>
-                                    <option value="INVESTMENT">Investment</option>
-                                </select>
-                            </div>
-                        )}
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Detailed Description (Optional)</label>
+                            <textarea 
+                                className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none min-h-[80px]"
+                                placeholder={modalType === 'ASSET' ? "e.g. 2021 Model, 50k mileage, Good condition" : "e.g. 15% Interest rate, due monthly"}
+                                value={formData.description}
+                                onChange={e => setFormData({...formData, description: e.target.value})}
+                            />
+                        </div>
 
                         <button 
                             type="submit"
@@ -356,7 +449,7 @@ const Assets: React.FC<AssetsProps> = ({ assets, liabilities, addAsset, addLiabi
                                 {assets.some(a => a.type === 'CRYPTO') && (
                                     <li className="flex items-start">
                                         <span className="mr-2 mt-1 w-1.5 h-1.5 bg-indigo-500 rounded-full flex-shrink-0"></span>
-                                        <span><strong>Crypto Assets:</strong> Ensure you log the acquisition date. Holdings >12 months may qualify for Long Term Capital Gains (LTCG) at 10% instead of standard income rates.</span>
+                                        <span><strong>Crypto Assets:</strong> Ensure you log the acquisition date. Holdings {'>'}12 months may qualify for Long Term Capital Gains (LTCG) at 10% instead of standard income rates.</span>
                                     </li>
                                 )}
                                 {assets.some(a => a.type === 'EQUIPMENT') && (

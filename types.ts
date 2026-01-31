@@ -107,19 +107,37 @@ export interface Invoice {
   baniPaymentLink?: string;
 }
 
+// --- UPDATED ASSET & LIABILITY DEFINITIONS ---
+
+export type AssetType = 
+  | 'CASH' | 'BANK_ACCOUNT' | 'MONEY_MARKET' // Liquid
+  | 'CRYPTO' | 'NFT' | 'DIGITAL_WALLET' // Digital
+  | 'STOCKS' | 'BONDS' | 'MUTUAL_FUNDS' | 'ETF' | 'REIT' | 'INVESTMENT' // Investments
+  | 'REAL_ESTATE' | 'VEHICLE' | 'EQUIPMENT' | 'ELECTRONICS' | 'FURNITURE' // Fixed
+  | 'INVENTORY' | 'RECEIVABLE' | 'INTELLECTUAL_PROPERTY' // Business
+  | 'OTHER';
+
+export type LiabilityType = 
+  | 'CREDIT_CARD' | 'OVERDRAFT' | 'LOAN_SHORT_TERM' // Short Term
+  | 'LOAN' | 'MORTGAGE' | 'LOAN_STUDENT' | 'LOAN_VEHICLE' // Long Term
+  | 'TAX_LIABILITY' | 'PAYABLE' | 'OTHER';
+
 export interface Asset {
   id: string;
   name: string;
+  description?: string; // Detailed description
   value: number;
   currency: 'NGN' | 'USD';
-  type: 'CASH' | 'CRYPTO' | 'EQUIPMENT' | 'INVESTMENT';
+  type: AssetType;
 }
 
 export interface Liability {
   id: string;
   name: string;
+  description?: string; // Detailed description
   amount: number;
   currency: 'NGN' | 'USD';
+  type?: LiabilityType;
   dueDate?: string;
 }
 
