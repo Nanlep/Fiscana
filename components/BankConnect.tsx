@@ -1,6 +1,7 @@
-import React, { useState, useMemo } from 'react';
-import { X, Lock, ChevronRight, CheckCircle, Shield, Loader2, RefreshCw, Search, Building2, Smartphone } from 'lucide-react';
-import { SUPPORTED_BANKS, fetchBankStatement, RawBankTransaction, BankProvider } from '../services/bankService';
+
+import React, { useState } from 'react';
+import { X, Shield, CheckCircle, Loader2, Building2, AlertCircle, PlayCircle } from 'lucide-react';
+import { fetchMonoTransactions } from '../services/bankService';
 import { autoCategorizeTransactions } from '../services/geminiService';
 import { Transaction, TransactionType } from '../types';
 
@@ -11,338 +12,179 @@ interface BankConnectProps {
     notify: (type: 'SUCCESS' | 'ERROR' | 'INFO', message: string) => void;
 }
 
-type Step = 'SELECT_BANK' | 'LOGIN' | 'FETCHING' | 'ANALYZING' | 'SUCCESS';
+declare global {
+    interface Window {
+        Connect: any;
+    }
+}
 
 const BankConnect: React.FC<BankConnectProps> = ({ isOpen, onClose, onImportTransactions, notify }) => {
-    const [step, setStep] = useState<Step>('SELECT_BANK');
-    const [selectedBankId, setSelectedBankId] = useState<string | null>(null);
-    const [username, setUsername] = useState('');
-    const [password, setPassword] = useState('');
-    const [searchQuery, setSearchQuery] = useState('');
-    
-    // Progress state for UX
-    const [analysisProgress, setAnalysisProgress] = useState(0);
+    const [isSyncing, setIsSyncing] = useState(false);
+    const [progress, setProgress] = useState(0);
 
-    const filteredBanks = useMemo(() => {
-        if (!searchQuery) return SUPPORTED_BANKS;
-        return SUPPORTED_BANKS.filter(b => 
-            b.name.toLowerCase().includes(searchQuery.toLowerCase())
-        );
-    }, [searchQuery]);
-
-    // Separate into groups for better UX when not searching
-    const popularBanks = useMemo(() => {
-        return SUPPORTED_BANKS.filter(b => ['gtb', 'zenith', 'access', 'kuda', 'opay', 'moniepoint'].includes(b.id));
-    }, []);
+    // Retrieve Mono Public Key from env or use a placeholder for logic demonstration
+    // In production, this must be process.env.REACT_APP_MONO_PUBLIC_KEY
+    const MONO_PUBLIC_KEY = process.env.REACT_APP_MONO_PUBLIC_KEY || 'test_pk_...';
 
     if (!isOpen) return null;
 
-    const handleSelectBank = (id: string) => {
-        setSelectedBankId(id);
-        setStep('LOGIN');
+    const processTransactions = async (code: string | null, isDemo: boolean = false) => {
+        setIsSyncing(true);
+        setProgress(10);
+
+        try {
+            // 1. Exchange Code & Fetch Raw Data (Simulated Backend Call)
+            // In production, send 'code' to your backend. Backend calls Mono API to get Account ID & Transactions.
+            setProgress(30);
+            const rawTransactions = await fetchMonoTransactions(code || 'demo_code');
+            
+            // 2. AI Categorization
+            setProgress(50);
+            const rawDescriptions = rawTransactions.map(t => t.description);
+            const analyzedData = await autoCategorizeTransactions(rawDescriptions);
+            
+            setProgress(80);
+
+            // 3. Map to App Transaction Type
+            const finalTransactions: Transaction[] = rawTransactions.map((raw, index) => {
+                const analysis = analyzedData[index];
+                const category = analysis ? analysis.category : 'General';
+                const expenseCategory = analysis ? analysis.expenseCategory : 'PERSONAL';
+                const taxDeductible = analysis ? analysis.taxDeductible : false;
+                const cleanedPayee = analysis ? analysis.cleanedPayee : raw.description;
+
+                return {
+                    id: `mono_${Date.now()}_${index}`,
+                    date: raw.date,
+                    description: raw.description,
+                    payee: cleanedPayee,
+                    amount: raw.amount,
+                    currency: raw.currency,
+                    type: raw.direction === 'CREDIT' ? TransactionType.INCOME : TransactionType.EXPENSE,
+                    category: category,
+                    expenseCategory: expenseCategory,
+                    taxDeductible: taxDeductible,
+                    tags: ['#MonoImport', ...(analysis?.tags || [])],
+                    status: 'CLEARED'
+                };
+            });
+
+            setProgress(100);
+            
+            setTimeout(() => {
+                onImportTransactions(finalTransactions);
+                setIsSyncing(false);
+                onClose();
+            }, 500);
+
+        } catch (err) {
+            console.error(err);
+            notify('ERROR', 'Failed to sync with Mono.');
+            setIsSyncing(false);
+        }
     };
 
-    const handleLogin = () => {
-        if (!username || !password) return;
-        setStep('FETCHING');
-        
-        // Simulate Authenticating
-        setTimeout(async () => {
-            try {
-                // 1. Fetch Raw Data
-                const rawTransactions = await fetchBankStatement(selectedBankId!);
-                
-                // 2. Switch to Analyzing State
-                setStep('ANALYZING');
-                
-                // Simulate progressive loading bar for AI
-                const interval = setInterval(() => {
-                    setAnalysisProgress(prev => {
-                        if (prev >= 90) {
-                            clearInterval(interval);
-                            return 90;
-                        }
-                        return prev + 10;
-                    });
-                }, 300);
+    const handleMonoConnect = () => {
+        if (!window.Connect) {
+            notify('ERROR', 'Mono Connect library not loaded.');
+            return;
+        }
 
-                // 3. AI Categorization
-                const rawDescriptions = rawTransactions.map(t => t.description);
-                const analyzedData = await autoCategorizeTransactions(rawDescriptions);
-                
-                clearInterval(interval);
-                setAnalysisProgress(100);
+        const mono = new window.Connect({
+            key: MONO_PUBLIC_KEY,
+            onSuccess: (data: any) => {
+                // data.code is the auth code
+                notify('SUCCESS', 'Account linked successfully!');
+                processTransactions(data.code);
+            },
+            onClose: () => {
+                notify('INFO', 'Mono widget closed');
+            },
+            onEvent: (eventName: string, data: any) => {
+                console.log(eventName, data);
+            },
+            reference: `ref_${Date.now()}`
+        });
 
-                // 4. Map to App Transaction Type
-                const finalTransactions: Transaction[] = rawTransactions.map((raw, index) => {
-                    const analysis = analyzedData[index];
-                    // Fallback if AI array length mismatch (rare)
-                    const category = analysis ? analysis.category : 'General';
-                    const expenseCategory = analysis ? analysis.expenseCategory : 'PERSONAL';
-                    const taxDeductible = analysis ? analysis.taxDeductible : false;
-                    const cleanedPayee = analysis ? analysis.cleanedPayee : raw.description;
-
-                    return {
-                        id: `bank_${selectedBankId}_${Date.now()}_${index}`,
-                        date: raw.date,
-                        description: raw.description,
-                        payee: cleanedPayee,
-                        amount: raw.amount,
-                        currency: raw.currency,
-                        type: raw.direction === 'CREDIT' ? TransactionType.INCOME : TransactionType.EXPENSE,
-                        category: category,
-                        expenseCategory: expenseCategory,
-                        taxDeductible: taxDeductible,
-                        tags: ['#BankImport', ...(analysis?.tags || [])],
-                        status: 'CLEARED'
-                    };
-                });
-
-                // 5. Complete
-                setTimeout(() => {
-                    onImportTransactions(finalTransactions);
-                    setStep('SUCCESS');
-                }, 800);
-
-            } catch (err) {
-                console.error(err);
-                notify('ERROR', 'Failed to sync with bank.');
-                setStep('SELECT_BANK');
-            }
-        }, 1500);
+        mono.setup();
+        mono.open();
     };
 
-    const reset = () => {
-        setStep('SELECT_BANK');
-        setSelectedBankId(null);
-        setUsername('');
-        setPassword('');
-        setSearchQuery('');
-        setAnalysisProgress(0);
-        onClose();
+    const handleDemoSync = () => {
+        notify('INFO', 'Starting Demo Sync...');
+        processTransactions(null, true);
     };
 
     return (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in">
-            <div className="bg-white rounded-2xl w-full max-w-md overflow-hidden shadow-2xl scale-100 m-4 flex flex-col max-h-[90vh]">
+            <div className="bg-white rounded-2xl w-full max-w-md overflow-hidden shadow-2xl scale-100 m-4 flex flex-col">
                 
                 {/* Header */}
-                <div className="bg-slate-50 border-b border-slate-100 p-4 flex justify-between items-center flex-shrink-0">
+                <div className="bg-slate-50 border-b border-slate-100 p-4 flex justify-between items-center">
                     <div className="flex items-center space-x-2">
-                        <Shield className="text-green-600" size={18} />
-                        <span className="font-bold text-slate-800 text-sm">Secure Bank Connection</span>
+                        <div className="w-6 h-6 bg-black rounded flex items-center justify-center">
+                            <span className="text-[10px] font-bold text-white">M</span>
+                        </div>
+                        <span className="font-bold text-slate-800 text-sm">Mono Open Banking</span>
                     </div>
-                    <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
+                    <button onClick={onClose} disabled={isSyncing} className="text-slate-400 hover:text-slate-600 disabled:opacity-50">
                         <X size={20} />
                     </button>
                 </div>
 
-                <div className="p-6 flex-1 overflow-y-auto min-h-[400px]">
-                    
-                    {step === 'SELECT_BANK' && (
-                        <div className="animate-in slide-in-from-right flex flex-col h-full">
-                            <h3 className="text-xl font-bold text-slate-900 mb-2">Select your institution</h3>
-                            <p className="text-slate-500 text-sm mb-4">Connect your primary account to auto-import transactions.</p>
-                            
-                            {/* Search Input */}
-                            <div className="relative mb-4">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                                <input 
-                                    type="text" 
-                                    placeholder="Search bank (e.g. GTB, Kuda)..."
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-green-500 outline-none text-sm"
-                                />
-                            </div>
-
-                            <div className="flex-1 overflow-y-auto space-y-4">
-                                {/* If Searching, show list. If not, show Popular + All */}
-                                {searchQuery ? (
-                                    <div className="space-y-2">
-                                        {filteredBanks.map(bank => (
-                                            <BankButton key={bank.id} bank={bank} onSelect={handleSelectBank} />
-                                        ))}
-                                        {filteredBanks.length === 0 && (
-                                            <div className="text-center py-8 text-slate-400 text-sm">
-                                                No banks found matching "{searchQuery}"
-                                            </div>
-                                        )}
-                                    </div>
-                                ) : (
-                                    <>
-                                        <div>
-                                            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Popular Institutions</h4>
-                                            <div className="grid grid-cols-2 gap-2">
-                                                {popularBanks.map(bank => (
-                                                     <button 
-                                                        key={bank.id}
-                                                        onClick={() => handleSelectBank(bank.id)}
-                                                        className="flex flex-col items-center justify-center p-3 border border-slate-200 rounded-xl hover:border-green-500 hover:bg-green-50 transition-all"
-                                                    >
-                                                        <div className="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold mb-2 text-xs" style={{ backgroundColor: bank.logo }}>
-                                                            {bank.name.substring(0,2).toUpperCase()}
-                                                        </div>
-                                                        <span className="text-xs font-semibold text-slate-700 text-center truncate w-full">{bank.name}</span>
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        </div>
-
-                                        <div>
-                                            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 mt-4">All Banks</h4>
-                                            <div className="space-y-2">
-                                                {SUPPORTED_BANKS.map(bank => (
-                                                    <BankButton key={bank.id} bank={bank} onSelect={handleSelectBank} />
-                                                ))}
-                                            </div>
-                                        </div>
-                                    </>
-                                )}
-                            </div>
-                        </div>
-                    )}
-
-                    {step === 'LOGIN' && (
-                        <div className="animate-in slide-in-from-right flex flex-col h-full">
-                            <button onClick={() => setStep('SELECT_BANK')} className="text-slate-400 text-sm mb-4 flex items-center hover:text-slate-600">
-                                <ChevronRight className="rotate-180 mr-1" size={16}/> Back to banks
-                            </button>
-                            
-                            <div className="flex items-center space-x-3 mb-6">
-                                <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-md" style={{ backgroundColor: SUPPORTED_BANKS.find(b => b.id === selectedBankId)?.logo }}>
-                                    {SUPPORTED_BANKS.find(b => b.id === selectedBankId)?.name[0]}
-                                </div>
-                                <div>
-                                    <h3 className="text-xl font-bold text-slate-900">Login</h3>
-                                    <p className="text-slate-500 text-xs">to {SUPPORTED_BANKS.find(b => b.id === selectedBankId)?.name}</p>
-                                </div>
-                            </div>
-
-                            <div className="space-y-4 flex-1">
-                                <div className="p-3 bg-blue-50 text-blue-700 text-xs rounded-lg flex items-start">
-                                    <Lock size={14} className="mr-2 mt-0.5 flex-shrink-0" />
-                                    <span>Credentials are encrypted and never stored on Fiscana servers.</span>
-                                </div>
-
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">User ID / Phone / Email</label>
-                                    <input 
-                                        type="text" 
-                                        value={username}
-                                        onChange={e => setUsername(e.target.value)}
-                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-green-500 outline-none transition-all"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Password / PIN</label>
-                                    <div className="relative">
-                                        <input 
-                                            type="password" 
-                                            value={password}
-                                            onChange={e => setPassword(e.target.value)}
-                                            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-green-500 outline-none transition-all"
-                                        />
-                                        <Lock size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                                    </div>
-                                </div>
-                            </div>
-
-                            <button 
-                                onClick={handleLogin}
-                                disabled={!username || !password}
-                                className="w-full py-3 bg-slate-900 text-white font-bold rounded-xl mt-4 hover:bg-slate-800 disabled:opacity-50 transition-all shadow-lg"
-                            >
-                                Secure Login
-                            </button>
-                        </div>
-                    )}
-
-                    {step === 'FETCHING' && (
-                        <div className="flex flex-col items-center justify-center h-full animate-in fade-in">
-                            <div className="relative">
-                                <div className="w-16 h-16 border-4 border-slate-100 border-t-green-500 rounded-full animate-spin"></div>
-                                <div className="absolute inset-0 flex items-center justify-center">
-                                    <Lock size={20} className="text-slate-400" />
-                                </div>
-                            </div>
-                            <h3 className="text-lg font-bold text-slate-900 mt-6">Authenticating...</h3>
-                            <p className="text-slate-500 text-sm mt-2">Establishing secure handshake</p>
-                        </div>
-                    )}
-
-                    {step === 'ANALYZING' && (
-                         <div className="flex flex-col items-center justify-center h-full animate-in fade-in">
-                            <RefreshCw size={48} className="text-blue-600 animate-spin mb-6" />
-                            <h3 className="text-lg font-bold text-slate-900">AI Categorization in Progress</h3>
-                            <p className="text-slate-500 text-sm mt-2 text-center max-w-xs">
-                                Gemini AI is reading your statement to auto-tag expenses and income.
+                <div className="p-8 text-center">
+                    {isSyncing ? (
+                        <div className="py-8">
+                            <Loader2 size={48} className="text-black animate-spin mx-auto mb-6" />
+                            <h3 className="text-xl font-bold text-slate-900 mb-2">Syncing Transactions</h3>
+                            <p className="text-slate-500 text-sm mb-6">
+                                Retrieving financial data and AI categorizing expenses...
                             </p>
-                            
-                            <div className="w-full bg-slate-100 rounded-full h-2 mt-8 overflow-hidden">
+                            <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
                                 <div 
-                                    className="bg-blue-600 h-2 rounded-full transition-all duration-300 ease-out"
-                                    style={{ width: `${analysisProgress}%` }}
+                                    className="bg-black h-2 rounded-full transition-all duration-300 ease-out"
+                                    style={{ width: `${progress}%` }}
                                 ></div>
                             </div>
-                            <p className="text-xs text-blue-600 font-bold mt-2">{analysisProgress}% Complete</p>
+                            <p className="text-xs text-slate-400 mt-2 font-mono">{progress}% Complete</p>
                         </div>
-                    )}
-
-                    {step === 'SUCCESS' && (
-                         <div className="flex flex-col items-center justify-center h-full animate-in zoom-in">
-                            <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-6">
-                                <CheckCircle size={40} />
+                    ) : (
+                        <div className="animate-in slide-in-from-bottom-4">
+                            <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                                <Building2 size={32} className="text-slate-600" />
                             </div>
-                            <h3 className="text-2xl font-bold text-slate-900">Sync Complete!</h3>
-                            <p className="text-slate-500 text-center mb-8">
-                                Your transactions have been imported, categorized, and added to your ledger.
+                            <h2 className="text-2xl font-bold text-slate-900 mb-2">Link Your Bank</h2>
+                            <p className="text-slate-500 mb-8 leading-relaxed">
+                                Connect your GTBank, Zenith, Kuda or other accounts securely using Mono. We only fetch read-only transaction history.
                             </p>
+
                             <button 
-                                onClick={reset}
-                                className="px-8 py-3 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-all shadow-lg"
+                                onClick={handleMonoConnect}
+                                className="w-full py-4 bg-black text-white font-bold rounded-xl hover:bg-slate-800 transition-all shadow-lg flex items-center justify-center space-x-2 mb-3"
                             >
-                                Go to Ledger
+                                <Shield size={18} />
+                                <span>Connect with Mono</span>
                             </button>
+
+                            {/* Demo Fallback if no key */}
+                            <button 
+                                onClick={handleDemoSync}
+                                className="w-full py-3 bg-white text-slate-600 border border-slate-200 font-medium rounded-xl hover:bg-slate-50 transition-all flex items-center justify-center space-x-2"
+                            >
+                                <PlayCircle size={18} />
+                                <span>Try Demo Mode</span>
+                            </button>
+                            
+                            <p className="text-[10px] text-slate-400 mt-6 flex items-center justify-center">
+                                <Shield size={10} className="mr-1" />
+                                Secured by Mono. End-to-end encryption.
+                            </p>
                         </div>
                     )}
-
-                </div>
-                
-                {/* Footer Security Badge */}
-                <div className="bg-slate-50 p-3 text-center border-t border-slate-100 flex-shrink-0">
-                    <p className="text-[10px] text-slate-400 flex items-center justify-center">
-                        <Lock size={10} className="mr-1" />
-                        End-to-end 256-bit encryption. Fiscana does not store your banking credentials.
-                    </p>
                 </div>
             </div>
         </div>
     );
 };
-
-// Helper Subcomponent for Bank List Item
-interface BankButtonProps {
-    bank: BankProvider;
-    onSelect: (id: string) => void;
-}
-
-const BankButton: React.FC<BankButtonProps> = ({ bank, onSelect }) => (
-    <button 
-        onClick={() => onSelect(bank.id)}
-        className="w-full flex items-center justify-between p-3 border border-slate-200 rounded-xl hover:border-green-500 hover:bg-green-50 transition-all group"
-    >
-        <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-xs" style={{ backgroundColor: bank.logo }}>
-                {bank.name[0]}
-            </div>
-            <div className="text-left">
-                <span className="block font-semibold text-slate-700 group-hover:text-slate-900 text-sm">{bank.name}</span>
-                <span className="text-[10px] text-slate-400 uppercase">{bank.type}</span>
-            </div>
-        </div>
-        <ChevronRight size={16} className="text-slate-300 group-hover:text-green-600" />
-    </button>
-);
 
 export default BankConnect;

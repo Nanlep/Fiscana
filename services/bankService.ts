@@ -1,51 +1,4 @@
 
-export interface BankProvider {
-    id: string;
-    name: string;
-    logo: string; // Color hex for simulation
-    type: 'COMMERCIAL' | 'MFB' | 'FINTECH';
-    isConnected: boolean;
-}
-
-export const SUPPORTED_BANKS: BankProvider[] = [
-    // Tier 1 Commercial
-    { id: 'gtb', name: 'Guaranty Trust Bank (GTCO)', logo: '#e03c31', type: 'COMMERCIAL', isConnected: false },
-    { id: 'zenith', name: 'Zenith Bank', logo: '#ff0000', type: 'COMMERCIAL', isConnected: false },
-    { id: 'access', name: 'Access Bank', logo: '#ff8200', type: 'COMMERCIAL', isConnected: false },
-    { id: 'uba', name: 'United Bank for Africa (UBA)', logo: '#d42e12', type: 'COMMERCIAL', isConnected: false },
-    { id: 'firstbank', name: 'First Bank of Nigeria', logo: '#003b6d', type: 'COMMERCIAL', isConnected: false },
-    
-    // Tier 2 Commercial
-    { id: 'fcmb', name: 'FCMB', logo: '#5e2686', type: 'COMMERCIAL', isConnected: false },
-    { id: 'fidelity', name: 'Fidelity Bank', logo: '#1f2a63', type: 'COMMERCIAL', isConnected: false },
-    { id: 'stanbic', name: 'Stanbic IBTC', logo: '#0033a1', type: 'COMMERCIAL', isConnected: false },
-    { id: 'sterling', name: 'Sterling Bank', logo: '#db3832', type: 'COMMERCIAL', isConnected: false },
-    { id: 'union', name: 'Union Bank', logo: '#00a5cf', type: 'COMMERCIAL', isConnected: false },
-    { id: 'wema', name: 'Wema Bank / ALAT', logo: '#9a1d4e', type: 'COMMERCIAL', isConnected: false },
-    { id: 'ecobank', name: 'Ecobank Nigeria', logo: '#005b82', type: 'COMMERCIAL', isConnected: false },
-    
-    // Regional / Specialized
-    { id: 'keystone', name: 'Keystone Bank', logo: '#00558f', type: 'COMMERCIAL', isConnected: false },
-    { id: 'polaris', name: 'Polaris Bank', logo: '#6f2c91', type: 'COMMERCIAL', isConnected: false },
-    { id: 'providus', name: 'Providus Bank', logo: '#fbb040', type: 'COMMERCIAL', isConnected: false },
-    { id: 'jaiz', name: 'Jaiz Bank', logo: '#00673e', type: 'COMMERCIAL', isConnected: false },
-    { id: 'taj', name: 'Taj Bank', logo: '#8dc63f', type: 'COMMERCIAL', isConnected: false },
-    { id: 'suntrust', name: 'SunTrust Bank', logo: '#009640', type: 'COMMERCIAL', isConnected: false },
-    { id: 'titan', name: 'Titan Trust Bank', logo: '#be1e2d', type: 'COMMERCIAL', isConnected: false },
-
-    // Fintechs & Neobanks
-    { id: 'kuda', name: 'Kuda Microfinance Bank', logo: '#40196d', type: 'MFB', isConnected: false },
-    { id: 'opay', name: 'OPay / PayCom', logo: '#00bfa5', type: 'FINTECH', isConnected: false },
-    { id: 'moniepoint', name: 'Moniepoint MFB', logo: '#034c81', type: 'MFB', isConnected: false },
-    { id: 'palmpay', name: 'PalmPay', logo: '#6f2c91', type: 'FINTECH', isConnected: false },
-    { id: 'vfd', name: 'VFD Microfinance (V Bank)', logo: '#bc2026', type: 'MFB', isConnected: false },
-    { id: 'fairmoney', name: 'FairMoney MFB', logo: '#20c997', type: 'MFB', isConnected: false },
-    { id: 'carbon', name: 'Carbon', logo: '#3b255b', type: 'FINTECH', isConnected: false },
-    { id: 'paga', name: 'Paga', logo: '#f58220', type: 'FINTECH', isConnected: false },
-    { id: 'chipper', name: 'Chipper Cash', logo: '#6a35ff', type: 'FINTECH', isConnected: false },
-    { id: 'piggyvest', name: 'Pocket by PiggyVest', logo: '#0d6efd', type: 'FINTECH', isConnected: false },
-];
-
 export interface RawBankTransaction {
     date: string;
     amount: number;
@@ -54,9 +7,17 @@ export interface RawBankTransaction {
     direction: 'CREDIT' | 'DEBIT';
 }
 
-// Simulate fetching raw data from a bank API
-export const fetchBankStatement = async (bankId: string): Promise<RawBankTransaction[]> => {
+/**
+ * Simulates the backend process of:
+ * 1. Exchanging the Mono `auth_code` for an Account ID.
+ * 2. Fetching transactions from the Mono API for that account.
+ * 
+ * In a real production app, this function would call your own backend endpoint.
+ */
+export const fetchMonoTransactions = async (authCode: string): Promise<RawBankTransaction[]> => {
     return new Promise((resolve) => {
+        console.log(`[Mono Service] Exchanging auth_code: ${authCode}`);
+        
         setTimeout(() => {
             const today = new Date();
             const generateDate = (daysAgo: number) => {
@@ -65,8 +26,7 @@ export const fetchBankStatement = async (bankId: string): Promise<RawBankTransac
                 return d.toISOString().split('T')[0];
             };
 
-            // Generate somewhat randomized data based on bank type if we wanted, 
-            // but for now, we use a consistent messier dataset to test the AI.
+            // Simulated transaction data returned from Mono API
             const mockData: RawBankTransaction[] = [
                 { date: generateDate(1), amount: 4500, description: "UBER TRIP LAGOS NGA", currency: 'NGN', direction: 'DEBIT' },
                 { date: generateDate(2), amount: 15000, description: "AWS EMEA BILLING", currency: 'USD', direction: 'DEBIT' },
@@ -85,6 +45,9 @@ export const fetchBankStatement = async (bankId: string): Promise<RawBankTransac
             ];
 
             resolve(mockData);
-        }, 2000); // 2 second Simulated Network Latency
+        }, 2000); // Simulate network latency
     });
 };
+
+// Deprecated: Internal list only needed if building custom UI. Mono Widget handles selection.
+export const SUPPORTED_BANKS = []; 
