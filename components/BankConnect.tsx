@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { X, Lock, ChevronRight, CheckCircle, Shield, Loader2, RefreshCw } from 'lucide-react';
-import { SUPPORTED_BANKS, fetchBankStatement, RawBankTransaction } from '../services/bankService';
+import React, { useState, useMemo } from 'react';
+import { X, Lock, ChevronRight, CheckCircle, Shield, Loader2, RefreshCw, Search, Building2, Smartphone } from 'lucide-react';
+import { SUPPORTED_BANKS, fetchBankStatement, RawBankTransaction, BankProvider } from '../services/bankService';
 import { autoCategorizeTransactions } from '../services/geminiService';
 import { Transaction, TransactionType } from '../types';
 
@@ -18,9 +18,22 @@ const BankConnect: React.FC<BankConnectProps> = ({ isOpen, onClose, onImportTran
     const [selectedBankId, setSelectedBankId] = useState<string | null>(null);
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
+    const [searchQuery, setSearchQuery] = useState('');
     
     // Progress state for UX
     const [analysisProgress, setAnalysisProgress] = useState(0);
+
+    const filteredBanks = useMemo(() => {
+        if (!searchQuery) return SUPPORTED_BANKS;
+        return SUPPORTED_BANKS.filter(b => 
+            b.name.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+    }, [searchQuery]);
+
+    // Separate into groups for better UX when not searching
+    const popularBanks = useMemo(() => {
+        return SUPPORTED_BANKS.filter(b => ['gtb', 'zenith', 'access', 'kuda', 'opay', 'moniepoint'].includes(b.id));
+    }, []);
 
     if (!isOpen) return null;
 
@@ -104,16 +117,17 @@ const BankConnect: React.FC<BankConnectProps> = ({ isOpen, onClose, onImportTran
         setSelectedBankId(null);
         setUsername('');
         setPassword('');
+        setSearchQuery('');
         setAnalysisProgress(0);
         onClose();
     };
 
     return (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in">
-            <div className="bg-white rounded-2xl w-full max-w-md overflow-hidden shadow-2xl scale-100 m-4">
+            <div className="bg-white rounded-2xl w-full max-w-md overflow-hidden shadow-2xl scale-100 m-4 flex flex-col max-h-[90vh]">
                 
                 {/* Header */}
-                <div className="bg-slate-50 border-b border-slate-100 p-4 flex justify-between items-center">
+                <div className="bg-slate-50 border-b border-slate-100 p-4 flex justify-between items-center flex-shrink-0">
                     <div className="flex items-center space-x-2">
                         <Shield className="text-green-600" size={18} />
                         <span className="font-bold text-slate-800 text-sm">Secure Bank Connection</span>
@@ -123,41 +137,96 @@ const BankConnect: React.FC<BankConnectProps> = ({ isOpen, onClose, onImportTran
                     </button>
                 </div>
 
-                <div className="p-6 h-[400px] flex flex-col">
+                <div className="p-6 flex-1 overflow-y-auto min-h-[400px]">
                     
                     {step === 'SELECT_BANK' && (
-                        <div className="animate-in slide-in-from-right">
-                            <h3 className="text-xl font-bold text-slate-900 mb-2">Select your bank</h3>
-                            <p className="text-slate-500 text-sm mb-6">Connect your primary account to auto-import transactions.</p>
+                        <div className="animate-in slide-in-from-right flex flex-col h-full">
+                            <h3 className="text-xl font-bold text-slate-900 mb-2">Select your institution</h3>
+                            <p className="text-slate-500 text-sm mb-4">Connect your primary account to auto-import transactions.</p>
                             
-                            <div className="space-y-3 overflow-y-auto max-h-[250px] pr-2">
-                                {SUPPORTED_BANKS.map(bank => (
-                                    <button 
-                                        key={bank.id}
-                                        onClick={() => handleSelectBank(bank.id)}
-                                        className="w-full flex items-center justify-between p-4 border border-slate-200 rounded-xl hover:border-green-500 hover:bg-green-50 transition-all group"
-                                    >
-                                        <div className="flex items-center space-x-4">
-                                            <div className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold" style={{ backgroundColor: bank.logo }}>
-                                                {bank.name[0]}
+                            {/* Search Input */}
+                            <div className="relative mb-4">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                                <input 
+                                    type="text" 
+                                    placeholder="Search bank (e.g. GTB, Kuda)..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-green-500 outline-none text-sm"
+                                />
+                            </div>
+
+                            <div className="flex-1 overflow-y-auto space-y-4">
+                                {/* If Searching, show list. If not, show Popular + All */}
+                                {searchQuery ? (
+                                    <div className="space-y-2">
+                                        {filteredBanks.map(bank => (
+                                            <BankButton key={bank.id} bank={bank} onSelect={handleSelectBank} />
+                                        ))}
+                                        {filteredBanks.length === 0 && (
+                                            <div className="text-center py-8 text-slate-400 text-sm">
+                                                No banks found matching "{searchQuery}"
                                             </div>
-                                            <span className="font-semibold text-slate-700 group-hover:text-slate-900">{bank.name}</span>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <>
+                                        <div>
+                                            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Popular Institutions</h4>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                {popularBanks.map(bank => (
+                                                     <button 
+                                                        key={bank.id}
+                                                        onClick={() => handleSelectBank(bank.id)}
+                                                        className="flex flex-col items-center justify-center p-3 border border-slate-200 rounded-xl hover:border-green-500 hover:bg-green-50 transition-all"
+                                                    >
+                                                        <div className="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold mb-2 text-xs" style={{ backgroundColor: bank.logo }}>
+                                                            {bank.name.substring(0,2).toUpperCase()}
+                                                        </div>
+                                                        <span className="text-xs font-semibold text-slate-700 text-center truncate w-full">{bank.name}</span>
+                                                    </button>
+                                                ))}
+                                            </div>
                                         </div>
-                                        <ChevronRight size={18} className="text-slate-300 group-hover:text-green-600" />
-                                    </button>
-                                ))}
+
+                                        <div>
+                                            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 mt-4">All Banks</h4>
+                                            <div className="space-y-2">
+                                                {SUPPORTED_BANKS.map(bank => (
+                                                    <BankButton key={bank.id} bank={bank} onSelect={handleSelectBank} />
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
                             </div>
                         </div>
                     )}
 
                     {step === 'LOGIN' && (
                         <div className="animate-in slide-in-from-right flex flex-col h-full">
-                            <h3 className="text-xl font-bold text-slate-900 mb-2">Login to {SUPPORTED_BANKS.find(b => b.id === selectedBankId)?.name}</h3>
-                            <p className="text-slate-500 text-sm mb-6">Enter your internet banking credentials. This is encrypted end-to-end.</p>
+                            <button onClick={() => setStep('SELECT_BANK')} className="text-slate-400 text-sm mb-4 flex items-center hover:text-slate-600">
+                                <ChevronRight className="rotate-180 mr-1" size={16}/> Back to banks
+                            </button>
+                            
+                            <div className="flex items-center space-x-3 mb-6">
+                                <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-md" style={{ backgroundColor: SUPPORTED_BANKS.find(b => b.id === selectedBankId)?.logo }}>
+                                    {SUPPORTED_BANKS.find(b => b.id === selectedBankId)?.name[0]}
+                                </div>
+                                <div>
+                                    <h3 className="text-xl font-bold text-slate-900">Login</h3>
+                                    <p className="text-slate-500 text-xs">to {SUPPORTED_BANKS.find(b => b.id === selectedBankId)?.name}</p>
+                                </div>
+                            </div>
 
                             <div className="space-y-4 flex-1">
+                                <div className="p-3 bg-blue-50 text-blue-700 text-xs rounded-lg flex items-start">
+                                    <Lock size={14} className="mr-2 mt-0.5 flex-shrink-0" />
+                                    <span>Credentials are encrypted and never stored on Fiscana servers.</span>
+                                </div>
+
                                 <div>
-                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">User ID / Phone</label>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">User ID / Phone / Email</label>
                                     <input 
                                         type="text" 
                                         value={username}
@@ -241,7 +310,7 @@ const BankConnect: React.FC<BankConnectProps> = ({ isOpen, onClose, onImportTran
                 </div>
                 
                 {/* Footer Security Badge */}
-                <div className="bg-slate-50 p-3 text-center border-t border-slate-100">
+                <div className="bg-slate-50 p-3 text-center border-t border-slate-100 flex-shrink-0">
                     <p className="text-[10px] text-slate-400 flex items-center justify-center">
                         <Lock size={10} className="mr-1" />
                         End-to-end 256-bit encryption. Fiscana does not store your banking credentials.
@@ -251,5 +320,29 @@ const BankConnect: React.FC<BankConnectProps> = ({ isOpen, onClose, onImportTran
         </div>
     );
 };
+
+// Helper Subcomponent for Bank List Item
+interface BankButtonProps {
+    bank: BankProvider;
+    onSelect: (id: string) => void;
+}
+
+const BankButton: React.FC<BankButtonProps> = ({ bank, onSelect }) => (
+    <button 
+        onClick={() => onSelect(bank.id)}
+        className="w-full flex items-center justify-between p-3 border border-slate-200 rounded-xl hover:border-green-500 hover:bg-green-50 transition-all group"
+    >
+        <div className="flex items-center space-x-3">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-xs" style={{ backgroundColor: bank.logo }}>
+                {bank.name[0]}
+            </div>
+            <div className="text-left">
+                <span className="block font-semibold text-slate-700 group-hover:text-slate-900 text-sm">{bank.name}</span>
+                <span className="text-[10px] text-slate-400 uppercase">{bank.type}</span>
+            </div>
+        </div>
+        <ChevronRight size={16} className="text-slate-300 group-hover:text-green-600" />
+    </button>
+);
 
 export default BankConnect;
