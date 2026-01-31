@@ -1,7 +1,8 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { analyzeTaxLiability, chatWithTaxAdvisorStream } from '../services/geminiService';
 import { Transaction, TaxReport } from '../types';
-import { Calculator, ShieldCheck, AlertTriangle, Send, Loader2, Bot, TrendingUp, Briefcase, User, Lightbulb } from 'lucide-react';
+import { Calculator, ShieldCheck, AlertTriangle, Send, Loader2, Bot, TrendingUp, Briefcase, User, Lightbulb, Trash2, Clock, Sparkles } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { formatCurrency } from '../utils/currency';
 
@@ -9,14 +10,31 @@ interface TaxAdvisorProps {
   transactions: Transaction[];
 }
 
+interface ChatMessage {
+    role: 'user' | 'model';
+    text: string;
+    timestamp: Date;
+}
+
+const SUGGESTED_PROMPTS = [
+    "How can I reduce my tax liability?",
+    "Analyze my top business expenses.",
+    "Am I spending too much on utilities?",
+    "Explain VAT requirements for 2026."
+];
+
 const TaxAdvisor: React.FC<TaxAdvisorProps> = ({ transactions }) => {
   const [report, setReport] = useState<TaxReport | null>(null);
   const [loading, setLoading] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   
   // Chat State
-  const [chatHistory, setChatHistory] = useState<{role: 'user' | 'model', text: string}[]>([
-      {role: 'model', text: 'Hello! I am your 2026 Financial & Tax Intelligence assistant. I have analyzed your ledger. Ask me about your spending patterns, tax liabilities, or strategic financial moves.'}
+  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([
+      {
+          role: 'model', 
+          text: 'Hello! I am your 2026 Financial & Tax Intelligence assistant. I have analyzed your ledger. Ask me about your spending patterns, tax liabilities, or strategic financial moves.',
+          timestamp: new Date()
+      }
   ]);
   const [inputMessage, setInputMessage] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
@@ -36,21 +54,25 @@ const TaxAdvisor: React.FC<TaxAdvisorProps> = ({ transactions }) => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatHistory, chatLoading]);
 
-  const handleSendMessage = async () => {
-      if (!inputMessage.trim()) return;
+  const handleSendMessage = async (msgText: string = inputMessage) => {
+      if (!msgText.trim()) return;
       
-      const userMsg = inputMessage;
+      const userMsg = msgText;
       setInputMessage('');
       setChatLoading(true);
 
       // Add user message immediately
-      setChatHistory(prev => [...prev, {role: 'user', text: userMsg}]);
+      const newHistoryItem: ChatMessage = { role: 'user', text: userMsg, timestamp: new Date() };
+      setChatHistory(prev => [...prev, newHistoryItem]);
 
       // Add placeholder for model response
-      setChatHistory(prev => [...prev, {role: 'model', text: ''}]);
+      setChatHistory(prev => [...prev, { role: 'model', text: '', timestamp: new Date() }]);
 
       try {
-          const stream = chatWithTaxAdvisorStream(chatHistory, userMsg);
+          // Prepare history for API (strip timestamps)
+          const apiHistory = chatHistory.map(h => ({ role: h.role, text: h.text }));
+          
+          const stream = chatWithTaxAdvisorStream(apiHistory, userMsg);
           let fullText = '';
           
           for await (const chunk of stream) {
@@ -70,11 +92,23 @@ const TaxAdvisor: React.FC<TaxAdvisorProps> = ({ transactions }) => {
           console.error("Chat Error", err);
           setChatHistory(prev => {
               const newHistory = [...prev];
-              newHistory[newHistory.length - 1] = { role: 'model', text: "Sorry, I encountered an error while processing your request." };
+              newHistory[newHistory.length - 1] = { role: 'model', text: "Sorry, I encountered an error while processing your request.", timestamp: new Date() };
               return newHistory;
           });
           setChatLoading(false);
       }
+  };
+
+  const handleClearChat = () => {
+      setChatHistory([{
+          role: 'model',
+          text: 'Conversation cleared. How can I help you with your finances today?',
+          timestamp: new Date()
+      }]);
+  };
+
+  const formatTime = (date: Date) => {
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
   return (
@@ -221,8 +255,16 @@ const TaxAdvisor: React.FC<TaxAdvisorProps> = ({ transactions }) => {
                     </h3>
                     <p className="text-xs text-slate-500">Powered by Gemini 3 Flash</p>
                 </div>
+                <button 
+                    onClick={handleClearChat}
+                    className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                    title="Clear Conversation"
+                >
+                    <Trash2 size={18} />
+                </button>
             </div>
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/30">
+            
+            <div className="flex-1 overflow-y-auto p-4 space-y-6 bg-slate-50/30">
                 {chatHistory.map((msg, idx) => (
                     <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                          {msg.role === 'model' && (
@@ -230,27 +272,49 @@ const TaxAdvisor: React.FC<TaxAdvisorProps> = ({ transactions }) => {
                                 <Bot size={16} className="text-green-600" />
                             </div>
                         )}
-                        <div className={`max-w-[85%] rounded-2xl p-4 shadow-sm ${
-                            msg.role === 'user' 
-                            ? 'bg-green-600 text-white rounded-br-none' 
-                            : 'bg-white text-slate-800 rounded-bl-none border border-slate-100'
-                        }`}>
-                            {msg.role === 'model' && msg.text === '' ? (
-                                <div className="flex space-x-1 h-5 items-center">
-                                    <div className="w-2 h-2 bg-slate-300 rounded-full animate-bounce" style={{animationDelay: '0ms'}}></div>
-                                    <div className="w-2 h-2 bg-slate-300 rounded-full animate-bounce" style={{animationDelay: '150ms'}}></div>
-                                    <div className="w-2 h-2 bg-slate-300 rounded-full animate-bounce" style={{animationDelay: '300ms'}}></div>
-                                </div>
-                            ) : (
-                                <ReactMarkdown className={`prose prose-sm max-w-none ${msg.role === 'user' ? 'prose-invert text-white' : 'text-slate-700'}`}>
-                                    {msg.text}
-                                </ReactMarkdown>
-                            )}
+                        <div className={`flex flex-col max-w-[85%] ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+                            <div className={`rounded-2xl p-4 shadow-sm ${
+                                msg.role === 'user' 
+                                ? 'bg-green-600 text-white rounded-br-none' 
+                                : 'bg-white text-slate-800 rounded-bl-none border border-slate-100'
+                            }`}>
+                                {msg.role === 'model' && msg.text === '' ? (
+                                    <div className="flex space-x-1 h-5 items-center">
+                                        <div className="w-2 h-2 bg-slate-300 rounded-full animate-bounce" style={{animationDelay: '0ms'}}></div>
+                                        <div className="w-2 h-2 bg-slate-300 rounded-full animate-bounce" style={{animationDelay: '150ms'}}></div>
+                                        <div className="w-2 h-2 bg-slate-300 rounded-full animate-bounce" style={{animationDelay: '300ms'}}></div>
+                                    </div>
+                                ) : (
+                                    <ReactMarkdown className={`prose prose-sm max-w-none ${msg.role === 'user' ? 'prose-invert text-white' : 'text-slate-700'}`}>
+                                        {msg.text}
+                                    </ReactMarkdown>
+                                )}
+                            </div>
+                            <span className="text-[10px] text-slate-400 mt-1 px-1 flex items-center">
+                                {formatTime(msg.timestamp)}
+                            </span>
                         </div>
                     </div>
                 ))}
                 <div ref={chatEndRef} />
             </div>
+
+            {/* Suggested Prompts */}
+            {chatHistory.length < 3 && (
+                <div className="px-4 pt-2 flex space-x-2 overflow-x-auto pb-2 scrollbar-hide">
+                    {SUGGESTED_PROMPTS.map((prompt, i) => (
+                        <button 
+                            key={i}
+                            onClick={() => handleSendMessage(prompt)}
+                            className="whitespace-nowrap px-3 py-1.5 bg-slate-100 hover:bg-green-50 text-slate-600 hover:text-green-700 text-xs rounded-full border border-slate-200 transition-colors flex items-center"
+                        >
+                            <Sparkles size={12} className="mr-1" />
+                            {prompt}
+                        </button>
+                    ))}
+                </div>
+            )}
+
             <div className="p-4 border-t border-slate-100 bg-white">
                 <div className="flex space-x-2">
                     <input 
@@ -263,7 +327,7 @@ const TaxAdvisor: React.FC<TaxAdvisorProps> = ({ transactions }) => {
                         className="flex-1 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all"
                     />
                     <button 
-                        onClick={handleSendMessage}
+                        onClick={() => handleSendMessage()}
                         disabled={chatLoading || !inputMessage.trim()}
                         className="bg-green-600 text-white p-3 rounded-xl hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-green-600/20"
                     >
