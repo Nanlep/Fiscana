@@ -1,7 +1,9 @@
+
 import React, { useState } from 'react';
-import { Transaction, TransactionType, ExpenseCategoryType } from '../types';
-import { Search, Filter, Plus, ArrowUpRight, ArrowDownRight, X, Check, Upload, FileText, Paperclip, Download, Tag, Briefcase, User, Landmark } from 'lucide-react';
+import { Transaction, TransactionType, ExpenseCategoryType, TaxTag } from '../types';
+import { Search, Filter, Plus, ArrowUpRight, ArrowDownRight, X, Check, Upload, FileText, Paperclip, Download, Tag, Briefcase, User, Landmark, Info } from 'lucide-react';
 import BankConnect from './BankConnect';
+import { INCOME_CATEGORIES, EXPENSE_CATEGORIES, getCategoryDef } from '../utils/categories';
 
 interface LedgerProps {
   transactions: Transaction[];
@@ -32,6 +34,17 @@ const Ledger: React.FC<LedgerProps> = ({ transactions, addTransaction, addTransa
   });
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
 
+  // Group categories for Select UI
+  const getGroupedCategories = (type: TransactionType, subType?: ExpenseCategoryType) => {
+    const list = type === TransactionType.INCOME ? INCOME_CATEGORIES : EXPENSE_CATEGORIES.filter(c => c.subType === subType);
+    const groups: Record<string, typeof list> = {};
+    list.forEach(c => {
+        if (!groups[c.group]) groups[c.group] = [];
+        groups[c.group].push(c);
+    });
+    return groups;
+  };
+
   const filtered = transactions.filter(t => {
     const term = searchTerm.toLowerCase();
     const matchesSearch = 
@@ -43,7 +56,7 @@ const Ledger: React.FC<LedgerProps> = ({ transactions, addTransaction, addTransa
   });
 
   const handleExportCSV = () => {
-      const headers = ['ID', 'Date', 'Type', 'Category Type', 'Payee', 'Description', 'Amount', 'Currency', 'Category', 'Tags', 'Deductible'];
+      const headers = ['ID', 'Date', 'Type', 'Category Type', 'Payee', 'Description', 'Amount', 'Currency', 'Category', 'Tax Tag', 'Tags', 'Deductible'];
       const rows = filtered.map(t => [
           t.id,
           t.date,
@@ -54,6 +67,7 @@ const Ledger: React.FC<LedgerProps> = ({ transactions, addTransaction, addTransa
           t.amount,
           t.currency,
           t.category,
+          t.taxTag || 'N/A',
           `"${t.tags?.join(', ') || ''}"`,
           t.taxDeductible ? 'Yes' : 'No'
       ]);
@@ -88,6 +102,20 @@ const Ledger: React.FC<LedgerProps> = ({ transactions, addTransaction, addTransa
     setIsModalOpen(true);
   };
 
+  const handleCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+      const catName = e.target.value;
+      const catDef = getCategoryDef(catName);
+      
+      // Auto-set deductibility based on tax tag
+      const isDeductible = catDef?.taxTag === 'ALLOWABLE_EXPENSE' || catDef?.taxTag === 'CAPITAL_EXPENSE';
+
+      setFormData({
+          ...formData,
+          category: catName,
+          isDeductible: isDeductible
+      });
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.description || !formData.amount || !formData.payee) return;
@@ -96,6 +124,10 @@ const Ledger: React.FC<LedgerProps> = ({ transactions, addTransaction, addTransa
     
     // Process tags
     const tagsArray = formData.tags.split(',').map(t => t.trim()).filter(t => t.length > 0);
+
+    // Get tax tag
+    const catDef = getCategoryDef(formData.category);
+    const taxTag = catDef?.taxTag || 'NON_DEDUCTIBLE';
 
     const newTx: Transaction = {
         id: `tx_${Date.now()}`,
@@ -107,6 +139,7 @@ const Ledger: React.FC<LedgerProps> = ({ transactions, addTransaction, addTransa
         type: newTxType,
         expenseCategory: newTxType === TransactionType.EXPENSE ? formData.expenseCategory : undefined,
         category: formData.category || 'General',
+        taxTag: taxTag,
         tags: tagsArray,
         taxDeductible: formData.isDeductible,
         receiptUrl: receiptUrl,
@@ -115,6 +148,20 @@ const Ledger: React.FC<LedgerProps> = ({ transactions, addTransaction, addTransa
 
     addTransaction(newTx);
     setIsModalOpen(false);
+  };
+
+  const getTaxTagBadge = (tag?: TaxTag) => {
+      if (!tag) return null;
+      let color = 'bg-slate-100 text-slate-600';
+      if (tag === 'ALLOWABLE_EXPENSE') color = 'bg-green-100 text-green-700';
+      if (tag === 'CAPITAL_EXPENSE') color = 'bg-blue-100 text-blue-700';
+      if (tag === 'TAXABLE_INCOME') color = 'bg-amber-100 text-amber-700';
+      
+      return (
+          <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold ${color} border border-opacity-10 ml-2`}>
+              {tag.replace('_', ' ')}
+          </span>
+      );
   };
 
   return (
@@ -218,10 +265,13 @@ const Ledger: React.FC<LedgerProps> = ({ transactions, addTransaction, addTransa
                                 </div>
                             </td>
                             <td className="px-6 py-4">
-                                <div className="flex flex-col space-y-1">
-                                    <span className="inline-flex w-fit items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
-                                        {t.category}
-                                    </span>
+                                <div className="flex flex-col space-y-1 items-start">
+                                    <div className="flex items-center">
+                                        <span className="inline-flex w-fit items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
+                                            {t.category}
+                                        </span>
+                                        {getTaxTagBadge(t.taxTag)}
+                                    </div>
                                     {t.tags && t.tags.length > 0 && (
                                         <div className="flex flex-wrap gap-1">
                                             {t.tags.map((tag, i) => (
@@ -374,66 +424,17 @@ const Ledger: React.FC<LedgerProps> = ({ transactions, addTransaction, addTransa
                             <select 
                                 className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-green-500 outline-none custom-select"
                                 value={formData.category}
-                                onChange={e => setFormData({...formData, category: e.target.value})}
+                                onChange={handleCategoryChange}
+                                required
                             >
                                 <option value="">Select Category</option>
-                                {newTxType === TransactionType.INCOME ? (
-                                    <>
-                                        <optgroup label="Professional Income">
-                                            <option value="Service Revenue">Service Revenue</option>
-                                            <option value="Consulting">Consulting Fees</option>
-                                            <option value="Salary">Salary / Wages</option>
-                                        </optgroup>
-                                        <optgroup label="Sales & Products">
-                                            <option value="Product Sales">Product Sales</option>
-                                            <option value="Digital Products">Digital Products</option>
-                                            <option value="Affiliate">Affiliate Income</option>
-                                        </optgroup>
-                                        <optgroup label="Investments">
-                                            <option value="Crypto Gains">Crypto Gains</option>
-                                            <option value="Dividends">Dividends</option>
-                                            <option value="Rental">Rental Income</option>
-                                        </optgroup>
-                                    </>
-                                ) : (
-                                    formData.expenseCategory === 'BUSINESS' ? (
-                                        <>
-                                            <optgroup label="Operational">
-                                                <option value="Rent">Rent (Office)</option>
-                                                <option value="Utilities">Utilities (Internet/Power)</option>
-                                                <option value="Office Supplies">Office Supplies</option>
-                                                <option value="Equipment">Equipment / Hardware</option>
-                                                <option value="Software">Software & SaaS</option>
-                                            </optgroup>
-                                            <optgroup label="Professional">
-                                                <option value="Marketing">Marketing / Ads</option>
-                                                <option value="Legal">Legal & Accounting</option>
-                                                <option value="Education">Training & Courses</option>
-                                                <option value="Bank Fees">Bank Fees</option>
-                                                <option value="Travel">Business Travel</option>
-                                                <option value="Contractors">Contractors / Labour</option>
-                                            </optgroup>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <optgroup label="Personal Living">
-                                                <option value="Groceries">Groceries</option>
-                                                <option value="Housing">Housing / Rent (Personal)</option>
-                                                <option value="Utilities">Utilities (Home)</option>
-                                                <option value="Healthcare">Healthcare</option>
-                                                <option value="Transportation">Transportation</option>
-                                            </optgroup>
-                                            <optgroup label="Discretionary">
-                                                <option value="Entertainment">Entertainment</option>
-                                                <option value="Dining Out">Dining Out</option>
-                                                <option value="Shopping">Shopping</option>
-                                                <option value="Travel">Personal Travel</option>
-                                                <option value="Drawings">Owner Drawings</option>
-                                                <option value="Transfer">Transfer / Withdrawal</option>
-                                            </optgroup>
-                                        </>
-                                    )
-                                )}
+                                {Object.entries(getGroupedCategories(newTxType, newTxType === TransactionType.EXPENSE ? formData.expenseCategory : undefined)).map(([group, cats]) => (
+                                    <optgroup key={group} label={group}>
+                                        {cats.map(c => (
+                                            <option key={c.name} value={c.name}>{c.name} {c.taxTag === 'ALLOWABLE_EXPENSE' ? '(Tax Deductible)' : ''}</option>
+                                        ))}
+                                    </optgroup>
+                                ))}
                             </select>
                         </div>
                          <div className="col-span-2 md:col-span-1">
@@ -450,15 +451,23 @@ const Ledger: React.FC<LedgerProps> = ({ transactions, addTransaction, addTransa
 
                     {newTxType === TransactionType.EXPENSE && formData.expenseCategory === 'BUSINESS' && (
                         <div className="space-y-4">
-                            <div className="flex items-center space-x-2 p-3 bg-slate-50 rounded-lg border border-slate-100">
+                            <div className="flex items-start space-x-2 p-3 bg-slate-50 rounded-lg border border-slate-100">
                                 <input 
                                     type="checkbox" 
                                     id="deductible"
                                     checked={formData.isDeductible}
                                     onChange={e => setFormData({...formData, isDeductible: e.target.checked})}
-                                    className="w-4 h-4 text-green-600 rounded focus:ring-green-500"
+                                    className="w-4 h-4 text-green-600 rounded focus:ring-green-500 mt-1"
                                 />
-                                <label htmlFor="deductible" className="text-sm text-slate-700 font-medium">Tax Deductible Expense?</label>
+                                <div>
+                                    <label htmlFor="deductible" className="text-sm text-slate-700 font-medium block">Tax Deductible Expense?</label>
+                                    <span className="text-xs text-slate-500">
+                                        {formData.category 
+                                            ? `Based on category, this is likely ${getCategoryDef(formData.category)?.taxTag === 'ALLOWABLE_EXPENSE' ? 'Allowable' : getCategoryDef(formData.category)?.taxTag === 'CAPITAL_EXPENSE' ? 'Capital Expense' : 'Non-Deductible'}`
+                                            : 'Check this if the expense reduces your taxable income.'
+                                        }
+                                    </span>
+                                </div>
                             </div>
 
                             {/* Receipt Upload */}

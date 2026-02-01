@@ -6,6 +6,13 @@ export enum TransactionType {
 
 export type ExpenseCategoryType = 'BUSINESS' | 'PERSONAL';
 
+export type TaxTag = 
+  | 'TAXABLE_INCOME' 
+  | 'VAT_EXEMPT' 
+  | 'ALLOWABLE_EXPENSE' 
+  | 'CAPITAL_EXPENSE' 
+  | 'NON_DEDUCTIBLE';
+
 export enum PaymentMethod {
   FIAT_NGN = 'FIAT_NGN',
   CRYPTO_USDC = 'CRYPTO_USDC',
@@ -74,6 +81,7 @@ export interface Transaction {
   type: TransactionType;
   expenseCategory?: ExpenseCategoryType; 
   category: string;
+  taxTag?: TaxTag; // New: Specific Tax Classification
   tags?: string[];
   receiptUrl?: string;
   taxDeductible: boolean;

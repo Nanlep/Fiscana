@@ -4,6 +4,7 @@ import { X, Shield, CheckCircle, Loader2, Building2, AlertCircle, PlayCircle } f
 import { fetchMonoTransactions } from '../services/bankService';
 import { autoCategorizeTransactions } from '../services/geminiService';
 import { Transaction, TransactionType } from '../types';
+import { getTaxTagForCategory } from '../utils/categories';
 
 interface BankConnectProps {
     isOpen: boolean;
@@ -50,8 +51,11 @@ const BankConnect: React.FC<BankConnectProps> = ({ isOpen, onClose, onImportTran
                 const analysis = analyzedData[index];
                 const category = analysis ? analysis.category : 'General';
                 const expenseCategory = analysis ? analysis.expenseCategory : 'PERSONAL';
-                const taxDeductible = analysis ? analysis.taxDeductible : false;
                 const cleanedPayee = analysis ? analysis.cleanedPayee : raw.description;
+
+                // Derive tax tag and deductibility from centralized config
+                const taxTag = getTaxTagForCategory(category);
+                const taxDeductible = taxTag === 'ALLOWABLE_EXPENSE' || taxTag === 'CAPITAL_EXPENSE';
 
                 return {
                     id: `mono_${Date.now()}_${index}`,
@@ -63,6 +67,7 @@ const BankConnect: React.FC<BankConnectProps> = ({ isOpen, onClose, onImportTran
                     type: raw.direction === 'CREDIT' ? TransactionType.INCOME : TransactionType.EXPENSE,
                     category: category,
                     expenseCategory: expenseCategory,
+                    taxTag: taxTag,
                     taxDeductible: taxDeductible,
                     tags: ['#MonoImport', ...(analysis?.tags || [])],
                     status: 'CLEARED'
