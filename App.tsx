@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
@@ -119,12 +120,16 @@ function App() {
     {
       id: 'INV-001', clientName: 'TechNext Ltd', clientEmail: 'accounts@technext.ng',
       issueDate: '2025-06-01', dueDate: '2025-06-15', currency: 'NGN',
-      status: InvoiceStatus.SENT, paymentMethods: [PaymentMethod.FIAT_NGN, PaymentMethod.CRYPTO_USDC],
+      status: InvoiceStatus.PARTIALLY_PAID, paymentMethods: [PaymentMethod.FIAT_NGN, PaymentMethod.CRYPTO_USDC],
       items: [{ id: 'i1', description: 'Frontend Architecture', quantity: 1, unitPrice: 1500000 }],
       subTotal: 1500000,
       vatAmount: 112500,
       whtDeduction: 75000,
-      totalAmount: 1537500
+      totalAmount: 1537500,
+      amountPaid: 500000,
+      payments: [
+          { id: 'p1', date: '2025-06-05', amount: 500000, note: 'Initial Deposit' }
+      ]
     },
     {
       id: 'INV-002', clientName: 'Global Corp', clientEmail: 'billing@global.com',
@@ -134,7 +139,11 @@ function App() {
       subTotal: 1500,
       vatAmount: 0,
       whtDeduction: 0,
-      totalAmount: 1500
+      totalAmount: 1500,
+      amountPaid: 1500,
+      payments: [
+          { id: 'p2', date: '2025-05-22', amount: 1500, note: 'Full Payment' }
+      ]
     }
   ];
 
@@ -319,37 +328,58 @@ function App() {
     setInvoices([inv, ...invoices]);
   };
 
-  // Logic to mark invoice as paid and update Wallet Assets
-  const markInvoiceAsPaid = (id: string) => {
+  // Logic to record partial or full payments
+  const recordPayment = (id: string, amount: number, date: string, note?: string) => {
     const invoice = invoices.find(i => i.id === id);
-    if (!invoice || invoice.status === InvoiceStatus.PAID) return;
+    if (!invoice) return;
 
-    // 1. Update Invoice Status AND Record Payment Date
-    const todayStr = new Date().toISOString().split('T')[0];
+    // 1. Update Invoice Logic
+    const newAmountPaid = (invoice.amountPaid || 0) + amount;
+    const isFullyPaid = newAmountPaid >= invoice.totalAmount;
+    
+    // Status Logic: if paid >= total, PAID. if paid > 0, PARTIALLY_PAID. else SENT.
+    const newStatus = isFullyPaid ? InvoiceStatus.PAID : InvoiceStatus.PARTIALLY_PAID;
+    
+    // Update Invoices State
     setInvoices(invoices.map(inv => 
-        inv.id === id ? { ...inv, status: InvoiceStatus.PAID, paidDate: todayStr } : inv
+        inv.id === id ? { 
+            ...inv, 
+            amountPaid: newAmountPaid,
+            payments: [...(inv.payments || []), { id: `pay_${Date.now()}`, date, amount, note }],
+            status: newStatus, 
+            paidDate: isFullyPaid ? date : undefined 
+        } : inv
     ));
 
-    // 2. Update Assets (Wallet)
-    const totalAmount = invoice.items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
-    
-    // Invoices are Accrual, but Payment is Cash Event.
-    updateWalletForTransaction(totalAmount, invoice.currency, TransactionType.INCOME);
-    notify('SUCCESS', 'Invoice marked as paid and wallet updated');
+    // 2. Update Assets (Wallet) - Only add the *received* amount
+    updateWalletForTransaction(amount, invoice.currency, TransactionType.INCOME);
+
+    // 3. Log a Transaction for this specific payment
+    const newTx: Transaction = {
+        id: `tx_pay_${Date.now()}`,
+        date: date,
+        description: `Payment for Invoice #${invoice.id} ${note ? `(${note})` : ''}`,
+        payee: invoice.clientName,
+        amount: amount, 
+        currency: invoice.currency,
+        type: TransactionType.INCOME,
+        category: 'Service Revenue',
+        taxDeductible: false,
+        tags: ['#PaymentReceived', `#Invoice-${invoice.id}`]
+    };
+    addTransaction(newTx);
+
+    notify('SUCCESS', `Payment of ${invoice.currency === 'NGN' ? '₦' : '$'}${amount.toLocaleString()} recorded.`);
   };
 
   // Base add transaction (just log)
   const addTransaction = (t: Transaction) => {
-    setTransactions([t, ...transactions]);
+    setTransactions(prev => [t, ...prev]);
   };
 
   // Bulk add transactions (from Bank Sync)
   const addTransactions = (newTxs: Transaction[]) => {
       setTransactions(prev => [...newTxs, ...prev]);
-      
-      // Also sync these to wallet balance!
-      // This is a simplified simulation. Real accounting would reconcile against existing balances.
-      // Here we assume these are NEW imported transactions that affect the balance.
       
       newTxs.forEach(t => {
           updateWalletForTransaction(t.amount, t.currency, t.type);
@@ -423,7 +453,7 @@ function App() {
             user={userProfile}
             addInvoice={addInvoice} 
             addTransaction={addTransaction} 
-            markAsPaid={markInvoiceAsPaid}
+            recordPayment={recordPayment}
             notify={notify}
         />;
       case 'LEDGER':

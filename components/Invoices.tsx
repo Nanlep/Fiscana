@@ -1,16 +1,17 @@
 
 import React, { useState } from 'react';
-import { Plus, Send, Download, CreditCard, Bitcoin, CheckCircle, Calculator, FileCheck, Loader2 } from 'lucide-react';
+import { Plus, Send, Download, CreditCard, Bitcoin, CheckCircle, Calculator, FileCheck, Loader2, PieChart, X, AlertCircle } from 'lucide-react';
 import { Invoice, InvoiceStatus, PaymentMethod, Transaction, TransactionType, UserProfile } from '../types';
 import { calculateInvoiceTotals } from '../utils/tax';
 import { createCollectionLink } from '../services/baniService';
+import { formatCurrency } from '../utils/currency';
 
 interface InvoicesProps {
   invoices: Invoice[];
   user: UserProfile | null;
   addInvoice: (inv: Invoice) => void;
   addTransaction: (t: Transaction) => void;
-  markAsPaid: (id: string) => void;
+  recordPayment: (id: string, amount: number, date: string, note?: string) => void;
   notify: (type: 'SUCCESS' | 'ERROR' | 'INFO', message: string) => void;
 }
 
@@ -20,20 +21,24 @@ declare global {
     }
 }
 
-const Invoices: React.FC<InvoicesProps> = ({ invoices, user, addInvoice, addTransaction, markAsPaid, notify }) => {
+const Invoices: React.FC<InvoicesProps> = ({ invoices, user, addInvoice, addTransaction, recordPayment, notify }) => {
   const [isCreating, setIsCreating] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false); // New state for loading link
+  const [isGenerating, setIsGenerating] = useState(false);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   
-  // Form State
+  // Payment Recording Modal State
+  const [paymentModal, setPaymentModal] = useState<{ isOpen: boolean, invoiceId: string, balance: number, currency: string }>({ isOpen: false, invoiceId: '', balance: 0, currency: 'NGN' });
+  const [paymentAmount, setPaymentAmount] = useState('');
+  const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
+  const [paymentNote, setPaymentNote] = useState('');
+  
+  // Create Form State
   const [clientName, setClientName] = useState('');
   const [clientEmail, setClientEmail] = useState('');
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [currency, setCurrency] = useState<'NGN' | 'USD'>('NGN');
   const [baniMethods, setBaniMethods] = useState<PaymentMethod[]>([PaymentMethod.FIAT_NGN]);
-  
-  // Tax Configuration
   const [addVat, setAddVat] = useState(true);
   const [expectWht, setExpectWht] = useState(false); 
 
@@ -89,6 +94,8 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, user, addInvoice, addTran
             vatAmount: vat,
             whtDeduction: wht,
             totalAmount: totalReceivable,
+            amountPaid: 0,
+            payments: [],
             status: InvoiceStatus.SENT,
             paymentMethods: baniMethods,
             baniPaymentLink: paymentLink
@@ -137,6 +144,31 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, user, addInvoice, addTran
     }
   };
 
+  const openPaymentModal = (inv: Invoice) => {
+      const balance = inv.totalAmount - (inv.amountPaid || 0);
+      setPaymentModal({
+          isOpen: true,
+          invoiceId: inv.id,
+          balance: balance,
+          currency: inv.currency
+      });
+      setPaymentAmount(balance.toString()); // Default to full remaining payment
+      setPaymentDate(new Date().toISOString().split('T')[0]);
+      setPaymentNote('');
+  };
+
+  const submitPayment = (e: React.FormEvent) => {
+      e.preventDefault();
+      const val = parseFloat(paymentAmount);
+      if (val <= 0 || val > paymentModal.balance + 1) { // Allow small float margin
+           notify('ERROR', 'Invalid payment amount');
+           return;
+      }
+      
+      recordPayment(paymentModal.invoiceId, val, paymentDate, paymentNote);
+      setPaymentModal({ ...paymentModal, isOpen: false });
+  };
+
   const generatePDF = async (elementId: string, filename: string) => {
       if (!window.html2pdf) {
           notify('ERROR', 'PDF generator not loaded. Please refresh.');
@@ -174,6 +206,9 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, user, addInvoice, addTran
       const colorClass = type === 'RECEIPT' ? 'text-green-600' : 'text-blue-600';
       const title = type;
       const idPrefix = type === 'RECEIPT' ? 'RCP' : 'INV';
+      
+      const balanceDue = inv.totalAmount - (inv.amountPaid || 0);
+      const isPaid = balanceDue <= 0;
 
       return (
         <div id={`pdf-${inv.id}-${type}`} className="hidden">
@@ -207,10 +242,10 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, user, addInvoice, addTran
                     </div>
                     <div className="text-right">
                         <p className="text-xs font-bold text-slate-400 uppercase mb-1">Payment Status</p>
-                        <p className={`font-mono font-bold ${inv.status === InvoiceStatus.PAID ? 'text-green-600' : 'text-slate-700'}`}>
-                            {inv.status}
+                        <p className={`font-mono font-bold ${isPaid ? 'text-green-600' : balanceDue < inv.totalAmount ? 'text-amber-600' : 'text-slate-700'}`}>
+                            {inv.status.replace('_', ' ')}
                         </p>
-                        {inv.status !== InvoiceStatus.PAID && <p className="text-xs text-slate-400 mt-1">Due Date: {inv.dueDate}</p>}
+                        {!isPaid && <p className="text-xs text-slate-400 mt-1">Due Date: {inv.dueDate}</p>}
                     </div>
                 </div>
 
@@ -236,7 +271,7 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, user, addInvoice, addTran
                     </tbody>
                 </table>
 
-                {/* Totals */}
+                {/* Totals Section */}
                 <div className="flex justify-end">
                     <div className="w-1/2 space-y-3">
                         <div className="flex justify-between text-sm">
@@ -255,6 +290,20 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, user, addInvoice, addTran
                             <span className="text-base font-bold text-slate-900">Total {type === 'RECEIPT' ? 'Received' : 'Due'}</span>
                             <span className="text-xl font-bold text-slate-900 font-mono">{symbol}{inv.totalAmount.toLocaleString()}</span>
                         </div>
+                        
+                        {/* New Section: Payment History on Invoice */}
+                        {type === 'INVOICE' && (inv.amountPaid || 0) > 0 && (
+                            <>
+                                <div className="flex justify-between text-sm text-green-600 font-medium pt-2">
+                                    <span>Less: Amount Paid</span>
+                                    <span>({symbol}{inv.amountPaid?.toLocaleString()})</span>
+                                </div>
+                                <div className="flex justify-between text-lg font-bold text-slate-900 pt-2 border-t-2 border-slate-100">
+                                    <span>Balance Due</span>
+                                    <span>{symbol}{balanceDue.toLocaleString()}</span>
+                                </div>
+                            </>
+                        )}
                     </div>
                 </div>
 
@@ -430,75 +479,156 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, user, addInvoice, addTran
           <thead className="bg-slate-50 border-b border-slate-200">
             <tr>
               <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase">Client / ID</th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase">Gross</th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase">Tax Impact</th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase">Net Receivable</th>
+              <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase">Total</th>
+              <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase">Progress</th>
+              <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase">Balance</th>
               <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase">Status</th>
               <th className="px-6 py-4 text-right text-xs font-semibold text-slate-500 uppercase">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {invoices.map((inv) => (
-              <tr key={inv.id} className="hover:bg-slate-50/80 transition-colors">
-                <td className="px-6 py-4">
-                  <p className="font-medium text-slate-900">{inv.clientName}</p>
-                  <p className="text-xs text-slate-500">{inv.id}</p>
-                </td>
-                <td className="px-6 py-4 font-mono text-slate-600 text-sm">
-                   {inv.currency === 'NGN' ? '₦' : '$'}{inv.subTotal?.toLocaleString() || 0}
-                </td>
-                <td className="px-6 py-4 text-xs">
-                    <div className="text-green-600">+VAT: {inv.vatAmount?.toLocaleString() || 0}</div>
-                    <div className="text-red-500">-WHT: {inv.whtDeduction?.toLocaleString() || 0}</div>
-                </td>
-                 <td className="px-6 py-4 font-mono font-bold text-slate-900">
-                   {inv.currency === 'NGN' ? '₦' : '$'}{inv.totalAmount?.toLocaleString() || 0}
-                </td>
-                <td className="px-6 py-4">
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
-                    ${inv.status === InvoiceStatus.PAID ? 'bg-green-100 text-green-800' : 
-                      inv.status === InvoiceStatus.SENT ? 'bg-blue-100 text-blue-800' :
-                      'bg-slate-100 text-slate-800'}`}>
-                    {inv.status}
-                  </span>
-                </td>
-                <td className="px-6 py-4 text-right flex justify-end space-x-2">
-                  {inv.status === InvoiceStatus.PAID ? (
-                      <button 
-                        onClick={() => handleGenerateReceipt(inv)} 
-                        disabled={!!downloadingId}
-                        className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors disabled:opacity-50" 
-                        title="Download Receipt PDF"
-                      >
-                         {downloadingId && downloadingId.includes(inv.id) && downloadingId.includes('Receipt') ? <Loader2 size={18} className="animate-spin"/> : <FileCheck size={18} />}
-                      </button>
-                  ) : (
-                    <button 
-                        onClick={() => {
-                            if(confirm(`Confirm payment of ${inv.currency === 'NGN' ? '₦' : '$'}${inv.totalAmount} received today?`)) {
-                                markAsPaid(inv.id);
-                            }
-                        }} 
-                        className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors" 
-                        title="Mark as Paid"
-                    >
-                        <CheckCircle size={18} />
-                    </button>
-                  )}
-                  <button 
-                    onClick={() => handleDownloadInvoice(inv)} 
-                    disabled={!!downloadingId}
-                    className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50" 
-                    title="Download Invoice PDF"
-                  >
-                     {downloadingId && downloadingId.includes(inv.id) && downloadingId.includes('Invoice') ? <Loader2 size={18} className="animate-spin"/> : <Download size={18} />}
-                  </button>
-                </td>
-              </tr>
-            ))}
+            {invoices.map((inv) => {
+              const paid = inv.amountPaid || 0;
+              const total = inv.totalAmount;
+              const balance = total - paid;
+              const percent = Math.min((paid / total) * 100, 100);
+
+              return (
+                <tr key={inv.id} className="hover:bg-slate-50/80 transition-colors">
+                    <td className="px-6 py-4">
+                        <p className="font-medium text-slate-900">{inv.clientName}</p>
+                        <p className="text-xs text-slate-500">{inv.id}</p>
+                    </td>
+                    <td className="px-6 py-4 font-mono text-slate-900 font-bold text-sm">
+                        {inv.currency === 'NGN' ? '₦' : '$'}{total.toLocaleString()}
+                    </td>
+                    <td className="px-6 py-4">
+                        <div className="w-24 bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                            <div 
+                                className={`h-1.5 rounded-full ${percent >= 100 ? 'bg-green-500' : 'bg-blue-500'}`} 
+                                style={{ width: `${percent}%` }}
+                            ></div>
+                        </div>
+                        <p className="text-[10px] text-slate-400 mt-1">{percent.toFixed(0)}% Paid</p>
+                    </td>
+                    <td className="px-6 py-4 font-mono text-sm font-medium text-slate-600">
+                        {balance > 0 ? (
+                             <span>{inv.currency === 'NGN' ? '₦' : '$'}{balance.toLocaleString()}</span>
+                        ) : (
+                             <span className="text-green-600 text-xs">Settled</span>
+                        )}
+                    </td>
+                    <td className="px-6 py-4">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                        ${inv.status === InvoiceStatus.PAID ? 'bg-green-100 text-green-800' : 
+                          inv.status === InvoiceStatus.PARTIALLY_PAID ? 'bg-amber-100 text-amber-800' :
+                          inv.status === InvoiceStatus.SENT ? 'bg-blue-100 text-blue-800' :
+                          'bg-slate-100 text-slate-800'}`}>
+                        {inv.status.replace('_', ' ')}
+                        </span>
+                    </td>
+                    <td className="px-6 py-4 text-right flex justify-end space-x-2">
+                        {/* Receipt Button */}
+                        {paid > 0 && (
+                            <button 
+                                onClick={() => handleGenerateReceipt(inv)} 
+                                disabled={!!downloadingId}
+                                className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors disabled:opacity-50" 
+                                title="Download Receipt PDF"
+                            >
+                                {downloadingId && downloadingId.includes(inv.id) && downloadingId.includes('Receipt') ? <Loader2 size={18} className="animate-spin"/> : <FileCheck size={18} />}
+                            </button>
+                        )}
+
+                        {/* Record Payment Button */}
+                        {balance > 0 && (
+                             <button 
+                                onClick={() => openPaymentModal(inv)} 
+                                className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" 
+                                title="Record Payment"
+                            >
+                                <CreditCard size={18} />
+                            </button>
+                        )}
+
+                        {/* Invoice Download */}
+                        <button 
+                            onClick={() => handleDownloadInvoice(inv)} 
+                            disabled={!!downloadingId}
+                            className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50" 
+                            title="Download Invoice PDF"
+                        >
+                            {downloadingId && downloadingId.includes(inv.id) && downloadingId.includes('Invoice') ? <Loader2 size={18} className="animate-spin"/> : <Download size={18} />}
+                        </button>
+                    </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
+
+      {/* Record Payment Modal */}
+      {paymentModal.isOpen && (
+           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in">
+              <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+                   <div className="flex justify-between items-center mb-4">
+                       <h3 className="text-lg font-bold text-slate-900">Record Payment</h3>
+                       <button onClick={() => setPaymentModal({...paymentModal, isOpen: false})} className="text-slate-400 hover:text-slate-600">
+                           <X size={20} />
+                       </button>
+                   </div>
+                   
+                   <div className="bg-slate-50 p-4 rounded-xl mb-4 border border-slate-100">
+                       <p className="text-xs text-slate-500 uppercase font-bold">Outstanding Balance</p>
+                       <p className="text-2xl font-bold text-slate-800">
+                           {paymentModal.currency === 'NGN' ? '₦' : '$'}{paymentModal.balance.toLocaleString()}
+                       </p>
+                   </div>
+
+                   <form onSubmit={submitPayment} className="space-y-4">
+                       <div>
+                           <label className="block text-sm font-medium text-slate-700 mb-1">Payment Amount</label>
+                           <input 
+                               type="number" 
+                               required
+                               max={paymentModal.balance + 1} // Floating point tolerance
+                               value={paymentAmount}
+                               onChange={e => setPaymentAmount(e.target.value)}
+                               className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
+                           />
+                       </div>
+                       <div>
+                           <label className="block text-sm font-medium text-slate-700 mb-1">Date Received</label>
+                           <input 
+                               type="date" 
+                               required
+                               value={paymentDate}
+                               onChange={e => setPaymentDate(e.target.value)}
+                               className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
+                           />
+                       </div>
+                        <div>
+                           <label className="block text-sm font-medium text-slate-700 mb-1">Note (Optional)</label>
+                           <input 
+                               type="text" 
+                               value={paymentNote}
+                               onChange={e => setPaymentNote(e.target.value)}
+                               placeholder="e.g. 50% Upfront"
+                               className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
+                           />
+                       </div>
+
+                       <button 
+                           type="submit"
+                           className="w-full bg-green-600 text-white font-bold py-3 rounded-xl hover:bg-green-700 transition-colors shadow-lg"
+                       >
+                           Confirm Payment
+                       </button>
+                   </form>
+              </div>
+           </div>
+      )}
 
       {/* Hidden PDF Templates Area */}
       <div className="fixed top-0 left-[-10000px] pointer-events-none">

@@ -23,6 +23,7 @@ export enum PaymentMethod {
 export enum InvoiceStatus {
   DRAFT = 'DRAFT',
   SENT = 'SENT',
+  PARTIALLY_PAID = 'PARTIALLY_PAID',
   PAID = 'PAID',
   OVERDUE = 'OVERDUE'
 }
@@ -97,6 +98,13 @@ export interface InvoiceItem {
   unitPrice: number;
 }
 
+export interface PaymentRecord {
+    id: string;
+    date: string;
+    amount: number;
+    note?: string;
+}
+
 export interface Invoice {
   id: string;
   clientName: string;
@@ -109,8 +117,13 @@ export interface Invoice {
   vatAmount: number;
   whtDeduction: number; // Estimated deduction by client
   totalAmount: number; // Receivable Amount
+  
+  // Payment Tracking
+  amountPaid: number;
+  payments: PaymentRecord[];
+  
   status: InvoiceStatus;
-  paidDate?: string; // Date payment was confirmed
+  paidDate?: string; // Date fully paid
   paymentMethods: PaymentMethod[]; 
   baniPaymentLink?: string;
 }
