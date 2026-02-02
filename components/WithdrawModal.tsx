@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Building2, Wallet, Loader2, CheckCircle, User, Briefcase, ShieldCheck, ChevronDown, Search } from 'lucide-react';
+import { X, Building2, Wallet, Loader2, CheckCircle, User, Briefcase, ShieldCheck, ChevronDown, Search, AlertOctagon } from 'lucide-react';
 import { ExpenseCategoryType } from '../types';
 import { resolveBankAccount, initiatePayout } from '../services/baniService';
 import { NIGERIAN_BANKS, Bank } from '../utils/banks';
@@ -26,6 +26,7 @@ const WithdrawModal: React.FC<WithdrawModalProps> = ({ isOpen, onClose, onWithdr
   const [accountNumber, setAccountNumber] = useState('');
   const [accountName, setAccountName] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
+  const [verificationError, setVerificationError] = useState('');
   
   // Searchable Dropdown State
   const [isBankListOpen, setIsBankListOpen] = useState(false);
@@ -37,11 +38,12 @@ const WithdrawModal: React.FC<WithdrawModalProps> = ({ isOpen, onClose, onWithdr
   const [network, setNetwork] = useState('SOL');
 
   useEffect(() => {
-      // Auto-verify account when 10 digits entered
+      // Auto-verify account when 10 digits entered and bank is selected
       if (currency === 'NGN' && accountNumber.length === 10 && bankCode) {
           verifyAccount();
       } else {
           setAccountName('');
+          setVerificationError('');
       }
   }, [accountNumber, bankCode, currency]);
 
@@ -58,11 +60,15 @@ const WithdrawModal: React.FC<WithdrawModalProps> = ({ isOpen, onClose, onWithdr
 
   const verifyAccount = async () => {
       setIsVerifying(true);
+      setVerificationError('');
+      setAccountName('');
+      
       try {
           const name = await resolveBankAccount(accountNumber, bankCode);
           setAccountName(name);
       } catch (error) {
           setAccountName('');
+          setVerificationError('Could not verify account details.');
       } finally {
           setIsVerifying(false);
       }
@@ -96,7 +102,7 @@ const WithdrawModal: React.FC<WithdrawModalProps> = ({ isOpen, onClose, onWithdr
         return;
     }
     if (currency === 'NGN' && !accountName) {
-        alert("Please wait for account verification");
+        alert("Please ensure the account name is verified before proceeding.");
         return;
     }
 
@@ -139,6 +145,7 @@ const WithdrawModal: React.FC<WithdrawModalProps> = ({ isOpen, onClose, onWithdr
     setWalletAddress('');
     setBankCode('');
     setBankName('');
+    setVerificationError('');
     onClose();
   };
 
@@ -205,7 +212,7 @@ const WithdrawModal: React.FC<WithdrawModalProps> = ({ isOpen, onClose, onWithdr
 
                         {/* Conditional Fields */}
                         {currency === 'NGN' ? (
-                            <div className="space-y-3">
+                            <div className="space-y-4">
                                 {/* Searchable Bank Dropdown */}
                                 <div className="relative" ref={bankListRef}>
                                     <label className="block text-sm font-medium text-slate-700 mb-1">Select Bank</label>
@@ -265,6 +272,7 @@ const WithdrawModal: React.FC<WithdrawModalProps> = ({ isOpen, onClose, onWithdr
                                             value={accountNumber}
                                             onChange={(e) => setAccountNumber(e.target.value.replace(/\D/g, ''))}
                                             className={`w-full px-4 py-3 border rounded-xl focus:ring-2 outline-none transition-colors ${
+                                                verificationError ? 'border-red-300 focus:ring-red-500' : 
                                                 accountName ? 'border-green-500 focus:ring-green-500' : 'border-slate-200 focus:ring-green-500'
                                             }`}
                                             placeholder="0123456789"
@@ -276,12 +284,35 @@ const WithdrawModal: React.FC<WithdrawModalProps> = ({ isOpen, onClose, onWithdr
                                             </div>
                                         )}
                                     </div>
-                                    {accountName && (
-                                        <div className="mt-2 flex items-center space-x-1 text-xs text-green-700 bg-green-50 px-2 py-1 rounded w-fit animate-in fade-in slide-in-from-top-1">
-                                            <ShieldCheck size={12} />
-                                            <span className="font-bold">{accountName}</span>
-                                        </div>
-                                    )}
+                                </div>
+
+                                {/* Account Holder Name Field (Populated by API) */}
+                                <div className="animate-fade-in">
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Verified Account Name</label>
+                                    <div className="relative">
+                                        <input 
+                                            type="text" 
+                                            value={accountName || verificationError}
+                                            readOnly
+                                            className={`w-full px-4 py-3 border rounded-xl font-bold text-sm outline-none transition-all ${
+                                                verificationError
+                                                ? 'bg-red-50 border-red-200 text-red-600'
+                                                : accountName 
+                                                    ? 'bg-green-50 border-green-200 text-green-800' 
+                                                    : 'bg-slate-50 border-slate-200 text-slate-400'
+                                            }`}
+                                            placeholder="Waiting for verification..."
+                                        />
+                                        {accountName && !verificationError && (
+                                            <CheckCircle size={18} className="absolute right-3 top-1/2 -translate-y-1/2 text-green-600 animate-in zoom-in" />
+                                        )}
+                                        {verificationError && (
+                                            <AlertOctagon size={18} className="absolute right-3 top-1/2 -translate-y-1/2 text-red-500 animate-in zoom-in" />
+                                        )}
+                                    </div>
+                                    <p className="text-[10px] text-slate-400 mt-1">
+                                        Auto-populated from NIBSS via Bani. Ensure this matches your beneficiary.
+                                    </p>
                                 </div>
                             </div>
                         ) : (
@@ -357,10 +388,11 @@ const WithdrawModal: React.FC<WithdrawModalProps> = ({ isOpen, onClose, onWithdr
                         <div className="pt-2">
                             <button 
                                 type="submit"
-                                disabled={currency === 'NGN' && !accountName}
-                                className="w-full py-3 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                                disabled={currency === 'NGN' && (!accountName || isVerifying)}
+                                className="w-full py-3 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
                             >
-                                Withdraw Funds
+                                {isVerifying && <Loader2 size={18} className="animate-spin" />}
+                                <span>{isVerifying ? 'Verifying Account...' : 'Withdraw Funds'}</span>
                             </button>
                         </div>
                     </form>
