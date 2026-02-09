@@ -1,0 +1,200 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  name          String
+  role          String   @default("USER") // USER or ADMIN
+  type          String   @default("INDIVIDUAL") // INDIVIDUAL or CORPORATE
+  companyName   String?
+  kycStatus     String   @default("UNVERIFIED") // UNVERIFIED, PENDING, VERIFIED, REJECTED
+  tier          String   @default("TIER_1") // TIER_1, TIER_2, TIER_3
+  tin           String?  // Tax Identification Number
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relationships
+  transactions  Transaction[]
+  invoices      Invoice[]
+  assets        Asset[]
+  liabilities   Liability[]
+  budgets       Budget[]
+  kycRequests   KYCRequest[]
+
+  @@index([email])
+}
+
+model Transaction {
+  id                  String   @id @default(uuid())
+  userId              String
+  date                DateTime
+  description         String
+  payee               String
+  amount              Float    // Net amount (cash impact)
+  grossAmount         Float?   // Amount before WHT deduction
+  currency            String   // NGN or USD
+  exchangeRateSnapshot Float?
+  type                String   // INCOME or EXPENSE
+  expenseCategory     String?  // BUSINESS or PERSONAL
+  category            String
+  taxTag              String?  // TAXABLE_INCOME, ALLOWABLE_EXPENSE, etc.
+  tags                String[] @default([])
+  receiptUrl          String?
+  taxDeductible       Boolean  @default(false)
+  status              String   @default("CLEARED") // CLEARED, PENDING, VOID
+  
+  // Tax Details (stored as JSON)
+  vatAmount           Float?
+  whtAmount           Float?
+  isRemitted          Boolean  @default(false)
+  
+  // Audit Log
+  source              String   // MANUAL, BANK_IMPORT, INVOICE_GENERATED, SYSTEM
+  createdAt           DateTime @default(now())
+  createdBy           String
+  modifiedAt          DateTime?
+  
+  // Relationships
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, date])
+  @@index([userId, type])
+}
+
+model Invoice {
+  id                String          @id @default(uuid())
+  userId            String
+  clientName        String
+  clientEmail       String
+  issueDate         DateTime
+  dueDate           DateTime
+  currency          String          // NGN or USD
+  subTotal          Float
+  vatAmount         Float
+  whtDeduction      Float
+  totalAmount       Float
+  amountPaid        Float           @default(0)
+  status            String          @default("DRAFT") // DRAFT, SENT, PARTIALLY_PAID, PAID, OVERDUE
+  paidDate          DateTime?
+  paymentMethods    String[]        @default([])
+  baniPaymentLink   String?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  // Relationships
+  user              User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items             InvoiceItem[]
+  payments          PaymentRecord[]
+
+  @@index([userId, status])
+  @@index([userId, dueDate])
+}
+
+model InvoiceItem {
+  id          String  @id @default(uuid())
+  invoiceId   String
+  description String
+  quantity    Int
+  unitPrice   Float
+
+  // Relationships
+  invoice     Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+}
+
+model PaymentRecord {
+  id        String   @id @default(uuid())
+  invoiceId String
+  date      DateTime
+  amount    Float
+  note      String?
+  createdAt DateTime @default(now())
+
+  // Relationships
+  invoice   Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+}
+
+model Asset {
+  id          String   @id @default(uuid())
+  userId      String
+  name        String
+  description String?
+  value       Float
+  currency    String   // NGN or USD
+  type        String   // CASH, BANK_ACCOUNT, CRYPTO, STOCKS, etc.
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relationships
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type])
+}
+
+model Liability {
+  id          String   @id @default(uuid())
+  userId      String
+  name        String
+  description String?
+  amount      Float
+  currency    String   // NGN or USD
+  type        String?  // CREDIT_CARD, LOAN, MORTGAGE, etc.
+  dueDate     DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relationships
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type])
+}
+
+model Budget {
+  id       String @id @default(uuid())
+  userId   String
+  category String
+  limit    Float
+  currency String // NGN or USD
+  type     String // BUSINESS or PERSONAL
+  period   String @default("MONTHLY")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, period])
+  @@unique([userId, category, period])
+}
+
+model KYCRequest {
+  id        String   @id @default(uuid())
+  userId    String
+  userName  String
+  userEmail String
+  bvn       String
+  nin       String
+  status    String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  date      DateTime @default(now())
+  reviewedAt DateTime?
+  reviewedBy String?
+
+  // Relationships
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+}

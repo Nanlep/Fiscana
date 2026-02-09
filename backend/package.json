@@ -1,0 +1,53 @@
+{
+    "name": "fiscana-backend",
+    "version": "1.0.0",
+    "description": "Backend API for Fiscana Financial OS",
+    "main": "dist/index.js",
+    "type": "module",
+    "scripts": {
+        "dev": "tsx watch src/index.ts",
+        "build": "tsc",
+        "start": "node dist/index.js",
+        "prisma:generate": "prisma generate",
+        "prisma:migrate": "prisma migrate dev",
+        "prisma:studio": "prisma studio",
+        "test": "NODE_OPTIONS='--experimental-vm-modules' jest",
+        "test:watch": "NODE_OPTIONS='--experimental-vm-modules' jest --watch",
+        "test:coverage": "NODE_OPTIONS='--experimental-vm-modules' jest --coverage",
+        "test:db": "tsx test-db.ts"
+    },
+    "keywords": [
+        "fiscana",
+        "fintech",
+        "tax",
+        "accounting"
+    ],
+    "author": "Fiscana Financial Services",
+    "license": "PROPRIETARY",
+    "dependencies": {
+        "@google/genai": "^1.38.0",
+        "@google/generative-ai": "^0.24.1",
+        "@prisma/client": "^5.9.0",
+        "@supabase/supabase-js": "^2.39.0",
+        "cors": "^2.8.5",
+        "dotenv": "^16.4.0",
+        "express": "^4.18.2",
+        "express-rate-limit": "^7.1.5",
+        "express-validator": "^7.0.1",
+        "helmet": "^7.1.0",
+        "jsonwebtoken": "^9.0.2"
+    },
+    "devDependencies": {
+        "@types/cors": "^2.8.17",
+        "@types/express": "^4.17.21",
+        "@types/jest": "^30.0.0",
+        "@types/jsonwebtoken": "^9.0.5",
+        "@types/supertest": "^6.0.3",
+        "jest": "^30.2.0",
+        "prisma": "^5.9.0",
+        "supertest": "^7.2.2",
+        "ts-jest": "^29.4.6",
+        "tsx": "^4.7.0",
+        "typescript": "^5.3.3"
+    }
+}
