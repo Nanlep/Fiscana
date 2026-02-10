@@ -182,7 +182,7 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, user, addInvoice, addTran
             margin: 10,
             filename: filename,
             image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2, useCORS: true, windowWidth: 700 },
+            html2canvas: { scale: 2, useCORS: true },
             jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
         };
 
@@ -631,7 +631,7 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, user, addInvoice, addTran
             )}
 
             {/* Hidden PDF Templates Area */}
-            <div className="fixed top-0 left-[-10000px] pointer-events-none">
+            <div className="fixed top-0 left-0 pointer-events-none" style={{ opacity: 0, zIndex: -9999 }}>
                 {invoices.map(inv => (
                     <React.Fragment key={inv.id}>
                         {getDocTemplate(inv, 'INVOICE')}
