@@ -182,7 +182,7 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, user, addInvoice, addTran
             margin: 10,
             filename: filename,
             image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2, useCORS: true },
+            html2canvas: { scale: 2, useCORS: true, windowWidth: 700 },
             jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
         };
 
@@ -213,7 +213,7 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, user, addInvoice, addTran
         return (
             <div id={`pdf-${inv.id}-${type}`}>
                 {/* This container will be temporarily rendered for PDF generation */}
-                <div className="p-8 bg-white max-w-[800px] mx-auto text-slate-900 font-sans" style={{ width: '800px' }}>
+                <div className="p-8 bg-white max-w-[700px] mx-auto text-slate-900 font-sans" style={{ width: '700px' }}>
                     {/* Header */}
                     <div className="flex justify-between items-start mb-8 border-b border-slate-100 pb-8">
                         <div>
