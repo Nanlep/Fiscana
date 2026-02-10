@@ -21,8 +21,22 @@ try {
 app.use(helmet());
 
 // CORS configuration
+const allowedOrigins = [
+    config.frontendUrl,
+    'http://localhost:3000',
+    'https://fiscana.pro',
+    'https://www.fiscana.pro',
+].filter(Boolean);
+
 app.use(cors({
-    origin: config.frontendUrl,
+    origin: (origin, callback) => {
+        // Allow requests with no origin (mobile apps, curl, etc.)
+        if (!origin || allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
     credentials: true,
 }));
 
