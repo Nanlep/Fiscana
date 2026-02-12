@@ -97,7 +97,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginSuccess }) => {
                 <div className="lg:w-1/2 px-8 lg:px-20 py-20 flex flex-col justify-center">
                     <div className="inline-flex items-center space-x-2 bg-green-50 text-green-700 px-3 py-1 rounded-full text-xs font-bold mb-6 w-fit">
                         <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                        <span>Ready for 2026 Tax Reforms</span>
+                        <span>Ready for Your Tax Reforms</span>
                     </div>
                     <h1 className="text-5xl lg:text-6xl font-extrabold tracking-tight text-slate-900 leading-[1.1] mb-6">
                         The Financial OS for <span className="text-green-600">Global Players</span> in Nigeria.

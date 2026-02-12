@@ -17,6 +17,7 @@ model User {
   name          String
   role          String   @default("USER") // USER or ADMIN
   type          String   @default("INDIVIDUAL") // INDIVIDUAL or CORPORATE
+  status        String   @default("ACTIVE") // ACTIVE or SUSPENDED
   companyName   String?
   kycStatus     String   @default("UNVERIFIED") // UNVERIFIED, PENDING, VERIFIED, REJECTED
   tier          String   @default("TIER_1") // TIER_1, TIER_2, TIER_3
@@ -33,6 +34,14 @@ model User {
   kycRequests   KYCRequest[]
 
   @@index([email])
+  @@index([status])
+}
+
+model PlatformConfig {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+  updatedBy String?
 }
 
 model Transaction {
@@ -88,7 +97,11 @@ model Invoice {
   status            String          @default("DRAFT") // DRAFT, SENT, PARTIALLY_PAID, PAID, OVERDUE
   paidDate          DateTime?
   paymentMethods    String[]        @default([])
-  baniPaymentLink   String?
+  paymentBankName       String?   // Receiving bank name
+  paymentAccountNumber  String?   // Receiving account number
+  paymentAccountName    String?   // Receiving account name
+  paymentWalletAddress  String?   // USDT wallet address
+  paymentWalletNetwork  String?   // e.g. TRC-20
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt
 

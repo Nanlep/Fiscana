@@ -1,9 +1,8 @@
 
 import React, { useState } from 'react';
-import { Plus, Send, Download, CreditCard, Bitcoin, CheckCircle, Calculator, FileCheck, Loader2, PieChart, X, AlertCircle } from 'lucide-react';
+import { Plus, Send, Download, CreditCard, Bitcoin, CheckCircle, Calculator, FileCheck, Loader2, PieChart, X, AlertCircle, Wallet } from 'lucide-react';
 import { Invoice, InvoiceStatus, PaymentMethod, Transaction, TransactionType, UserProfile } from '../types';
 import { calculateInvoiceTotals } from '../utils/tax';
-import { createCollectionLink } from '../services/baniService';
 import { formatCurrency } from '../utils/currency';
 
 interface InvoicesProps {
@@ -38,15 +37,21 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, user, addInvoice, addTran
     const [amount, setAmount] = useState('');
     const [description, setDescription] = useState('');
     const [currency, setCurrency] = useState<'NGN' | 'USD'>('NGN');
-    const [baniMethods, setBaniMethods] = useState<PaymentMethod[]>([PaymentMethod.FIAT_NGN]);
+    const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([PaymentMethod.FIAT_NGN]);
     const [addVat, setAddVat] = useState(true);
     const [expectWht, setExpectWht] = useState(false);
 
+    // Payment Details State
+    const [bankName, setBankName] = useState('');
+    const [accountNumber, setAccountNumber] = useState('');
+    const [accountName, setAccountName] = useState('');
+    const [walletAddress, setWalletAddress] = useState('');
+
     const toggleMethod = (method: PaymentMethod) => {
-        if (baniMethods.includes(method)) {
-            setBaniMethods(baniMethods.filter(m => m !== method));
+        if (paymentMethods.includes(method)) {
+            setPaymentMethods(paymentMethods.filter(m => m !== method));
         } else {
-            setBaniMethods([...baniMethods, method]);
+            setPaymentMethods([...paymentMethods, method]);
         }
     };
 
@@ -57,6 +62,23 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, user, addInvoice, addTran
     const handleCreate = async () => {
         if (!clientName || !amount) {
             notify('ERROR', 'Please fill in Client Name and Amount');
+            return;
+        }
+
+        // Validate that at least one payment method has details
+        const hasBankDetails = paymentMethods.includes(PaymentMethod.FIAT_NGN) && bankName && accountNumber && accountName;
+        const hasWalletDetails = paymentMethods.includes(PaymentMethod.CRYPTO_USDT) && walletAddress;
+
+        if (paymentMethods.includes(PaymentMethod.FIAT_NGN) && (!bankName || !accountNumber || !accountName)) {
+            notify('ERROR', 'Please fill in your bank account details for Bank Transfer');
+            return;
+        }
+        if (paymentMethods.includes(PaymentMethod.CRYPTO_USDT) && !walletAddress) {
+            notify('ERROR', 'Please fill in your USDT wallet address');
+            return;
+        }
+        if (!hasBankDetails && !hasWalletDetails) {
+            notify('ERROR', 'Please select a payment channel and fill in the details');
             return;
         }
 
@@ -73,15 +95,6 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, user, addInvoice, addTran
             const invoiceId = Math.random().toString(36).substr(2, 9).toUpperCase();
             const issueDate = new Date().toISOString().split('T')[0];
 
-            // --- BANI INTEGRATION START ---
-            // Generate a real/simulated Bani Payment Link
-            const paymentLink = await createCollectionLink(
-                totalReceivable,
-                currency,
-                clientEmail || 'client@example.com'
-            );
-            // --- BANI INTEGRATION END ---
-
             const newInvoice: Invoice = {
                 id: invoiceId,
                 clientName,
@@ -97,8 +110,11 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, user, addInvoice, addTran
                 amountPaid: 0,
                 payments: [],
                 status: InvoiceStatus.SENT,
-                paymentMethods: baniMethods,
-                baniPaymentLink: paymentLink
+                paymentMethods: paymentMethods,
+                paymentDetails: {
+                    ...(hasBankDetails ? { bankName, accountNumber, accountName } : {}),
+                    ...(hasWalletDetails ? { walletAddress, walletNetwork: 'TRC-20' } : {}),
+                }
             };
 
             const newTransaction: Transaction = {
@@ -135,10 +151,14 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, user, addInvoice, addTran
             setClientEmail('');
             setAmount('');
             setDescription('');
-            notify('SUCCESS', 'Invoice created with Bani Payment Link');
+            setBankName('');
+            setAccountNumber('');
+            setAccountName('');
+            setWalletAddress('');
+            notify('SUCCESS', 'Invoice created successfully!');
 
-        } catch (e) {
-            notify('ERROR', 'Failed to generate payment link');
+        } catch (e: any) {
+            notify('ERROR', e?.message || 'Failed to create invoice');
         } finally {
             setIsGenerating(false);
         }
@@ -315,11 +335,37 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, user, addInvoice, addTran
                         <p className="text-xs text-slate-400">
                             {type === 'RECEIPT'
                                 ? 'This is a computer-generated receipt and is valid without a signature.'
-                                : 'Please pay into the account details provided or use the payment link below.'}
+                                : 'Please pay into the account details provided below.'}
                         </p>
-                        {type === 'INVOICE' && inv.baniPaymentLink && (
-                            <div className="mt-4">
-                                <span className="text-xs font-mono bg-slate-100 p-2 rounded">{inv.baniPaymentLink}</span>
+                        {type === 'INVOICE' && inv.paymentDetails && (
+                            <div className="mt-4 p-3 bg-slate-50 rounded-lg border border-slate-200 text-left">
+                                <p className="text-xs font-semibold text-slate-700 mb-2">Payment Details:</p>
+                                <div className="flex flex-col gap-1">
+                                    {inv.paymentDetails.bankName && (
+                                        <>
+                                            <span className="text-xs text-slate-600">
+                                                <strong>Bank:</strong> {inv.paymentDetails.bankName}
+                                            </span>
+                                            <span className="text-xs text-slate-600">
+                                                <strong>Account Number:</strong> {inv.paymentDetails.accountNumber}
+                                            </span>
+                                            <span className="text-xs text-slate-600">
+                                                <strong>Account Name:</strong> {inv.paymentDetails.accountName}
+                                            </span>
+                                        </>
+                                    )}
+                                    {inv.paymentDetails.walletAddress && (
+                                        <>
+                                            {inv.paymentDetails.bankName && <hr className="my-2 border-slate-200" />}
+                                            <span className="text-xs text-slate-600">
+                                                <strong>USDT Wallet ({inv.paymentDetails.walletNetwork}):</strong>
+                                            </span>
+                                            <span className="text-xs font-mono text-slate-700 break-all">
+                                                {inv.paymentDetails.walletAddress}
+                                            </span>
+                                        </>
+                                    )}
+                                </div>
                             </div>
                         )}
                     </div>
@@ -362,7 +408,7 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, user, addInvoice, addTran
                 <div className="bg-white p-6 rounded-2xl border border-green-100 shadow-xl mb-8 animate-in slide-in-from-top-4">
                     <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center">
                         Create Tax-Compliant Invoice
-                        <span className="ml-2 bg-green-100 text-green-700 text-xs px-2 py-0.5 rounded-full">Finance Act 2026 Ready</span>
+                        <span className="ml-2 bg-green-100 text-green-700 text-xs px-2 py-0.5 rounded-full">Finance Act Ready</span>
                     </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                         <div className="space-y-4">
@@ -377,7 +423,7 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, user, addInvoice, addTran
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Client Email (For Payment Link)</label>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Client Email</label>
                                 <input
                                     type="email"
                                     value={clientEmail}
@@ -399,10 +445,65 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, user, addInvoice, addTran
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-2">Payment Channels</label>
                                 <div className="flex flex-wrap gap-2">
-                                    <button onClick={() => toggleMethod(PaymentMethod.FIAT_NGN)} className={`px-3 py-1.5 rounded-lg text-sm font-medium border flex items-center space-x-1 ${baniMethods.includes(PaymentMethod.FIAT_NGN) ? 'bg-green-50 border-green-500 text-green-700' : 'bg-white border-slate-200 text-slate-600'}`}><CreditCard size={14} /> <span>Bank Transfer</span></button>
-                                    <button onClick={() => toggleMethod(PaymentMethod.CRYPTO_USDC)} className={`px-3 py-1.5 rounded-lg text-sm font-medium border flex items-center space-x-1 ${baniMethods.includes(PaymentMethod.CRYPTO_USDC) ? 'bg-blue-50 border-blue-500 text-blue-700' : 'bg-white border-slate-200 text-slate-600'}`}><span className="font-bold">$</span> <span>USDC</span></button>
+                                    <button onClick={() => toggleMethod(PaymentMethod.FIAT_NGN)} className={`px-3 py-1.5 rounded-lg text-sm font-medium border flex items-center space-x-1 ${paymentMethods.includes(PaymentMethod.FIAT_NGN) ? 'bg-green-50 border-green-500 text-green-700' : 'bg-white border-slate-200 text-slate-600'}`}><CreditCard size={14} /> <span>Bank Transfer</span></button>
+                                    <button onClick={() => toggleMethod(PaymentMethod.CRYPTO_USDT)} className={`px-3 py-1.5 rounded-lg text-sm font-medium border flex items-center space-x-1 ${paymentMethods.includes(PaymentMethod.CRYPTO_USDT) ? 'bg-blue-50 border-blue-500 text-blue-700' : 'bg-white border-slate-200 text-slate-600'}`}><Wallet size={14} /> <span>USDT</span></button>
                                 </div>
                             </div>
+
+                            {/* Bank Account Details */}
+                            {paymentMethods.includes(PaymentMethod.FIAT_NGN) && (
+                                <div className="p-4 bg-green-50 rounded-xl border border-green-100 space-y-3">
+                                    <p className="text-xs font-semibold text-green-800 flex items-center space-x-1"><CreditCard size={14} /> <span>Bank Account Details</span></p>
+                                    <div>
+                                        <label className="block text-xs font-medium text-slate-600 mb-1">Bank Name</label>
+                                        <input
+                                            type="text"
+                                            value={bankName}
+                                            onChange={(e) => setBankName(e.target.value)}
+                                            className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
+                                            placeholder="e.g. First Bank, GTBank"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-medium text-slate-600 mb-1">Account Number</label>
+                                        <input
+                                            type="text"
+                                            value={accountNumber}
+                                            onChange={(e) => setAccountNumber(e.target.value)}
+                                            className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-green-500 outline-none font-mono"
+                                            placeholder="0123456789"
+                                            maxLength={10}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-medium text-slate-600 mb-1">Account Name</label>
+                                        <input
+                                            type="text"
+                                            value={accountName}
+                                            onChange={(e) => setAccountName(e.target.value)}
+                                            className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
+                                            placeholder="John Doe"
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* USDT Wallet Details */}
+                            {paymentMethods.includes(PaymentMethod.CRYPTO_USDT) && (
+                                <div className="p-4 bg-blue-50 rounded-xl border border-blue-100 space-y-3">
+                                    <p className="text-xs font-semibold text-blue-800 flex items-center space-x-1"><Wallet size={14} /> <span>USDT Wallet (TRC-20)</span></p>
+                                    <div>
+                                        <label className="block text-xs font-medium text-slate-600 mb-1">Wallet Address</label>
+                                        <input
+                                            type="text"
+                                            value={walletAddress}
+                                            onChange={(e) => setWalletAddress(e.target.value)}
+                                            className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none font-mono"
+                                            placeholder="TVx3Rh..."
+                                        />
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         <div className="space-y-4">
@@ -467,7 +568,7 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, user, addInvoice, addTran
                             className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-lg flex items-center space-x-2 disabled:opacity-70 disabled:cursor-not-allowed"
                         >
                             {isGenerating && <Loader2 size={16} className="animate-spin" />}
-                            <span>{isGenerating ? 'Generating Link...' : 'Generate Invoice'}</span>
+                            <span>{isGenerating ? 'Creating Invoice...' : 'Generate Invoice'}</span>
                         </button>
                     </div>
                 </div>

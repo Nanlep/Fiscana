@@ -345,6 +345,230 @@ export const aiApi = {
         apiRequest<{ summary: string; insights: string[]; warnings: string[] }>('/ai/insights')
 };
 
+// ==================== TRANSACTIONS API ====================
+export const transactionsApi = {
+    list: (params?: { type?: string; limit?: number; offset?: number }) => {
+        const q = new URLSearchParams();
+        if (params?.type) q.append('type', params.type);
+        if (params?.limit) q.append('limit', params.limit.toString());
+        if (params?.offset) q.append('offset', params.offset.toString());
+        return apiRequest<{ transactions: any[]; pagination: any }>(`/transactions?${q.toString()}`);
+    },
+
+    create: (data: {
+        date: string;
+        description: string;
+        payee: string;
+        amount: number;
+        currency: string;
+        type: string;
+        category: string;
+        expenseCategory?: string;
+        taxDeductible?: boolean;
+        tags?: string[];
+        grossAmount?: number;
+        vatAmount?: number;
+        whtAmount?: number;
+        source?: string;
+    }) =>
+        apiRequest<any>('/transactions', {
+            method: 'POST',
+            body: JSON.stringify({ ...data, source: data.source || 'MANUAL', createdBy: 'user' })
+        }),
+
+    delete: (id: string) =>
+        apiRequest(`/transactions/${id}`, { method: 'DELETE' }),
+};
+
+// ==================== INVOICES API ====================
+export const invoicesApi = {
+    list: (params?: { status?: string; limit?: number }) => {
+        const q = new URLSearchParams();
+        if (params?.status) q.append('status', params.status);
+        if (params?.limit) q.append('limit', params.limit.toString());
+        return apiRequest<{ invoices: any[]; pagination: any }>(`/invoices?${q.toString()}`);
+    },
+
+    create: (data: {
+        clientName: string;
+        clientEmail: string;
+        issueDate: string;
+        dueDate: string;
+        currency: string;
+        items: Array<{ description: string; quantity: number; unitPrice: number }>;
+        vatRate?: number;
+        whtRate?: number;
+        paymentMethods?: string[];
+        paymentBankName?: string;
+        paymentAccountNumber?: string;
+        paymentAccountName?: string;
+        paymentWalletAddress?: string;
+        paymentWalletNetwork?: string;
+    }) =>
+        apiRequest<any>('/invoices', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        }),
+
+    recordPayment: (invoiceId: string, data: { amount: number; date?: string; note?: string }) =>
+        apiRequest<any>(`/invoices/${invoiceId}/payment`, {
+            method: 'POST',
+            body: JSON.stringify(data)
+        }),
+
+    delete: (id: string) =>
+        apiRequest(`/invoices/${id}`, { method: 'DELETE' }),
+};
+
+// ==================== ASSETS API ====================
+export const assetsApi = {
+    list: () => apiRequest<any[]>('/assets'),
+
+    create: (data: { name: string; description?: string; value: number; currency: string; type: string }) =>
+        apiRequest<any>('/assets', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        }),
+
+    update: (id: string, data: { name?: string; value?: number; type?: string }) =>
+        apiRequest<any>(`/assets/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(data)
+        }),
+
+    delete: (id: string) =>
+        apiRequest(`/assets/${id}`, { method: 'DELETE' }),
+};
+
+// ==================== LIABILITIES API ====================
+export const liabilitiesApi = {
+    list: () => apiRequest<any[]>('/liabilities'),
+
+    create: (data: { name: string; description?: string; amount: number; currency: string; type?: string; dueDate?: string }) =>
+        apiRequest<any>('/liabilities', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        }),
+
+    update: (id: string, data: { name?: string; amount?: number; type?: string }) =>
+        apiRequest<any>(`/liabilities/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(data)
+        }),
+
+    delete: (id: string) =>
+        apiRequest(`/liabilities/${id}`, { method: 'DELETE' }),
+};
+
+// ==================== BUDGETS API ====================
+export const budgetsApi = {
+    list: () => apiRequest<any[]>('/budgets'),
+
+    create: (data: { category: string; limit: number; currency: string; type: string; period?: string }) =>
+        apiRequest<any>('/budgets', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        }),
+
+    delete: (id: string) =>
+        apiRequest(`/budgets/${id}`, { method: 'DELETE' }),
+};
+
+// ==================== KYC API ====================
+export const kycApi = {
+    list: () => apiRequest<any[]>('/kyc'),
+
+    submit: (data: { bvn: string; nin: string }) =>
+        apiRequest<any>('/kyc', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        }),
+
+    review: (id: string, action: 'APPROVED' | 'REJECTED') =>
+        apiRequest<any>(`/kyc/${id}/review`, {
+            method: 'POST',
+            body: JSON.stringify({ action })
+        }),
+};
+
+// ==================== ADMIN API ====================
+export interface AdminUser {
+    id: string;
+    email: string;
+    name: string;
+    role: 'USER' | 'ADMIN';
+    type: 'INDIVIDUAL' | 'CORPORATE';
+    status: 'ACTIVE' | 'SUSPENDED';
+    companyName: string | null;
+    kycStatus: string;
+    tier: string;
+    createdAt: string;
+}
+
+export interface PlatformStats {
+    totalUsers: number;
+    activeUsers: number;
+    suspendedUsers: number;
+    userGrowth: number;
+    pendingKYC: number;
+    txVolume24h: number;
+    txCount24h: number;
+    txGrowth: number;
+    totalTransactions: number;
+    totalInvoices: number;
+}
+
+export interface PlatformConfig {
+    commissionRate: number;
+    exchangeRate: number;
+}
+
+export interface HealthStatus {
+    overall: 'OPERATIONAL' | 'DEGRADED';
+    services: Record<string, { status: string; latency?: number; detail?: string }>;
+    timestamp: string;
+    uptime: number;
+}
+
+export const adminApi = {
+    listUsers: (params?: { search?: string; status?: string; type?: string; limit?: number; offset?: number }) => {
+        const q = new URLSearchParams();
+        if (params?.search) q.append('search', params.search);
+        if (params?.status) q.append('status', params.status);
+        if (params?.type) q.append('type', params.type);
+        if (params?.limit) q.append('limit', params.limit.toString());
+        if (params?.offset) q.append('offset', params.offset.toString());
+        return apiRequest<{ users: AdminUser[]; total: number }>(`/admin/users?${q.toString()}`);
+    },
+
+    updateUserStatus: (id: string, status: 'ACTIVE' | 'SUSPENDED') =>
+        apiRequest<AdminUser>(`/admin/users/${id}/status`, {
+            method: 'PUT',
+            body: JSON.stringify({ status })
+        }),
+
+    deleteUser: (id: string) =>
+        apiRequest(`/admin/users/${id}`, { method: 'DELETE' }),
+
+    getStats: () =>
+        apiRequest<PlatformStats>('/admin/stats'),
+
+    getConfig: () =>
+        apiRequest<PlatformConfig>('/admin/config'),
+
+    updateConfig: (data: { commissionRate?: number; exchangeRate?: number }) =>
+        apiRequest('/admin/config', {
+            method: 'PUT',
+            body: JSON.stringify(data)
+        }),
+
+    getHealth: () =>
+        apiRequest<HealthStatus>('/admin/health'),
+
+    cleanup: () =>
+        apiRequest<{ deletedUsers: number }>('/admin/cleanup', { method: 'POST' }),
+};
+
 // ==================== PAYMENTS API ====================
 export interface BankAccountDetails {
     accountName: string;
@@ -353,10 +577,14 @@ export interface BankAccountDetails {
     bankName: string;
 }
 
-export interface PaymentLinkResponse {
-    paymentLink: string;
-    reference: string;
-    expiresAt: string;
+export interface PaymentCollectionResponse {
+    paymentReference: string;
+    accountNumber: string;
+    bankName: string;
+    accountName: string;
+    amount: string;
+    externalReference: string;
+    accountType: string;
 }
 
 export const paymentsApi = {
@@ -373,11 +601,12 @@ export const paymentsApi = {
         amount: number;
         currency: 'NGN' | 'USDC' | 'USDT';
         destination: {
-            type: 'BANK' | 'CRYPTO_WALLET';
+            type: 'BANK' | 'MOBILE_MONEY';
             bankCode?: string;
             accountNumber?: string;
-            walletAddress?: string;
-            network?: string;
+            accountName?: string;
+            countryCode?: string;
+            phoneNumber?: string;
         };
         narration: string;
     }) =>
@@ -386,15 +615,21 @@ export const paymentsApi = {
             body: JSON.stringify(data)
         }),
 
-    createPaymentLink: (data: {
+    createPaymentCollection: (data: {
         amount: number;
         currency: string;
-        customerEmail: string;
-        customerName?: string;
-        description?: string;
-        invoiceId?: string;
+        customerRef: string;
+        accountType?: 'temporary' | 'permanent';
+        countryCode?: string;
+        customData?: Record<string, unknown>;
     }) =>
-        apiRequest<PaymentLinkResponse>('/payments/payment-link', {
+        apiRequest<PaymentCollectionResponse>('/payments/payment-collection', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        }),
+
+    checkPaymentStatus: (data: { payRef?: string; payExtRef?: string }) =>
+        apiRequest<{ payRef: string; payStatus: string; payAmount: string; payMethod: string }>('/payments/payment-status', {
             method: 'POST',
             body: JSON.stringify(data)
         })

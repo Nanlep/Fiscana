@@ -100,7 +100,13 @@ router.post(
     validate,
     asyncHandler(async (req: Request, res: Response) => {
         const userId = req.user!.id;
-        const { clientName, clientEmail, issueDate, dueDate, currency, items, vatRate = 0, whtRate = 0 } = req.body;
+        const {
+            clientName, clientEmail, issueDate, dueDate, currency, items,
+            vatRate = 0, whtRate = 0,
+            paymentMethods = [],
+            paymentBankName, paymentAccountNumber, paymentAccountName,
+            paymentWalletAddress, paymentWalletNetwork
+        } = req.body;
 
         // Calculate totals
         const subTotal = items.reduce((sum: number, item: any) => sum + (item.quantity * item.unitPrice), 0);
@@ -120,6 +126,12 @@ router.post(
                 vatAmount,
                 whtDeduction,
                 totalAmount,
+                paymentMethods,
+                paymentBankName: paymentBankName || null,
+                paymentAccountNumber: paymentAccountNumber || null,
+                paymentAccountName: paymentAccountName || null,
+                paymentWalletAddress: paymentWalletAddress || null,
+                paymentWalletNetwork: paymentWalletNetwork || null,
                 items: {
                     create: items.map((item: any) => ({
                         description: item.description,
@@ -128,7 +140,7 @@ router.post(
                     }))
                 }
             },
-            include: { items: true }
+            include: { items: true, payments: true }
         });
 
         logger.info('[INVOICE] Created invoice', { id: invoice.id, userId });

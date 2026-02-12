@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Shield, CheckCircle, Loader2, Building2, AlertCircle, PlayCircle } from 'lucide-react';
+import { X, Shield, CheckCircle, Loader2, Building2, AlertCircle, Clock, Lock } from 'lucide-react';
 import { bankingApi } from '../services/apiClient';
 import { analyzeTransactionsFromBank } from '../services/geminiService';
 import { Transaction, TransactionType } from '../types';
@@ -10,6 +10,7 @@ interface BankConnectProps {
     onClose: () => void;
     onImportTransactions: (transactions: Transaction[]) => void;
     notify: (type: 'SUCCESS' | 'ERROR' | 'INFO', message: string) => void;
+    userProfile?: { name: string; email: string } | null;
 }
 
 declare global {
@@ -18,7 +19,7 @@ declare global {
     }
 }
 
-const BankConnect: React.FC<BankConnectProps> = ({ isOpen, onClose, onImportTransactions, notify }) => {
+const BankConnect: React.FC<BankConnectProps> = ({ isOpen, onClose, onImportTransactions, notify, userProfile }) => {
     const [isSyncing, setIsSyncing] = useState(false);
     const [progress, setProgress] = useState(0);
     const [linkedAccountId, setLinkedAccountId] = useState<string | null>(null);
@@ -177,32 +178,33 @@ const BankConnect: React.FC<BankConnectProps> = ({ isOpen, onClose, onImportTran
 
     const handleMonoConnect = () => {
         if (!window.Connect) {
-            notify('ERROR', 'Mono Connect library not loaded. Try demo mode.');
+            notify('ERROR', 'Bank connection service not loaded. Please try again later.');
             return;
         }
 
+        // Build customer object per Mono SDK docs
+        const customer: Record<string, any> = {};
+        if (userProfile?.name) customer.name = userProfile.name;
+        if (userProfile?.email) customer.email = userProfile.email;
+
         const mono = new window.Connect({
             key: MONO_PUBLIC_KEY,
+            data: { customer },
             onSuccess: (data: any) => {
-                notify('SUCCESS', 'Account linked successfully!');
+                notify('SUCCESS', 'Bank account linked successfully!');
                 processTransactionsViaBackend(data.code);
             },
             onClose: () => {
-                notify('INFO', 'Mono widget closed');
+                notify('INFO', 'Bank connection closed');
             },
             onEvent: (eventName: string, data: any) => {
-                console.log('Mono event:', eventName, data);
+                console.log('Bank connect event:', eventName, data);
             },
             reference: `ref_${Date.now()}`
         });
 
         mono.setup();
         mono.open();
-    };
-
-    const handleDemoSync = () => {
-        notify('INFO', 'Starting Demo Sync...');
-        processDemoTransactions();
     };
 
     return (
@@ -212,10 +214,10 @@ const BankConnect: React.FC<BankConnectProps> = ({ isOpen, onClose, onImportTran
                 {/* Header */}
                 <div className="bg-slate-50 border-b border-slate-100 p-4 flex justify-between items-center">
                     <div className="flex items-center space-x-2">
-                        <div className="w-6 h-6 bg-black rounded flex items-center justify-center">
-                            <span className="text-[10px] font-bold text-white">M</span>
+                        <div className="w-7 h-7 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg flex items-center justify-center">
+                            <Building2 size={14} className="text-white" />
                         </div>
-                        <span className="font-bold text-slate-800 text-sm">Mono Open Banking</span>
+                        <span className="font-bold text-slate-800 text-sm">Open Banking</span>
                     </div>
                     <button onClick={onClose} disabled={isSyncing} className="text-slate-400 hover:text-slate-600 disabled:opacity-50">
                         <X size={20} />
@@ -225,14 +227,14 @@ const BankConnect: React.FC<BankConnectProps> = ({ isOpen, onClose, onImportTran
                 <div className="p-8 text-center">
                     {isSyncing ? (
                         <div className="py-8">
-                            <Loader2 size={48} className="text-black animate-spin mx-auto mb-6" />
+                            <Loader2 size={48} className="text-green-600 animate-spin mx-auto mb-6" />
                             <h3 className="text-xl font-bold text-slate-900 mb-2">Syncing Transactions</h3>
                             <p className="text-slate-500 text-sm mb-6">
-                                Retrieving financial data and AI categorizing expenses...
+                                Retrieving your financial data and AI-categorizing expenses...
                             </p>
                             <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
                                 <div
-                                    className="bg-black h-2 rounded-full transition-all duration-300 ease-out"
+                                    className="bg-green-600 h-2 rounded-full transition-all duration-300 ease-out"
                                     style={{ width: `${progress}%` }}
                                 ></div>
                             </div>
@@ -240,34 +242,31 @@ const BankConnect: React.FC<BankConnectProps> = ({ isOpen, onClose, onImportTran
                         </div>
                     ) : (
                         <div className="animate-in slide-in-from-bottom-4">
-                            <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                                <Building2 size={32} className="text-slate-600" />
+                            <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                                <Building2 size={32} className="text-green-600" />
                             </div>
-                            <h2 className="text-2xl font-bold text-slate-900 mb-2">Link Your Bank</h2>
+                            <h2 className="text-2xl font-bold text-slate-900 mb-2">Connect Your Bank</h2>
                             <p className="text-slate-500 mb-8 leading-relaxed">
-                                Connect your GTBank, Zenith, Kuda or other accounts securely using Mono. We only fetch read-only transaction history.
+                                Securely link your GTBank, Zenith, Kuda, or other accounts via open banking. We only fetch read-only transaction history.
                             </p>
 
                             <button
                                 onClick={handleMonoConnect}
-                                className="w-full py-4 bg-black text-white font-bold rounded-xl hover:bg-slate-800 transition-all shadow-lg flex items-center justify-center space-x-2 mb-3"
+                                className="w-full py-4 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 transition-all shadow-lg shadow-green-600/20 flex items-center justify-center space-x-2 mb-4"
                             >
-                                <Shield size={18} />
-                                <span>Connect with Mono</span>
+                                <Lock size={18} />
+                                <span>Connect Bank Account</span>
                             </button>
 
-                            {/* Demo Fallback */}
-                            <button
-                                onClick={handleDemoSync}
-                                className="w-full py-3 bg-white text-slate-600 border border-slate-200 font-medium rounded-xl hover:bg-slate-50 transition-all flex items-center justify-center space-x-2"
-                            >
-                                <PlayCircle size={18} />
-                                <span>Try Demo Mode</span>
-                            </button>
+                            {/* Coming Soon Note */}
+                            <div className="flex items-center justify-center space-x-2 py-3 px-4 bg-amber-50 border border-amber-200 rounded-xl text-amber-700">
+                                <Clock size={16} className="flex-shrink-0" />
+                                <p className="text-sm font-medium">Full open banking integration coming soon</p>
+                            </div>
 
                             <p className="text-[10px] text-slate-400 mt-6 flex items-center justify-center">
                                 <Shield size={10} className="mr-1" />
-                                Secured by Mono. End-to-end encryption.
+                                Secured with end-to-end encryption.
                             </p>
                         </div>
                     )}

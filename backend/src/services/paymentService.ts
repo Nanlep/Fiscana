@@ -4,485 +4,637 @@ import { logger } from '../utils/logger.js';
 import { ValidationError, ExternalServiceError } from '../utils/errors.js';
 import crypto from 'crypto';
 
-// Types for Bani API
-export interface BaniPayoutRequest {
-    amount: number;
-    currency: 'NGN' | 'USDC' | 'USDT';
-    destination: {
-        type: 'BANK' | 'CRYPTO_WALLET';
-        bankCode?: string;
-        accountNumber?: string;
-        walletAddress?: string;
-        network?: string;
-    };
-    narration: string;
-    reference?: string;
-}
+// ==================== Types ====================
 
-export interface BaniPayoutResponse {
-    reference: string;
-    status: 'PENDING' | 'PROCESSING' | 'SUCCESSFUL' | 'FAILED';
-    message?: string;
-}
-
-export interface BankAccountDetails {
-    accountName: string;
+/** Request to verify a Nigerian bank account */
+interface VerifyAccountRequest {
     accountNumber: string;
     bankCode: string;
+    listCode?: string;
+    countryCode?: string;
+}
+
+/** Verified bank account details */
+interface BankAccountDetails {
+    accountName: string;
+    accountNumber: string;
     bankName: string;
 }
 
-export interface PaymentLinkRequest {
+/** Request to initiate a bank transfer payout */
+interface PayoutRequest {
     amount: number;
     currency: string;
-    customerEmail: string;
-    customerName?: string;
-    description?: string;
-    invoiceId?: string;
-    redirectUrl?: string;
+    destination: {
+        type: 'BANK' | 'MOBILE_MONEY';
+        bankCode?: string;
+        accountNumber?: string;
+        accountName?: string;
+        countryCode?: string;
+        phoneNumber?: string;
+    };
+    narration?: string;
+    reference?: string;
 }
 
-export interface PaymentLinkResponse {
-    paymentLink: string;
+/** Payout response from Bani */
+interface PayoutResponse {
     reference: string;
-    expiresAt: string;
+    payoutRef: string;
+    status: string;
+    message: string;
 }
 
-export interface WebhookPayload {
+/** Request to create a payment collection (virtual account) */
+interface PaymentCollectionRequest {
+    amount: number;
+    currency: string;
+    customerRef: string;
+    countryCode?: string;
+    accountType?: 'temporary' | 'permanent';
+    holderBvn?: string;
+    bankName?: string;
+    externalRef?: string;
+    customData?: Record<string, unknown>;
+    expiryDays?: number;
+}
+
+/** Payment collection response — virtual bank account details */
+interface PaymentCollectionResponse {
+    paymentReference: string;
+    accountNumber: string;
+    bankName: string;
+    accountName: string;
+    amount: string;
+    externalReference: string;
+    accountType: string;
+    customData: Record<string, unknown> | null;
+}
+
+/** Request to check payment status */
+interface PaymentStatusRequest {
+    payRef?: string;
+    payExtRef?: string;
+}
+
+/** Bani webhook payload */
+interface WebhookPayload {
     event: string;
     data: {
-        reference: string;
-        amount: number;
-        currency: string;
-        status: string;
-        customer_email?: string;
-        metadata?: Record<string, unknown>;
+        pay_ref?: string;
+        pay_ext_ref?: string;
+        pay_amount?: string;
+        pay_method?: string;
+        pay_status?: string;
+        holder_currency?: string;
+        holder_country_code?: string;
+        holder_account_number?: string;
+        holder_bank_name?: string;
+        holder_first_name?: string;
+        holder_last_name?: string;
+        custom_data?: Record<string, unknown>;
+        customer_ref?: string;
+        payout_ref?: string;
+        payout_status?: string;
+        transfer_ext_ref?: string;
+        merch_amount?: string;
+        merch_currency?: string;
+        actual_amount_paid?: number;
+        [key: string]: unknown;
     };
 }
 
-// Bani API response types
+// Generic Bani API response shape
 interface BaniApiResponse {
-    message?: string;
-    data?: {
-        account_name?: string;
-        bank_name?: string;
-        reference?: string;
-        status?: 'PENDING' | 'PROCESSING' | 'SUCCESSFUL' | 'FAILED';
-        payment_url?: string;
-        expires_at?: string;
-    };
-    account_name?: string;
-    bank_name?: string;
-    payment_url?: string;
+    status: boolean;
+    status_code: number;
+    message: string;
+    data?: unknown;
+    [key: string]: unknown;
 }
 
-// Bani API base URL
-const BANI_API_URL = 'https://api.bani.africa/v1';
+// ==================== Service ====================
+
+const BANI_BASE_URL = config.bani.baseUrl;
 
 /**
- * Payment Service - Handles all Bani.africa payment operations
+ * Payment Service — Handles all Bani.africa payment operations
+ * using the correct Bani API endpoints and authentication
  */
-export class PaymentService {
-    private publicKey: string;
-    private secretKey: string;
+class PaymentService {
+    private accessToken: string;
+    private privateKey: string;
+    private webhookKey: string;
 
     constructor() {
-        this.publicKey = config.bani.publicKey;
-        this.secretKey = config.bani.secretKey;
+        this.accessToken = config.bani.accessToken;
+        this.privateKey = config.bani.privateKey;
+        this.webhookKey = config.bani.webhookKey;
     }
 
     /**
-     * Generate headers for Bani API requests
+     * Generate the moni-signature header value.
+     * HMAC-SHA256 of the private key + JSON request body.
      */
-    private getHeaders(): Record<string, string> {
+    private generateSignature(payload: string): string {
+        return crypto
+            .createHmac('sha256', this.privateKey)
+            .update(payload)
+            .digest('hex');
+    }
+
+    /**
+     * Build standard Bani API headers.
+     * Every request needs Authorization (Bearer token), Content-Type, and moni-signature.
+     */
+    private getHeaders(payload: string = ''): Record<string, string> {
         return {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${this.secretKey}`,
-            'x-bani-public-key': this.publicKey
+            'Authorization': `Bearer ${this.accessToken}`,
+            'moni-signature': this.generateSignature(payload),
         };
     }
 
-    /**
-     * Generate a unique reference for transactions
-     */
+    /** Generate a unique reference for transactions */
     private generateReference(prefix: string = 'fiscana'): string {
-        return `${prefix}_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
+        const timestamp = Date.now().toString(36);
+        const random = Math.random().toString(36).substring(2, 10);
+        return `${prefix}_${timestamp}_${random}`;
+    }
+
+    // ==================== Payouts ====================
+
+    /**
+     * List Nigerian banks for payouts.
+     * API: GET /partner/list_banks/{country_code}/
+     */
+    async listBanks(countryCode: string = 'NG'): Promise<Array<{ code: string; name: string }>> {
+        try {
+            const response = await fetch(`${BANI_BASE_URL}/partner/list_banks/${countryCode}/`, {
+                method: 'GET',
+                headers: this.getHeaders(),
+            });
+
+            if (!response.ok) {
+                throw new Error(`Bani API error: ${response.status} ${response.statusText}`);
+            }
+
+            const data = await response.json() as BaniApiResponse;
+
+            if (!data.status || !Array.isArray(data.data)) {
+                throw new Error(data.message || 'Failed to fetch banks');
+            }
+
+            return (data.data as Array<{ bank_code: string; bank_name: string }>).map(bank => ({
+                code: bank.bank_code,
+                name: bank.bank_name,
+            }));
+
+        } catch (error: any) {
+            logger.error('Failed to list banks', { error: error.message });
+            throw new ExternalServiceError(`Bani: ${error.message}`);
+        }
     }
 
     /**
-     * Resolve bank account details via NIBSS
-     * API: POST https://api.bani.africa/v1/lookups/account
+     * Verify a Nigerian bank account number.
+     * API: POST /partner/payout/verify_bank_account/
      */
     async resolveBankAccount(accountNumber: string, bankCode: string): Promise<BankAccountDetails> {
-        if (accountNumber.length !== 10) {
+        if (!accountNumber || accountNumber.length !== 10) {
             throw new ValidationError('Account number must be 10 digits');
         }
 
         try {
-            const response = await fetch(`${BANI_API_URL}/lookups/account`, {
-                method: 'POST',
-                headers: this.getHeaders(),
-                body: JSON.stringify({
-                    account_number: accountNumber,
-                    bank_code: bankCode
-                })
-            });
+            const payload = {
+                list_code: 'T001',
+                bank_code: bankCode,
+                country_code: 'NG',
+                account_number: accountNumber,
+            };
 
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({})) as BaniApiResponse;
-                logger.error('Bani lookup failed:', errorData);
-                throw new ExternalServiceError(`Bank lookup failed: ${errorData.message || 'Unknown error'}`);
-            }
+            const body = JSON.stringify(payload);
+            const response = await fetch(`${BANI_BASE_URL}/partner/payout/verify_bank_account/`, {
+                method: 'POST',
+                headers: this.getHeaders(body),
+                body,
+            });
 
             const data = await response.json() as BaniApiResponse;
 
-            logger.info(`Bank account resolved: ${accountNumber}`);
+            if (!data.status) {
+                throw new Error(data.message || 'Failed to verify bank account');
+            }
 
             return {
-                accountName: data.data?.account_name || data.account_name || 'Unknown',
-                accountNumber,
-                bankCode,
-                bankName: data.data?.bank_name || data.bank_name || 'Unknown Bank'
+                accountName: (data as any).account_name || '',
+                accountNumber: (data as any).account_number || accountNumber,
+                bankName: (data as any).bank_name || '',
             };
 
-        } catch (error) {
-            if (error instanceof ValidationError || error instanceof ExternalServiceError) {
-                throw error;
-            }
-
-            logger.error('Bank resolution error:', error);
-
-            // Fallback for development/testing
-            if (config.nodeEnv === 'development') {
-                logger.warn('Using mock bank resolution in development');
-                return {
-                    accountName: 'TEST ACCOUNT HOLDER',
-                    accountNumber,
-                    bankCode,
-                    bankName: 'Test Bank'
-                };
-            }
-
-            throw new ExternalServiceError('Failed to resolve bank account');
+        } catch (error: any) {
+            logger.error('Failed to resolve bank account', { error: error.message, accountNumber, bankCode });
+            if (error instanceof ValidationError) throw error;
+            throw new ExternalServiceError(`Bani: ${error.message}`);
         }
     }
 
     /**
-     * Initiate a payout (withdrawal) to bank or crypto wallet
-     * API: POST https://api.bani.africa/v1/transfers/payout
+     * Initiate a bank transfer payout.
+     * API: POST /partner/payout/initiate_transfer/
      */
-    async initiatePayout(request: BaniPayoutRequest): Promise<BaniPayoutResponse> {
+    async initiatePayout(request: PayoutRequest): Promise<PayoutResponse> {
         const reference = request.reference || this.generateReference('payout');
 
         try {
-            const payload: Record<string, unknown> = {
-                amount: request.amount,
-                currency: request.currency,
-                narration: request.narration,
-                reference
+            const payload: Record<string, string> = {
+                payout_step: 'direct',
+                receiver_currency: request.currency,
+                receiver_amount: request.amount.toString(),
+                sender_amount: request.amount.toString(),
+                sender_currency: request.currency,
+                transfer_ext_ref: reference,
             };
 
             if (request.destination.type === 'BANK') {
-                payload.destination = {
-                    type: 'bank_account',
-                    bank_code: request.destination.bankCode,
-                    account_number: request.destination.accountNumber
-                };
-            } else {
-                payload.destination = {
-                    type: 'crypto_wallet',
-                    wallet_address: request.destination.walletAddress,
-                    network: request.destination.network
-                };
+                payload.transfer_method = 'bank';
+                payload.transfer_receiver_type = 'personal';
+                payload.receiver_account_num = request.destination.accountNumber || '';
+                payload.receiver_sort_code = request.destination.bankCode || '';
+                payload.receiver_account_name = request.destination.accountName || '';
+                payload.receiver_country_code = request.destination.countryCode || 'NG';
+            } else if (request.destination.type === 'MOBILE_MONEY') {
+                payload.transfer_method = 'mobile_money';
+                payload.transfer_receiver_type = 'personal';
+                payload.receiver_account_num = request.destination.phoneNumber || '';
+                payload.receiver_account_name = request.destination.accountName || '';
+                payload.receiver_country_code = request.destination.countryCode || '';
             }
 
-            const response = await fetch(`${BANI_API_URL}/transfers/payout`, {
+            if (request.narration) {
+                payload.transfer_note = request.narration;
+            }
+
+            const body = JSON.stringify(payload);
+            const response = await fetch(`${BANI_BASE_URL}/partner/payout/initiate_transfer/`, {
                 method: 'POST',
-                headers: this.getHeaders(),
-                body: JSON.stringify(payload)
+                headers: this.getHeaders(body),
+                body,
             });
-
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({})) as BaniApiResponse;
-                logger.error('Bani payout failed:', errorData);
-                throw new ExternalServiceError(`Payout failed: ${errorData.message || 'Unknown error'}`);
-            }
 
             const data = await response.json() as BaniApiResponse;
 
-            logger.info(`Payout initiated: ${reference}`);
+            if (!data.status) {
+                throw new Error(data.message || 'Payout initiation failed');
+            }
+
+            // Log payout in database
+            try {
+                await prisma.transaction.create({
+                    data: {
+                        userId: 'system',
+                        type: 'EXPENSE',
+                        amount: request.amount,
+                        currency: request.currency,
+                        description: `Payout to ${request.destination.accountNumber || request.destination.phoneNumber}`,
+                        payee: request.destination.accountName || 'Unknown',
+                        category: 'Transfer',
+                        status: 'PENDING',
+                        source: 'SYSTEM',
+                        createdBy: 'system',
+                        date: new Date(),
+                    },
+                });
+            } catch (dbError) {
+                logger.warn('Failed to log payout transaction in database', { reference });
+            }
 
             return {
-                reference: data.data?.reference || reference,
-                status: data.data?.status || 'PENDING',
-                message: data.message
+                reference,
+                payoutRef: (data as any).payout_ref || '',
+                status: 'PENDING',
+                message: data.message || 'Payout in progress',
             };
 
-        } catch (error) {
-            if (error instanceof ExternalServiceError) {
-                throw error;
+        } catch (error: any) {
+            logger.error('Payout failed', { error: error.message, reference });
+            throw new ExternalServiceError(`Bani: ${error.message}`);
+        }
+    }
+
+    // ==================== Collections ====================
+
+    /**
+     * List banks available for payment collections (bank transfer).
+     * API: GET /partner/list_payment_banks/{country_code}/
+     */
+    async listPaymentBanks(countryCode: string = 'NG'): Promise<Array<{ bankName: string; currency: string }>> {
+        try {
+            const response = await fetch(`${BANI_BASE_URL}/partner/list_payment_banks/${countryCode}/`, {
+                method: 'GET',
+                headers: this.getHeaders(),
+            });
+
+            const data = await response.json() as BaniApiResponse;
+
+            if (!data.status || !Array.isArray(data.data)) {
+                throw new Error(data.message || 'Failed to fetch payment banks');
             }
 
-            logger.error('Payout error:', error);
+            return (data.data as Array<{ bank_name: string; currency: string }>).map(bank => ({
+                bankName: bank.bank_name,
+                currency: bank.currency,
+            }));
 
-            // Fallback for development/testing
-            if (config.nodeEnv === 'development') {
-                logger.warn('Using mock payout in development');
-                return {
-                    reference,
-                    status: 'PENDING',
-                    message: 'Mock payout created (development mode)'
-                };
-            }
-
-            throw new ExternalServiceError('Failed to initiate payout');
+        } catch (error: any) {
+            logger.error('Failed to list payment banks', { error: error.message });
+            throw new ExternalServiceError(`Bani: ${error.message}`);
         }
     }
 
     /**
-     * Create a payment collection link for invoices
-     * API: POST https://api.bani.africa/v1/com/collections/payment-link
+     * Create a payment collection by generating a virtual bank account.
+     * Customers pay by transferring to this account.
+     * API: POST /partner/collection/bank_transfer/
      */
-    async createPaymentLink(request: PaymentLinkRequest): Promise<PaymentLinkResponse> {
-        const reference = this.generateReference('inv');
+    async createPaymentCollection(request: PaymentCollectionRequest): Promise<PaymentCollectionResponse> {
+        const externalRef = request.externalRef || this.generateReference('inv');
 
         try {
-            const payload = {
-                amount: request.amount,
-                currency: request.currency,
-                customer_email: request.customerEmail,
-                customer_name: request.customerName,
-                description: request.description || 'Invoice payment',
-                reference,
-                redirect_url: request.redirectUrl || config.frontendUrl,
-                metadata: {
-                    invoice_id: request.invoiceId,
-                    source: 'fiscana'
-                }
+            const payload: Record<string, unknown> = {
+                pay_va_step: 'direct',
+                country_code: request.countryCode || 'NG',
+                pay_amount: request.amount.toString(),
+                pay_currency: request.currency || 'NGN',
+                holder_account_type: request.accountType || 'temporary',
+                customer_ref: request.customerRef,
+                pay_ext_ref: externalRef,
             };
 
-            const response = await fetch(`${BANI_API_URL}/com/collections/payment-link`, {
+            if (request.holderBvn) {
+                payload.holder_legal_number = request.holderBvn;
+            }
+
+            if (request.bankName) {
+                payload.bank_name = request.bankName;
+            }
+
+            if (request.customData) {
+                payload.custom_data = request.customData;
+            }
+
+            if (request.expiryDays) {
+                payload.pay_expiry = request.expiryDays;
+            }
+
+            const body = JSON.stringify(payload);
+            const response = await fetch(`${BANI_BASE_URL}/partner/collection/bank_transfer/`, {
                 method: 'POST',
-                headers: this.getHeaders(),
-                body: JSON.stringify(payload)
+                headers: this.getHeaders(body),
+                body,
             });
 
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({})) as BaniApiResponse;
-                logger.error('Bani payment link failed:', errorData);
-                throw new ExternalServiceError(`Payment link creation failed: ${errorData.message || 'Unknown error'}`);
-            }
-
-            const data = await response.json() as BaniApiResponse;
-            const paymentUrl = data.data?.payment_url || data.payment_url || '';
-
-            // Update invoice with payment link if invoiceId provided
-            if (request.invoiceId) {
-                await prisma.invoice.update({
-                    where: { id: request.invoiceId },
-                    data: { baniPaymentLink: paymentUrl }
-                });
-            }
-
-            logger.info(`Payment link created: ${reference}`);
-
-            return {
-                paymentLink: paymentUrl,
-                reference: data.data?.reference || reference,
-                expiresAt: data.data?.expires_at || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+            const data = await response.json() as BaniApiResponse & {
+                payment_reference?: string;
+                holder_account_number?: string;
+                holder_bank_name?: string;
+                account_name?: string;
+                amount?: string;
+                payment_ext_reference?: string;
+                account_type?: string;
+                custom_data?: Record<string, unknown> | null;
             };
 
-        } catch (error) {
-            if (error instanceof ExternalServiceError) {
-                throw error;
+            if (!data.status) {
+                throw new Error(data.message || 'Failed to create payment collection');
             }
 
-            logger.error('Payment link error:', error);
+            const result: PaymentCollectionResponse = {
+                paymentReference: data.payment_reference || '',
+                accountNumber: data.holder_account_number || '',
+                bankName: data.holder_bank_name || '',
+                accountName: data.account_name || '',
+                amount: data.amount || request.amount.toString(),
+                externalReference: data.payment_ext_reference || externalRef,
+                accountType: data.account_type || request.accountType || 'temporary',
+                customData: data.custom_data || null,
+            };
 
-            // Fallback for development/testing
-            if (config.nodeEnv === 'development') {
-                logger.warn('Using mock payment link in development');
-                const mockUrl = `https://pay.bani.africa/pay/${reference}?amount=${request.amount}&currency=${request.currency}`;
-
-                if (request.invoiceId) {
+            // Update invoice with payment details if invoiceId is in customData
+            const invoiceId = request.customData?.invoiceId as string | undefined;
+            if (invoiceId) {
+                try {
                     await prisma.invoice.update({
-                        where: { id: request.invoiceId },
-                        data: { baniPaymentLink: mockUrl }
+                        where: { id: invoiceId },
+                        data: {
+                            paymentAccountNumber: result.accountNumber,
+                            paymentBankName: result.bankName,
+                            paymentAccountName: result.accountName,
+                            status: 'SENT',
+                        },
                     });
+                } catch (dbError) {
+                    logger.warn('Failed to update invoice with payment details', { invoiceId });
                 }
-
-                return {
-                    paymentLink: mockUrl,
-                    reference,
-                    expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
-                };
             }
 
-            throw new ExternalServiceError('Failed to create payment link');
+            logger.info('Payment collection created', {
+                paymentReference: result.paymentReference,
+                accountNumber: result.accountNumber,
+                bankName: result.bankName,
+                amount: result.amount,
+            });
+
+            return result;
+
+        } catch (error: any) {
+            logger.error('Failed to create payment collection', { error: error.message });
+            throw new ExternalServiceError(`Bani: ${error.message}`);
         }
     }
 
     /**
-     * Verify webhook signature from Bani
+     * Check the status of a payment collection.
+     * API: POST /partner/collection/pay_status_check/
      */
-    verifyWebhookSignature(payload: string, signature: string): boolean {
-        const expectedSignature = crypto
-            .createHmac('sha512', this.secretKey)
-            .update(payload)
-            .digest('hex');
+    async checkPaymentStatus(request: PaymentStatusRequest): Promise<{
+        payRef: string;
+        payStatus: string;
+        payAmount: string;
+        payMethod: string;
+    }> {
+        try {
+            const payload: Record<string, string> = {};
+            if (request.payRef) payload.pay_ref = request.payRef;
+            if (request.payExtRef) payload.pay_ext_ref = request.payExtRef;
 
-        return signature === expectedSignature;
+            const body = JSON.stringify(payload);
+            const response = await fetch(`${BANI_BASE_URL}/partner/collection/pay_status_check/`, {
+                method: 'POST',
+                headers: this.getHeaders(body),
+                body,
+            });
+
+            const data = await response.json() as BaniApiResponse & {
+                pay_ref?: string;
+                pay_status?: string;
+                pay_amount?: string;
+                pay_method?: string;
+            };
+
+            if (!data.status) {
+                throw new Error(data.message || 'Failed to check payment status');
+            }
+
+            return {
+                payRef: data.pay_ref || '',
+                payStatus: data.pay_status || 'unknown',
+                payAmount: data.pay_amount || '0',
+                payMethod: data.pay_method || '',
+            };
+
+        } catch (error: any) {
+            logger.error('Failed to check payment status', { error: error.message });
+            throw new ExternalServiceError(`Bani: ${error.message}`);
+        }
+    }
+
+    // ==================== Webhooks ====================
+
+    /**
+     * Verify webhook signature from Bani.
+     * Method 1: HMAC-SHA256 of (privateKey, rawBody) compared to bani-hook-signature header.
+     * Method 2: Compare BANI-SHARED-KEY header with webhookKey from dashboard.
+     */
+    verifyWebhookSignature(rawBody: string, signature: string, sharedKey?: string): boolean {
+        // Method 1: HMAC signature verification
+        if (signature) {
+            const sig = Buffer.from(signature, 'utf8');
+            const hmac = crypto.createHmac('sha256', this.privateKey);
+            const digest = Buffer.from(hmac.update(rawBody).digest('hex'), 'utf8');
+
+            if (sig.length === digest.length && crypto.timingSafeEqual(digest, sig)) {
+                return true;
+            }
+        }
+
+        // Method 2: Shared key verification (fallback)
+        if (sharedKey && this.webhookKey) {
+            return sharedKey === this.webhookKey;
+        }
+
+        return false;
     }
 
     /**
-     * Process webhook events from Bani
+     * Process webhook events from Bani.
+     * Event types: payin_bank_transfer, payin_mobile_money, payout, payout_reversal, etc.
      */
     async processWebhook(payload: WebhookPayload): Promise<void> {
         const { event, data } = payload;
-
-        logger.info(`Processing webhook: ${event}`, { reference: data.reference });
+        logger.info('Processing Bani webhook', { event, payRef: data.pay_ref || data.payout_ref });
 
         switch (event) {
-            case 'payment.successful':
-                await this.handlePaymentSuccess(data);
+            case 'payin_bank_transfer':
+            case 'payin_mobile_money':
+            case 'payin_ewallet':
+                await this.handlePaymentReceived(data);
                 break;
 
-            case 'payment.failed':
-                await this.handlePaymentFailed(data);
+            case 'payout':
+                await this.handlePayoutCompleted(data);
                 break;
 
-            case 'payout.successful':
-                await this.handlePayoutSuccess(data);
+            case 'payout_reversal':
+                await this.handlePayoutReversed(data);
                 break;
 
-            case 'payout.failed':
-                await this.handlePayoutFailed(data);
+            case 'collection_service_status':
+                logger.info('Collection service status update', { data });
                 break;
 
             default:
-                logger.warn(`Unhandled webhook event: ${event}`);
+                logger.warn('Unhandled webhook event', { event });
         }
     }
 
     /**
-     * Handle successful payment webhook
+     * Handle incoming payment (bank transfer, mobile money, e-wallet).
+     * Updates the corresponding invoice status to PAID.
      */
-    private async handlePaymentSuccess(data: WebhookPayload['data']): Promise<void> {
-        // Find invoice by payment reference or link
-        const invoice = await prisma.invoice.findFirst({
-            where: {
-                OR: [
-                    { baniPaymentLink: { contains: data.reference } },
-                    { id: data.metadata?.invoice_id as string }
-                ]
-            }
-        });
+    private async handlePaymentReceived(data: WebhookPayload['data']): Promise<void> {
+        const payRef = data.pay_ref;
+        const payStatus = data.pay_status;
+        const amount = data.actual_amount_paid || parseFloat(data.pay_amount || '0');
 
-        if (invoice) {
-            const newAmountPaid = invoice.amountPaid + data.amount;
-            const newStatus = newAmountPaid >= invoice.totalAmount ? 'PAID' : 'PARTIALLY_PAID';
+        logger.info('Payment received', { payRef, payStatus, amount });
 
-            await prisma.invoice.update({
-                where: { id: invoice.id },
-                data: {
-                    amountPaid: newAmountPaid,
-                    status: newStatus,
-                    paidDate: newStatus === 'PAID' ? new Date() : null
-                }
+        if (payStatus !== 'paid' && payStatus !== 'completed') {
+            logger.info('Payment not yet completed, skipping', { payStatus });
+            return;
+        }
+
+        // Find and update invoice by payment reference
+        try {
+            const invoice = await prisma.invoice.findFirst({
+                where: {
+                    id: payRef,
+                },
             });
 
-            // Create payment record
-            await prisma.paymentRecord.create({
-                data: {
+            if (invoice) {
+                const newAmountPaid = (invoice.amountPaid || 0) + amount;
+                const isPaidInFull = newAmountPaid >= invoice.totalAmount;
+
+                await prisma.invoice.update({
+                    where: { id: invoice.id },
+                    data: {
+                        amountPaid: newAmountPaid,
+                        status: isPaidInFull ? 'PAID' : 'PARTIAL',
+                    },
+                });
+
+                logger.info('Invoice updated from webhook', {
                     invoiceId: invoice.id,
-                    date: new Date(),
-                    amount: data.amount,
-                    note: `Bani payment: ${data.reference}`
-                }
-            });
-
-            // Create transaction record
-            await prisma.transaction.create({
-                data: {
-                    userId: invoice.userId,
-                    date: new Date(),
-                    description: `Invoice payment from ${invoice.clientName}`,
-                    payee: invoice.clientName,
-                    amount: data.amount,
-                    currency: data.currency || invoice.currency,
-                    type: 'INCOME',
-                    category: 'Invoice Payment',
-                    source: 'BANI',
-                    createdBy: 'SYSTEM'
-                }
-            });
-
-            logger.info(`Invoice ${invoice.id} payment processed: ${data.amount}`);
+                    amountPaid: newAmountPaid,
+                    status: isPaidInFull ? 'PAID' : 'PARTIAL',
+                });
+            } else {
+                logger.warn('No matching invoice found for payment', { payRef });
+            }
+        } catch (dbError: any) {
+            logger.error('Failed to update invoice from webhook', { error: dbError.message, payRef });
         }
     }
 
-    /**
-     * Handle failed payment webhook
-     */
-    private async handlePaymentFailed(data: WebhookPayload['data']): Promise<void> {
-        logger.warn(`Payment failed: ${data.reference}`);
-        // Could send notification to user, update invoice status, etc.
+    /** Handle successful payout webhook */
+    private async handlePayoutCompleted(data: WebhookPayload['data']): Promise<void> {
+        logger.info('Payout completed', {
+            payoutRef: data.payout_ref,
+            status: data.payout_status,
+            extRef: data.transfer_ext_ref,
+        });
     }
 
-    /**
-     * Handle successful payout webhook
-     */
-    private async handlePayoutSuccess(data: WebhookPayload['data']): Promise<void> {
-        // Create expense transaction for the payout
-        logger.info(`Payout successful: ${data.reference}`);
-    }
-
-    /**
-     * Handle failed payout webhook
-     */
-    private async handlePayoutFailed(data: WebhookPayload['data']): Promise<void> {
-        logger.warn(`Payout failed: ${data.reference}`);
-        // Could send notification, initiate refund, etc.
-    }
-
-    /**
-     * List Nigerian banks
-     */
-    async listBanks(): Promise<Array<{ code: string; name: string }>> {
-        // Common Nigerian banks - in production, fetch from Bani API
-        return [
-            { code: '044', name: 'Access Bank' },
-            { code: '023', name: 'Citibank Nigeria' },
-            { code: '063', name: 'Diamond Bank' },
-            { code: '050', name: 'Ecobank Nigeria' },
-            { code: '084', name: 'Enterprise Bank' },
-            { code: '070', name: 'Fidelity Bank' },
-            { code: '011', name: 'First Bank of Nigeria' },
-            { code: '214', name: 'First City Monument Bank' },
-            { code: '058', name: 'Guaranty Trust Bank' },
-            { code: '030', name: 'Heritage Bank' },
-            { code: '301', name: 'Jaiz Bank' },
-            { code: '082', name: 'Keystone Bank' },
-            { code: '526', name: 'Parallex Bank' },
-            { code: '076', name: 'Polaris Bank' },
-            { code: '101', name: 'Providus Bank' },
-            { code: '221', name: 'Stanbic IBTC Bank' },
-            { code: '068', name: 'Standard Chartered Bank' },
-            { code: '232', name: 'Sterling Bank' },
-            { code: '100', name: 'Suntrust Bank' },
-            { code: '032', name: 'Union Bank of Nigeria' },
-            { code: '033', name: 'United Bank for Africa' },
-            { code: '215', name: 'Unity Bank' },
-            { code: '035', name: 'Wema Bank' },
-            { code: '057', name: 'Zenith Bank' },
-            // Digital banks
-            { code: '999992', name: 'Kuda Bank' },
-            { code: '999991', name: 'OPay' },
-            { code: '999993', name: 'PalmPay' },
-            { code: '090267', name: 'Moniepoint' }
-        ];
+    /** Handle payout reversal webhook */
+    private async handlePayoutReversed(data: WebhookPayload['data']): Promise<void> {
+        logger.warn('Payout reversed', {
+            payoutRef: data.payout_ref,
+            extRef: data.transfer_ext_ref,
+        });
     }
 }
 
-// Export singleton instance
+// Singleton export
 export const paymentService = new PaymentService();
+
+// Export types for use in routes
+export type {
+    BankAccountDetails,
+    PayoutRequest,
+    PayoutResponse,
+    PaymentCollectionRequest,
+    PaymentCollectionResponse,
+    PaymentStatusRequest,
+    WebhookPayload,
+};

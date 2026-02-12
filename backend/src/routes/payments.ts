@@ -11,14 +11,34 @@ const router = Router();
 
 /**
  * @route   GET /api/payments/banks
- * @desc    List available Nigerian banks
+ * @desc    List available Nigerian banks (for payouts)
  * @access  Private
  */
 router.get(
     '/banks',
     authenticate,
     asyncHandler(async (req: Request, res: Response) => {
-        const banks = await paymentService.listBanks();
+        const countryCode = (req.query.country as string) || 'NG';
+        const banks = await paymentService.listBanks(countryCode);
+
+        res.json({
+            success: true,
+            data: banks
+        });
+    })
+);
+
+/**
+ * @route   GET /api/payments/payment-banks
+ * @desc    List banks available for payment collections
+ * @access  Private
+ */
+router.get(
+    '/payment-banks',
+    authenticate,
+    asyncHandler(async (req: Request, res: Response) => {
+        const countryCode = (req.query.country as string) || 'NG';
+        const banks = await paymentService.listPaymentBanks(countryCode);
 
         res.json({
             success: true,
@@ -60,7 +80,7 @@ router.post(
 
 /**
  * @route   POST /api/payments/payout
- * @desc    Initiate a payout (withdrawal) to bank or crypto
+ * @desc    Initiate a payout (withdrawal) to bank or mobile money
  * @access  Private
  */
 router.post(
@@ -72,11 +92,12 @@ router.post(
             .custom(val => val > 0)
             .withMessage('Amount must be greater than 0'),
         body('currency')
-            .isIn(['NGN', 'USDC', 'USDT'])
-            .withMessage('Currency must be NGN, USDC, or USDT'),
+            .isString()
+            .notEmpty()
+            .withMessage('Currency is required'),
         body('destination.type')
-            .isIn(['BANK', 'CRYPTO_WALLET'])
-            .withMessage('Destination type must be BANK or CRYPTO_WALLET'),
+            .isIn(['BANK', 'MOBILE_MONEY'])
+            .withMessage('Destination type must be BANK or MOBILE_MONEY'),
         body('destination.bankCode')
             .if(body('destination.type').equals('BANK'))
             .notEmpty()
@@ -85,15 +106,11 @@ router.post(
             .if(body('destination.type').equals('BANK'))
             .isLength({ min: 10, max: 10 })
             .withMessage('Account number must be 10 digits'),
-        body('destination.walletAddress')
-            .if(body('destination.type').equals('CRYPTO_WALLET'))
-            .notEmpty()
-            .withMessage('Wallet address is required for crypto payouts'),
         body('narration')
+            .optional()
             .trim()
-            .notEmpty()
             .isLength({ max: 100 })
-            .withMessage('Narration is required (max 100 characters)')
+            .withMessage('Narration max 100 characters')
     ],
     validate,
     asyncHandler(async (req: Request, res: Response) => {
@@ -115,12 +132,12 @@ router.post(
 );
 
 /**
- * @route   POST /api/payments/payment-link
- * @desc    Create a payment collection link (for invoices)
+ * @route   POST /api/payments/payment-collection
+ * @desc    Create a payment collection (virtual bank account) for invoices
  * @access  Private
  */
 router.post(
-    '/payment-link',
+    '/payment-collection',
     authenticate,
     [
         body('amount')
@@ -131,38 +148,89 @@ router.post(
             .isString()
             .notEmpty()
             .withMessage('Currency is required'),
-        body('customerEmail')
-            .isEmail()
-            .normalizeEmail()
-            .withMessage('Valid customer email is required'),
-        body('customerName')
+        body('customerRef')
+            .isString()
+            .notEmpty()
+            .withMessage('Customer reference is required'),
+        body('accountType')
             .optional()
-            .trim(),
-        body('description')
+            .isIn(['temporary', 'permanent'])
+            .withMessage('Account type must be temporary or permanent'),
+        body('countryCode')
             .optional()
-            .trim()
-            .isLength({ max: 200 }),
-        body('invoiceId')
+            .isString(),
+        body('customData')
+            .optional()
+            .isObject()
+    ],
+    validate,
+    asyncHandler(async (req: Request, res: Response) => {
+        const {
+            amount,
+            currency,
+            customerRef,
+            accountType,
+            countryCode,
+            holderBvn,
+            bankName,
+            externalRef,
+            customData,
+            expiryDays
+        } = req.body;
+
+        const result = await paymentService.createPaymentCollection({
+            amount,
+            currency,
+            customerRef,
+            accountType,
+            countryCode,
+            holderBvn,
+            bankName,
+            externalRef,
+            customData,
+            expiryDays,
+        });
+
+        res.json({
+            success: true,
+            message: 'Payment collection created successfully',
+            data: result
+        });
+    })
+);
+
+/**
+ * @route   POST /api/payments/payment-status
+ * @desc    Check the status of a payment collection
+ * @access  Private
+ */
+router.post(
+    '/payment-status',
+    authenticate,
+    [
+        body('payRef')
+            .optional()
+            .isString(),
+        body('payExtRef')
             .optional()
             .isString()
     ],
     validate,
     asyncHandler(async (req: Request, res: Response) => {
-        const { amount, currency, customerEmail, customerName, description, invoiceId } = req.body;
+        const { payRef, payExtRef } = req.body;
 
-        const result = await paymentService.createPaymentLink({
-            amount,
-            currency,
-            customerEmail,
-            customerName,
-            description,
-            invoiceId,
-            redirectUrl: `${config.frontendUrl}/invoices`
-        });
+        if (!payRef && !payExtRef) {
+            res.status(400).json({
+                success: false,
+                error: 'Either payRef or payExtRef is required'
+            });
+            return;
+        }
+
+        const result = await paymentService.checkPaymentStatus({ payRef, payExtRef });
 
         res.json({
             success: true,
-            message: 'Payment link created successfully',
             data: result
         });
     })
@@ -176,12 +244,13 @@ router.post(
 router.post(
     '/webhook',
     asyncHandler(async (req: Request, res: Response) => {
-        const signature = req.headers['x-bani-signature'] as string;
-        const payload = JSON.stringify(req.body);
+        const hookSignature = req.headers['bani-hook-signature'] as string;
+        const sharedKey = req.headers['bani-shared-key'] as string;
+        const rawBody = JSON.stringify(req.body);
 
         // Verify webhook signature in production
         if (config.nodeEnv === 'production') {
-            if (!signature || !paymentService.verifyWebhookSignature(payload, signature)) {
+            if (!paymentService.verifyWebhookSignature(rawBody, hookSignature, sharedKey)) {
                 logger.warn('Invalid webhook signature');
                 res.status(401).json({
                     success: false,
@@ -204,7 +273,7 @@ router.post(
 
 /**
  * @route   GET /api/payments/status/:reference
- * @desc    Get payment/payout status by reference
+ * @desc    Get payment status by reference
  * @access  Private
  */
 router.get(
@@ -220,15 +289,11 @@ router.get(
     asyncHandler(async (req: Request, res: Response) => {
         const { reference } = req.params;
 
-        // In a full implementation, this would query Bani API for status
-        // For now, return a placeholder
+        const result = await paymentService.checkPaymentStatus({ payRef: reference });
+
         res.json({
             success: true,
-            data: {
-                reference,
-                status: 'PENDING',
-                message: 'Status check not yet implemented - check Bani dashboard'
-            }
+            data: result
         });
     })
 );

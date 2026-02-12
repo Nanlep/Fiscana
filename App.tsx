@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './context/AuthContext';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
@@ -16,6 +16,7 @@ import Toast, { ToastMessage, ToastType } from './components/Toast';
 import { ViewState, Transaction, Invoice, TransactionType, InvoiceStatus, PaymentMethod, Asset, Liability, UserProfile, KYCRequest, ExpenseCategoryType, Budget } from './types';
 import { Menu, Loader2 } from 'lucide-react';
 import { DEFAULT_EXCHANGE_RATE } from './utils/currency';
+import { transactionsApi, invoicesApi, assetsApi, liabilitiesApi, budgetsApi, kycApi } from './services/apiClient';
 
 function App() {
   // --- Use Auth Context ---
@@ -32,7 +33,7 @@ function App() {
     tier: user.tier
   } : null;
 
-  // --- Exchange Rate State ---
+  // --- Exchange Rate State (still localStorage — not user-specific data) ---
   const [exchangeRate, setExchangeRate] = useState<number>(() => {
     const saved = localStorage.getItem('fiscana_exchange_rate');
     return saved ? parseFloat(saved) : DEFAULT_EXCHANGE_RATE;
@@ -42,11 +43,14 @@ function App() {
     localStorage.setItem('fiscana_exchange_rate', exchangeRate.toString());
   }, [exchangeRate]);
 
-  // --- Global State for KYC Requests (Simulating Backend until KYC API is built) ---
-  const [kycRequests, setKycRequests] = useState<KYCRequest[]>(() => {
-    const saved = localStorage.getItem('fiscana_kyc_requests');
-    return saved ? JSON.parse(saved) : [];
-  });
+  // --- State (loaded from API on mount) ---
+  const [kycRequests, setKycRequests] = useState<KYCRequest[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [assets, setAssets] = useState<Asset[]>([]);
+  const [liabilities, setLiabilities] = useState<Liability[]>([]);
+  const [budgets, setBudgets] = useState<Budget[]>([]);
+  const [dataLoading, setDataLoading] = useState(true);
 
   // App View State
   const [currentView, setView] = useState<ViewState>('DASHBOARD');
@@ -63,49 +67,116 @@ function App() {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   };
 
-  // --- Persistence Effect for KYC ---
+  // --- Load all data from API on mount ---
+  const loadAllData = useCallback(async () => {
+    if (!isAuthenticated) return;
+    setDataLoading(true);
+    try {
+      const [txRes, invRes, assetRes, liabRes, budgetRes, kycRes] = await Promise.all([
+        transactionsApi.list({ limit: 100 }),
+        invoicesApi.list({ limit: 100 }),
+        assetsApi.list(),
+        liabilitiesApi.list(),
+        budgetsApi.list(),
+        kycApi.list()
+      ]);
+
+      if (txRes.success && txRes.data) {
+        const txData = (txRes.data as any).transactions || txRes.data;
+        setTransactions(Array.isArray(txData) ? txData.map((t: any) => ({
+          id: t.id,
+          date: t.date?.split('T')[0] || t.date,
+          description: t.description,
+          payee: t.payee,
+          amount: t.amount,
+          grossAmount: t.grossAmount,
+          currency: t.currency,
+          type: t.type as TransactionType,
+          category: t.category,
+          expenseCategory: t.expenseCategory,
+          taxDeductible: t.taxDeductible,
+          tags: t.tags || [],
+          vatAmount: t.vatAmount,
+          whtAmount: t.whtAmount,
+        })) : []);
+      }
+
+      if (invRes.success && invRes.data) {
+        const invData = (invRes.data as any).invoices || invRes.data;
+        setInvoices(Array.isArray(invData) ? invData.map((inv: any) => ({
+          id: inv.id,
+          clientName: inv.clientName,
+          clientEmail: inv.clientEmail,
+          issueDate: inv.issueDate?.split('T')[0] || inv.issueDate,
+          dueDate: inv.dueDate?.split('T')[0] || inv.dueDate,
+          currency: inv.currency,
+          items: (inv.items || []).map((item: any) => ({
+            description: item.description,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice
+          })),
+          subTotal: inv.subTotal,
+          vatAmount: inv.vatAmount,
+          whtDeduction: inv.whtDeduction,
+          totalAmount: inv.totalAmount,
+          amountPaid: inv.amountPaid || 0,
+          status: inv.status,
+          paidDate: inv.paidDate,
+          paymentMethods: inv.paymentMethods || [],
+          payments: (inv.payments || []).map((p: any) => ({
+            id: p.id,
+            date: p.date?.split('T')[0] || p.date,
+            amount: p.amount,
+            note: p.note
+          })),
+          paymentDetails: {
+            ...(inv.paymentBankName ? {
+              bankName: inv.paymentBankName,
+              accountNumber: inv.paymentAccountNumber,
+              accountName: inv.paymentAccountName
+            } : {}),
+            ...(inv.paymentWalletAddress ? {
+              walletAddress: inv.paymentWalletAddress,
+              walletNetwork: inv.paymentWalletNetwork
+            } : {})
+          }
+        })) : []);
+      }
+
+      if (assetRes.success && assetRes.data) {
+        setAssets(Array.isArray(assetRes.data) ? assetRes.data.map((a: any) => ({
+          id: a.id, name: a.name, value: a.value, currency: a.currency, type: a.type
+        })) : []);
+      }
+
+      if (liabRes.success && liabRes.data) {
+        setLiabilities(Array.isArray(liabRes.data) ? liabRes.data.map((l: any) => ({
+          id: l.id, name: l.name, amount: l.amount, currency: l.currency, type: l.type, dueDate: l.dueDate
+        })) : []);
+      }
+
+      if (budgetRes.success && budgetRes.data) {
+        setBudgets(Array.isArray(budgetRes.data) ? budgetRes.data.map((b: any) => ({
+          id: b.id, category: b.category, limit: b.limit, currency: b.currency, type: b.type, period: b.period
+        })) : []);
+      }
+
+      if (kycRes.success && kycRes.data) {
+        setKycRequests(Array.isArray(kycRes.data) ? kycRes.data.map((k: any) => ({
+          id: k.id, userId: k.userId, userName: k.userName, userEmail: k.userEmail,
+          bvn: k.bvn, nin: k.nin, status: k.status, date: k.date
+        })) : []);
+      }
+    } catch (err) {
+      console.error('Failed to load data from API:', err);
+    } finally {
+      setDataLoading(false);
+    }
+  }, [isAuthenticated]);
+
   useEffect(() => {
-    localStorage.setItem('fiscana_kyc_requests', JSON.stringify(kycRequests));
-  }, [kycRequests]);
-
-  // --- Seed Data Constants (empty for clean slate) ---
-  const seedTransactions: Transaction[] = [];
-  const seedInvoices: Invoice[] = [];
-  const seedAssets: Asset[] = [];
-  const seedBudgets: Budget[] = [];
-
-  // --- State Initialization with Persistence ---
-  const [transactions, setTransactions] = useState<Transaction[]>(() => {
-    const saved = localStorage.getItem('fiscana_transactions');
-    return saved ? JSON.parse(saved) : seedTransactions;
-  });
-
-  const [invoices, setInvoices] = useState<Invoice[]>(() => {
-    const saved = localStorage.getItem('fiscana_invoices');
-    return saved ? JSON.parse(saved) : seedInvoices;
-  });
-
-  const [assets, setAssets] = useState<Asset[]>(() => {
-    const saved = localStorage.getItem('fiscana_assets');
-    return saved ? JSON.parse(saved) : seedAssets;
-  });
-
-  const [liabilities, setLiabilities] = useState<Liability[]>(() => {
-    const saved = localStorage.getItem('fiscana_liabilities');
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const [budgets, setBudgets] = useState<Budget[]>(() => {
-    const saved = localStorage.getItem('fiscana_budgets');
-    return saved ? JSON.parse(saved) : seedBudgets;
-  });
-
-  // --- Data Persistence Effects ---
-  useEffect(() => { localStorage.setItem('fiscana_transactions', JSON.stringify(transactions)); }, [transactions]);
-  useEffect(() => { localStorage.setItem('fiscana_invoices', JSON.stringify(invoices)); }, [invoices]);
-  useEffect(() => { localStorage.setItem('fiscana_assets', JSON.stringify(assets)); }, [assets]);
-  useEffect(() => { localStorage.setItem('fiscana_liabilities', JSON.stringify(liabilities)); }, [liabilities]);
-  useEffect(() => { localStorage.setItem('fiscana_budgets', JSON.stringify(budgets)); }, [budgets]);
+    loadAllData();
+  }, [loadAllData]);
 
 
   // Derived Values
@@ -119,29 +190,37 @@ function App() {
   };
 
   // --- KYC Logic ---
-  const handleKYCSubmit = (bvn: string, nin: string) => {
+  const handleKYCSubmit = async (bvn: string, nin: string) => {
     if (!userProfile) return;
-
-    const newRequest: KYCRequest = {
-      id: `kyc_${Date.now()}`,
-      userId: userProfile.email,
-      userName: userProfile.name,
-      userEmail: userProfile.email,
-      bvn,
-      nin,
-      status: 'PENDING',
-      date: new Date().toLocaleDateString()
-    };
-
-    setKycRequests(prev => [...prev, newRequest]);
-    notify('SUCCESS', 'KYC Documents submitted for review.');
+    try {
+      const res = await kycApi.submit({ bvn, nin });
+      if (res.success && res.data) {
+        const k = res.data;
+        setKycRequests(prev => [{
+          id: k.id, userId: k.userId, userName: k.userName, userEmail: k.userEmail,
+          bvn: k.bvn, nin: k.nin, status: k.status, date: k.date
+        }, ...prev]);
+        notify('SUCCESS', 'KYC Documents submitted for review.');
+      } else {
+        notify('ERROR', res.error || 'Failed to submit KYC');
+      }
+    } catch {
+      notify('ERROR', 'Failed to submit KYC request');
+    }
   };
 
-  const handleKYCReview = (id: string, action: 'APPROVED' | 'REJECTED') => {
-    setKycRequests(prev => prev.map(req =>
-      req.id === id ? { ...req, status: action } : req
-    ));
-    notify(action === 'APPROVED' ? 'SUCCESS' : 'INFO', `Request ${action === 'APPROVED' ? 'Approved' : 'Rejected'}`);
+  const handleKYCReview = async (id: string, action: 'APPROVED' | 'REJECTED') => {
+    try {
+      const res = await kycApi.review(id, action);
+      if (res.success) {
+        setKycRequests(prev => prev.map(req =>
+          req.id === id ? { ...req, status: action } : req
+        ));
+        notify(action === 'APPROVED' ? 'SUCCESS' : 'INFO', `Request ${action === 'APPROVED' ? 'Approved' : 'Rejected'}`);
+      }
+    } catch {
+      notify('ERROR', 'Failed to review KYC request');
+    }
   };
 
   // Helper to update wallet balance based on transaction
@@ -197,94 +276,221 @@ function App() {
     notify('SUCCESS', `Withdrawal of ${currency === 'NGN' ? '₦' : '$'}${amount} successful`);
   };
 
-  const addInvoice = (inv: Invoice) => {
-    setInvoices([inv, ...invoices]);
+  const addInvoice = async (inv: Invoice) => {
+    try {
+      const res = await invoicesApi.create({
+        clientName: inv.clientName,
+        clientEmail: inv.clientEmail,
+        issueDate: inv.issueDate,
+        dueDate: inv.dueDate,
+        currency: inv.currency,
+        items: inv.items.map(item => ({
+          description: item.description,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice
+        })),
+        vatRate: inv.vatAmount && inv.subTotal ? (inv.vatAmount / inv.subTotal) * 100 : 0,
+        whtRate: inv.whtDeduction && inv.subTotal ? (inv.whtDeduction / inv.subTotal) * 100 : 0,
+        paymentMethods: inv.paymentMethods,
+        paymentBankName: inv.paymentDetails?.bankName,
+        paymentAccountNumber: inv.paymentDetails?.accountNumber,
+        paymentAccountName: inv.paymentDetails?.accountName,
+        paymentWalletAddress: inv.paymentDetails?.walletAddress,
+        paymentWalletNetwork: inv.paymentDetails?.walletNetwork
+      });
+      if (res.success && res.data) {
+        // Use the server-returned invoice (has real ID)
+        const saved = res.data;
+        const mappedInv: Invoice = {
+          ...inv,
+          id: saved.id,
+        };
+        setInvoices(prev => [mappedInv, ...prev]);
+      } else {
+        // Fallback: add locally even if API fails
+        setInvoices(prev => [inv, ...prev]);
+      }
+    } catch {
+      // Fallback: add locally
+      setInvoices(prev => [inv, ...prev]);
+    }
   };
 
-  const recordPayment = (id: string, amount: number, date: string, note?: string) => {
+  const recordPayment = async (id: string, amount: number, date: string, note?: string) => {
     const invoice = invoices.find(i => i.id === id);
     if (!invoice) return;
 
-    const newAmountPaid = (invoice.amountPaid || 0) + amount;
-    const isFullyPaid = newAmountPaid >= invoice.totalAmount;
-    const newStatus = isFullyPaid ? InvoiceStatus.PAID : InvoiceStatus.PARTIALLY_PAID;
+    try {
+      const res = await invoicesApi.recordPayment(id, { amount, date, note });
+      if (res.success && res.data) {
+        const newAmountPaid = res.data.amountPaid ?? ((invoice.amountPaid || 0) + amount);
+        const newStatus = res.data.status ?? (newAmountPaid >= invoice.totalAmount ? InvoiceStatus.PAID : InvoiceStatus.PARTIALLY_PAID);
+        const isFullyPaid = newStatus === InvoiceStatus.PAID || newStatus === 'PAID';
 
-    setInvoices(invoices.map(inv =>
-      inv.id === id ? {
-        ...inv,
-        amountPaid: newAmountPaid,
-        payments: [...(inv.payments || []), { id: `pay_${Date.now()}`, date, amount, note }],
-        status: newStatus,
-        paidDate: isFullyPaid ? date : undefined
-      } : inv
-    ));
+        setInvoices(prev => prev.map(inv =>
+          inv.id === id ? {
+            ...inv,
+            amountPaid: newAmountPaid,
+            payments: [...(inv.payments || []), { id: `pay_${Date.now()}`, date, amount, note }],
+            status: newStatus,
+            paidDate: isFullyPaid ? date : undefined
+          } : inv
+        ));
 
-    updateWalletForTransaction(amount, invoice.currency, TransactionType.INCOME);
+        updateWalletForTransaction(amount, invoice.currency, TransactionType.INCOME);
 
-    const newTx: Transaction = {
-      id: `tx_pay_${Date.now()}`,
-      date: date,
-      description: `Payment for Invoice #${invoice.id} ${note ? `(${note})` : ''}`,
-      payee: invoice.clientName,
-      amount: amount,
-      currency: invoice.currency,
-      type: TransactionType.INCOME,
-      category: 'Service Revenue',
-      taxDeductible: false,
-      tags: ['#PaymentReceived', `#Invoice-${invoice.id}`]
-    };
-    addTransaction(newTx);
+        // Create a corresponding income transaction in the DB
+        const newTx: Transaction = {
+          id: `tx_pay_${Date.now()}`,
+          date: date,
+          description: `Payment for Invoice #${invoice.id} ${note ? `(${note})` : ''}`,
+          payee: invoice.clientName,
+          amount: amount,
+          currency: invoice.currency,
+          type: TransactionType.INCOME,
+          category: 'Service Revenue',
+          taxDeductible: false,
+          tags: ['#PaymentReceived', `#Invoice-${invoice.id}`]
+        };
+        addTransaction(newTx);
 
-    notify('SUCCESS', `Payment of ${invoice.currency === 'NGN' ? '₦' : '$'}${amount.toLocaleString()} recorded.`);
+        notify('SUCCESS', `Payment of ${invoice.currency === 'NGN' ? '₦' : '$'}${amount.toLocaleString()} recorded.`);
+      }
+    } catch {
+      notify('ERROR', 'Failed to record payment');
+    }
   };
 
-  const addTransaction = (t: Transaction) => {
-    setTransactions(prev => [t, ...prev]);
+  const addTransaction = async (t: Transaction) => {
+    try {
+      const res = await transactionsApi.create({
+        date: new Date(t.date).toISOString(),
+        description: t.description,
+        payee: t.payee,
+        amount: t.amount,
+        currency: t.currency,
+        type: t.type,
+        category: t.category,
+        expenseCategory: t.expenseCategory,
+        taxDeductible: t.taxDeductible,
+        tags: t.tags,
+        grossAmount: t.grossAmount,
+        vatAmount: t.taxDetails?.vatAmount,
+        whtAmount: t.taxDetails?.whtAmount,
+        source: 'MANUAL'
+      });
+      if (res.success && res.data) {
+        setTransactions(prev => [{ ...t, id: res.data.id }, ...prev]);
+      } else {
+        setTransactions(prev => [t, ...prev]);
+      }
+    } catch {
+      setTransactions(prev => [t, ...prev]);
+    }
   };
 
-  const addTransactions = (newTxs: Transaction[]) => {
-    setTransactions(prev => [...newTxs, ...prev]);
+  const addTransactions = async (newTxs: Transaction[]) => {
+    // Batch create — save each to DB
+    const savedTxs: Transaction[] = [];
+    for (const t of newTxs) {
+      try {
+        const res = await transactionsApi.create({
+          date: new Date(t.date).toISOString(),
+          description: t.description,
+          payee: t.payee,
+          amount: t.amount,
+          currency: t.currency,
+          type: t.type,
+          category: t.category,
+          expenseCategory: t.expenseCategory,
+          taxDeductible: t.taxDeductible,
+          tags: t.tags,
+          source: 'BANK_IMPORT'
+        });
+        savedTxs.push(res.success && res.data ? { ...t, id: res.data.id } : t);
+      } catch {
+        savedTxs.push(t);
+      }
+    }
 
-    newTxs.forEach(t => {
+    setTransactions(prev => [...savedTxs, ...prev]);
+    savedTxs.forEach(t => {
       updateWalletForTransaction(t.amount, t.currency, t.type);
     });
-
-    notify('SUCCESS', `${newTxs.length} transactions synced from bank.`);
+    notify('SUCCESS', `${savedTxs.length} transactions synced from bank.`);
   };
 
-  const handleManualTransaction = (t: Transaction) => {
-    addTransaction(t);
+  const handleManualTransaction = async (t: Transaction) => {
+    await addTransaction(t);
     updateWalletForTransaction(t.amount, t.currency, t.type);
     notify('SUCCESS', 'Transaction recorded and synced to wallet');
   };
 
-  const addAsset = (a: Asset) => {
-    setAssets([a, ...assets]);
+  const addAsset = async (a: Asset) => {
+    try {
+      const res = await assetsApi.create({
+        name: a.name, value: a.value, currency: a.currency, type: a.type
+      });
+      if (res.success && res.data) {
+        setAssets(prev => [{ ...a, id: res.data.id }, ...prev]);
+      } else {
+        setAssets(prev => [a, ...prev]);
+      }
+    } catch {
+      setAssets(prev => [a, ...prev]);
+    }
     notify('SUCCESS', 'Asset added successfully');
   };
 
-  const addLiability = (l: Liability) => {
-    setLiabilities([l, ...liabilities]);
+  const addLiability = async (l: Liability) => {
+    try {
+      const res = await liabilitiesApi.create({
+        name: l.name, amount: l.amount, currency: l.currency, type: l.type, dueDate: l.dueDate
+      });
+      if (res.success && res.data) {
+        setLiabilities(prev => [{ ...l, id: res.data.id }, ...prev]);
+      } else {
+        setLiabilities(prev => [l, ...prev]);
+      }
+    } catch {
+      setLiabilities(prev => [l, ...prev]);
+    }
     notify('SUCCESS', 'Liability recorded');
   };
 
-  const addBudget = (b: Budget) => {
-    setBudgets([...budgets, b]);
+  const addBudget = async (b: Budget) => {
+    try {
+      const res = await budgetsApi.create({
+        category: b.category, limit: b.limit, currency: b.currency, type: b.type, period: b.period
+      });
+      if (res.success && res.data) {
+        setBudgets(prev => [...prev, { ...b, id: res.data.id }]);
+      } else {
+        setBudgets(prev => [...prev, b]);
+      }
+    } catch {
+      setBudgets(prev => [...prev, b]);
+    }
     notify('SUCCESS', 'Budget limit set successfully');
   };
 
-  const deleteBudget = (id: string) => {
-    setBudgets(budgets.filter(b => b.id !== id));
-    notify('INFO', 'Budget removed');
+  const deleteBudget = async (id: string) => {
+    try {
+      await budgetsApi.delete(id);
+      setBudgets(prev => prev.filter(b => b.id !== id));
+      notify('INFO', 'Budget removed');
+    } catch {
+      notify('ERROR', 'Failed to delete budget');
+    }
   };
 
   // Loading state
-  if (authLoading) {
+  if (authLoading || (isAuthenticated && dataLoading)) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-12 h-12 text-green-600 animate-spin mx-auto mb-4" />
-          <p className="text-slate-600">Loading...</p>
+          <p className="text-slate-600">{authLoading ? 'Loading...' : 'Loading your data...'}</p>
         </div>
       </div>
     );
@@ -336,6 +542,7 @@ function App() {
           addTransaction={handleManualTransaction}
           addTransactions={addTransactions}
           notify={notify}
+          userProfile={userProfile}
         />;
       case 'BUDGETS':
         return <BudgetModule

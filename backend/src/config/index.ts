@@ -30,8 +30,10 @@ export const config = {
     // Bani.africa
     bani: {
         publicKey: process.env.BANI_PUBLIC_KEY || '',
-        secretKey: process.env.BANI_SECRET_KEY || '',
-        baseUrl: 'https://api.bani.africa/v1',
+        accessToken: process.env.BANI_ACCESS_TOKEN || '',
+        privateKey: process.env.BANI_PRIVATE_KEY || '',
+        webhookKey: process.env.BANI_WEBHOOK_KEY || '',
+        baseUrl: 'https://api.bani.africa',
     },
 
     // Mono

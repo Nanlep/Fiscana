@@ -3,6 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { config, validateConfig } from './config/index.js';
+import { prisma } from './config/database.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { logger } from './utils/logger.js';
 
@@ -85,6 +86,11 @@ import paymentRoutes from './routes/payments.js';
 import bankingRoutes from './routes/banking.js';
 import transactionRoutes from './routes/transactions.js';
 import invoiceRoutes from './routes/invoices.js';
+import assetRoutes from './routes/assets.js';
+import liabilityRoutes from './routes/liabilities.js';
+import budgetRoutes from './routes/budgets.js';
+import kycRoutes from './routes/kyc.js';
+import adminRoutes from './routes/admin.js';
 
 app.use('/api/auth', authRoutes);
 app.use('/api/ai', aiRoutes);
@@ -92,6 +98,11 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/banking', bankingRoutes);
 app.use('/api/transactions', transactionRoutes);
 app.use('/api/invoices', invoiceRoutes);
+app.use('/api/assets', assetRoutes);
+app.use('/api/liabilities', liabilityRoutes);
+app.use('/api/budgets', budgetRoutes);
+app.use('/api/kyc', kycRoutes);
+app.use('/api/admin', adminRoutes);
 
 // 404 handler
 app.use((req, res) => {
@@ -122,7 +133,6 @@ const gracefulShutdown = async (signal: string) => {
 
     // Close database connections
     try {
-        const { prisma } = await import('./config/database.js');
         await prisma.$disconnect();
         logger.info('Database connection closed');
     } catch (error) {

@@ -6,11 +6,11 @@ export enum TransactionType {
 
 export type ExpenseCategoryType = 'BUSINESS' | 'PERSONAL';
 
-export type TaxTag = 
-  | 'TAXABLE_INCOME' 
-  | 'VAT_EXEMPT' 
-  | 'ALLOWABLE_EXPENSE' 
-  | 'CAPITAL_EXPENSE' 
+export type TaxTag =
+  | 'TAXABLE_INCOME'
+  | 'VAT_EXEMPT'
+  | 'ALLOWABLE_EXPENSE'
+  | 'CAPITAL_EXPENSE'
   | 'NON_DEDUCTIBLE';
 
 export enum PaymentMethod {
@@ -30,7 +30,7 @@ export enum InvoiceStatus {
 
 export type UserRole = 'USER' | 'ADMIN';
 export type UserType = 'INDIVIDUAL' | 'CORPORATE';
-export type KYCStatus = 'UNVERIFIED' | 'PENDING' | 'VERIFIED' | 'REJECTED'; 
+export type KYCStatus = 'UNVERIFIED' | 'PENDING' | 'VERIFIED' | 'REJECTED';
 export type AccountTier = 'TIER_1' | 'TIER_2' | 'TIER_3';
 
 export interface UserProfile {
@@ -74,13 +74,13 @@ export interface Transaction {
   id: string;
   date: string;
   description: string;
-  payee: string; 
+  payee: string;
   amount: number; // Net Amount (Cash impact)
   grossAmount?: number; // Amount before WHT deduction (for Revenue recognition)
   currency: 'NGN' | 'USD';
   exchangeRateSnapshot?: number; // IAS 21: The rate at the date of transaction
   type: TransactionType;
-  expenseCategory?: ExpenseCategoryType; 
+  expenseCategory?: ExpenseCategoryType;
   category: string;
   taxTag?: TaxTag; // New: Specific Tax Classification
   tags?: string[];
@@ -99,10 +99,10 @@ export interface InvoiceItem {
 }
 
 export interface PaymentRecord {
-    id: string;
-    date: string;
-    amount: number;
-    note?: string;
+  id: string;
+  date: string;
+  amount: number;
+  note?: string;
 }
 
 export interface Invoice {
@@ -117,20 +117,26 @@ export interface Invoice {
   vatAmount: number;
   whtDeduction: number; // Estimated deduction by client
   totalAmount: number; // Receivable Amount
-  
+
   // Payment Tracking
   amountPaid: number;
   payments: PaymentRecord[];
-  
+
   status: InvoiceStatus;
   paidDate?: string; // Date fully paid
-  paymentMethods: PaymentMethod[]; 
-  baniPaymentLink?: string;
+  paymentMethods: PaymentMethod[];
+  paymentDetails?: {
+    bankName?: string;
+    accountNumber?: string;
+    accountName?: string;
+    walletAddress?: string;
+    walletNetwork?: string;
+  };
 }
 
 // --- UPDATED ASSET & LIABILITY DEFINITIONS ---
 
-export type AssetType = 
+export type AssetType =
   | 'CASH' | 'BANK_ACCOUNT' | 'MONEY_MARKET' // Liquid
   | 'CRYPTO' | 'NFT' | 'DIGITAL_WALLET' // Digital
   | 'STOCKS' | 'BONDS' | 'MUTUAL_FUNDS' | 'ETF' | 'REIT' | 'INVESTMENT' // Investments
@@ -138,7 +144,7 @@ export type AssetType =
   | 'INVENTORY' | 'RECEIVABLE' | 'INTELLECTUAL_PROPERTY' // Business
   | 'OTHER';
 
-export type LiabilityType = 
+export type LiabilityType =
   | 'CREDIT_CARD' | 'OVERDRAFT' | 'LOAN_SHORT_TERM' // Short Term
   | 'LOAN' | 'MORTGAGE' | 'LOAN_STUDENT' | 'LOAN_VEHICLE' // Long Term
   | 'TAX_LIABILITY' | 'PAYABLE' | 'OTHER';
@@ -182,7 +188,7 @@ export interface TaxReport {
   estimatedVAT: number;
   deductibleExpenses: number;
   taxableIncome: number;
-  complianceScore: number; 
+  complianceScore: number;
   recommendations: string[];
   topPersonalExpenses: ExpenseInsight[];
   topBusinessExpenses: ExpenseInsight[];

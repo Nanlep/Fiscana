@@ -1,0 +1,6528 @@
+﻿BANI API DOCUMENTATION
+Payout
+Everything on sending money out of your account
+# Bank Transfer
+List Banks (Payouts)
+This endpoint can be used to fetch list of banks you can send money to.
+GET {{BASE_URL}}/partner/list_banks/{country_code}/
+
+
+Parameter
+	Type
+	Description
+	Required
+	country_code
+
+
+	string
+	ISO 3166-1 alpha-2 code.
+
+
+	true
+	
+
+
+
+RESPONSE
+OK - 200
+
+
+   {
+
+
+       "data": [
+
+
+       
+
+
+       {
+
+
+           "bank_code": "090441",
+
+
+           "bank_name": "GIWA MICROFINANCE BANK",
+
+
+           "list_code": "01"
+
+
+       },
+
+
+       {
+
+
+           "bank_code": "090408",
+
+
+           "bank_name": "GMB MICROFINANCE BANK",
+
+
+           "list_code": "01"
+
+
+       },
+
+
+       {
+
+
+           "bank_code": "090467",
+
+
+           "bank_name": "GOOD NEIGHBORS MFB",
+
+
+           "list_code": "01"
+
+
+       },
+
+
+       {
+
+
+           "bank_code": "090122",
+
+
+           "bank_name": "Gowans Microfinance Bank",
+
+
+           "list_code": "01"
+
+
+       },
+
+
+       
+
+
+       
+
+
+       {
+
+
+           "bank_code": "070011",
+
+
+           "bank_name": "REFUGE MORTGAGE BANK",
+
+
+           "list_code": "01"
+
+
+       },
+
+
+     
+
+
+       {
+
+
+           "bank_code": "090485",
+
+
+           "bank_name": "SAFEGATE MICROFINANCE BANK",
+
+
+           "list_code": "01"
+
+
+       },
+
+
+       {
+
+
+           "bank_code": "090006",
+
+
+           "bank_name": "SAFETRUST MORTGAGE BANK LIMITED",
+
+
+           "list_code": "01"
+
+
+       },
+
+
+       {
+
+
+           "bank_code": "090140",
+
+
+           "bank_name": "SAGAMU MICROFINANCE BANK",
+
+
+           "list_code": "01"
+
+
+       },
+
+
+       {
+
+
+           "bank_code": "090112",
+
+
+           "bank_name": "SEED CAPITAL MICROFINANCE BANK",
+
+
+           "list_code": "01"
+
+
+       },
+
+
+       {
+
+
+           "bank_code": "090369",
+
+
+           "bank_name": "SEEDVEST MICROFINANCE BANK",
+
+
+           "list_code": "01"
+
+
+       },
+
+
+       {
+
+
+           "bank_code": "090449",
+
+
+           "bank_name": "SLS MICROFINANCE BANK",
+
+
+           "list_code": "01"
+
+
+       },
+
+
+       {
+
+
+           "bank_code": "090325",
+
+
+           "bank_name": "SPARKLE",
+
+
+           "list_code": "01"
+
+
+       },
+
+
+       {
+
+
+           "bank_code": "090436",
+
+
+           "bank_name": "SPECTRUM MICROFINANCE BANK",
+
+
+           "list_code": "01"
+
+
+       },
+
+
+       {
+
+
+           "bank_code": "100007",
+
+
+           "bank_name": "STANBIC IBTC @ EASE WALLET",
+
+
+           "list_code": "01"
+
+
+       },
+
+
+       {
+
+
+           "bank_code": "090315",
+
+
+           "bank_name": "U & C MICROFINANCE BANK",
+
+
+           "list_code": "01"
+
+
+       },
+
+
+       {
+
+
+           "bank_code": "090331",
+
+
+           "bank_name": "UNAAB MICROFINANCE BANK",
+
+
+           "list_code": "01"
+
+
+       },
+
+
+       {
+
+
+           "bank_code": "090461",
+
+
+           "bank_name": "UNIBADAN MICROFINANCE BANK",
+
+
+           "list_code": "01"
+
+
+       },
+
+
+       {
+
+
+           "bank_code": "090341",
+
+
+           "bank_name": "UNIILORIN MICROFINANCE BANK",
+
+
+           "list_code": "01"
+
+
+       },
+
+
+       {
+
+
+           "bank_code": "090452",
+
+
+           "bank_name": "UNILAG MICROFINANCE BANK",
+
+
+           "list_code": "01"
+
+
+       },
+
+
+       {
+
+
+           "bank_code": "000018",
+
+
+           "bank_name": "UNION BANK",
+
+
+           "list_code": "01"
+
+
+       },
+
+
+       {
+
+
+           "bank_code": "090338",
+
+
+           "bank_name": "UNIUYO Microfinance Bank",
+
+
+           "list_code": "01"
+
+
+       },
+
+
+       {
+
+
+           "bank_code": "090474",
+
+
+           "bank_name": "VERDANT MICROFINANCE BANK",
+
+
+           "list_code": "01"
+
+
+       },
+
+
+       {
+
+
+           "bank_code": "090123",
+
+
+           "bank_name": "VERITE MICROFINANCE BANK",
+
+
+           "list_code": "01"
+
+
+       },
+
+
+       {
+
+
+           "bank_code": "090110",
+
+
+           "bank_name": "VFD MFB",
+
+
+           "list_code": "01"
+
+
+       },
+
+
+       {
+
+
+           "bank_code": "090139",
+
+
+           "bank_name": "Visa Microfinance Bank",
+
+
+           "list_code": "01"
+
+
+       },
+
+
+       {
+
+
+           "bank_code": "100023",
+
+
+           "bank_name": "VISUAL ICT",
+
+
+           "list_code": "01"
+
+
+       },
+
+
+       {
+
+
+           "bank_code": "100012",
+
+
+           "bank_name": "VTNETWORK",
+
+
+           "list_code": "01"
+
+
+       },
+
+
+       {
+
+
+           "bank_code": "090120",
+
+
+           "bank_name": "Wetland Microfinance Bank",
+
+
+           "list_code": "01"
+
+
+       },
+
+
+       {
+
+
+           "bank_code": "090419",
+
+
+           "bank_name": "Winview Microfinance Bank",
+
+
+           "list_code": "01"
+
+
+       },
+
+
+       {
+
+
+           "bank_code": "090124",
+
+
+           "bank_name": "Xslnce Microfinance Bank",
+
+
+           "list_code": "01"
+
+
+       },
+
+
+       {
+
+
+           "bank_code": "090466",
+
+
+           "bank_name": "YCT Microfinance Bank",
+
+
+           "list_code": "01"
+
+
+       },
+
+
+       {
+
+
+           "bank_code": "090142",
+
+
+           "bank_name": "YES MICROFINANCE BANK",
+
+
+           "list_code": "01"
+
+
+       },
+
+
+       {
+
+
+           "bank_code": "090252",
+
+
+           "bank_name": "YOBE MICROFINANCE BANK",
+
+
+           "list_code": "01"
+
+
+       },
+
+
+       {
+
+
+           "bank_code": "100034",
+
+
+           "bank_name": "ZENITH EAZY WALLET",
+
+
+           "list_code": "01"
+
+
+       },
+
+
+       {
+
+
+           "bank_code": "100018",
+
+
+           "bank_name": "ZENITH MOBILE",
+
+
+           "list_code": "01"
+
+
+       },
+
+
+       {
+
+
+           "bank_code": "100025",
+
+
+           "bank_name": "ZINTERNET NIGERA LIMITED",
+
+
+           "list_code": "01"
+
+
+       }
+
+
+   ],
+
+
+   "list_code": "01",
+
+
+   "message": "Banks",
+
+
+   "status": true,
+
+
+   "status_code": 200
+
+
+}
+Verify Bank Account Number- NG
+This endpoint can be used to verify a Nigeria bank account number
+POST {{BASE_URL}}/partner/payout/verify_bank_account/
+
+
+Parameter
+	Type
+	Description
+	list_code
+	string
+	The value to this field can be gotten from the List Banks endpoint
+
+
+	bank_code
+
+
+	string
+	The sort code or bank code of the receiving bank
+
+
+	country_code
+
+
+	string
+	ISO 3166-1 alpha-2 code.
+
+
+	account_number
+
+
+	string
+	Receiver account number
+
+
+	
+
+REQUEST
+{
+
+
+ "list_code":"T001",
+
+
+ "bank_code":"058",
+
+
+ "country_code":"NG",
+
+
+ "account_number":"0011492583"
+
+
+}
+
+
+RESPONSE
+OK- 200
+
+
+{
+
+
+       "account_name": "Mac Ola Williams",
+
+
+       "account_number": "0011492583",
+
+
+       "bank_name": "ACCESS BANK DIAMOND",
+
+
+       "message": "Details",
+
+
+       "status": true,
+
+
+       "status_code": 200
+
+
+ }
+
+
+BAD REQUEST - 400
+
+
+{
+
+
+       "message": "Sorry we are unable to verify account from source at this time. Kindly try again later",
+
+
+       "status": false,
+
+
+       "status_code": 400
+
+
+   }
+
+
+
+
+Bank Transfer - Nigeria
+Send money to Nigeria or within Nigeria
+POST {{BASE_URL}}/partner/payout/initiate_transfer/
+
+
+Parameter
+	Type
+	Description
+	Required
+	payout_step
+	string
+	Some payouts might involve multiple steps but since this is just a step we just use direct
+	true
+	receiver_currency
+	string
+	The currency of the person you're sending the money to
+	true
+	receiver_amount
+	string
+	The amount you're sending to the person. Kindly make use of the conversion endpoint to get this value if the receiver will be taking another currency apart from the sender's currency
+	true
+	transfer_method
+	string
+	The mode of transfer, and the value will be bank
+	true
+	transfer_receiver_type
+	string
+	Type of account you're sending the money to. It could either be personal or company
+	true
+	receiver_account_num
+	string
+	Account number of the receiver
+	true
+	receiver_country_code
+	string
+	ISO 3166-1 alpha-2 code
+	true
+	receiver_account_name
+	string
+	The account name of the receiver. This can be gotten via the Verify Account Number - NG endpoint
+	true
+	receiver_sort_code
+	string
+	The bank sort code. This can be fetched using the List Banks - NG endpoint
+	true
+	sender_amount
+	string
+	The amount you are sending to the second body
+	true
+	sender_currency
+	string
+	The currency you prefer to send money from
+	true
+	transfer_ext_ref
+	string
+	Your preferred unique reference
+	false
+	transfer_note
+	string
+	Any additional note
+	false
+	
+
+
+
+HEADERS
+{
+
+
+    'Authorization': 'Bearer xhscIjHgpm2ZiPjzKos4ivl4GhyZp5',
+
+
+     'Content-Type': 'application/json',
+
+
+     'moni-signature': 'wed332eeddrdbdbdbdbvdvdvdvvsbsvsd'
+
+
+}
+
+
+
+
+REQUEST
+{
+
+
+ "payout_step":"direct",
+
+
+ "receiver_currency":"NGN",
+
+
+ "receiver_amount":"1000",
+
+
+ "transfer_method":"bank",
+
+
+ "transfer_receiver_type":"personal",
+
+
+ "receiver_account_num":"0142428721",
+
+
+ "receiver_country_code":"NG",
+
+
+ "receiver_sort_code":"058",
+
+
+ "receiver_account_name":"Joseph Donga",
+
+
+ "sender_amount":"1000",
+
+
+ "sender_currency":"NGN",
+
+
+ "transfer_note":"Small chops"
+
+
+}
+
+
+RESPONSE
+CREATED - 201
+ {
+
+
+       "transfer_ext_ref": "payout-test-01",
+
+
+       "message": "Payout in progress",
+
+
+       "payout_ref": "WMPRM_5gkk6rtpgw",
+
+
+       "status": true,
+
+
+       "status_code": 201
+
+
+}
+BAD REQUEST - 400
+
+
+  {
+
+
+       "message": "Unable to process the external transfer at this moment. Kindly try again later.",
+
+
+       "status": false,
+
+
+       "status_code": 400
+
+
+   }
+Mobile Money
+
+
+
+
+List Supported Momo (Payout)
+This endpoint can be used to get the list of countries you can send money to via mobile money
+GET {{BASE_URL}}/partner/list_payout_supported_momo/
+RESPONSE
+
+
+{
+
+
+       "data": [
+
+
+           {
+
+
+               "max_pay_amount": "100.00",
+
+
+               "min_pay_amount": "1.00",
+
+
+               "momo_country": [
+
+
+                   "GH"
+
+
+               ],
+
+
+               "momo_currency": "GHS",
+
+
+               "momo_logo": null,
+
+
+               "momo_network": "airteltigo",
+
+
+               "momo_status": "active"
+
+
+           },
+
+
+           {
+
+
+               "max_pay_amount": "0.00",
+
+
+               "min_pay_amount": "0.00",
+
+
+               "momo_country": [
+
+
+                   "GH"
+
+
+               ],
+
+
+               "momo_currency": "GHS",
+
+
+               "momo_logo": null,
+
+
+               "momo_network": "voda",
+
+
+               "momo_status": "active"
+
+
+           },
+
+
+           {
+
+
+               "max_pay_amount": "0.00",
+
+
+               "min_pay_amount": "0.00",
+
+
+               "momo_country": [
+
+
+                   "KE"
+
+
+               ],
+
+
+               "momo_currency": "KES",
+
+
+               "momo_logo": null,
+
+
+               "momo_network": "mpesa",
+
+
+               "momo_status": "active"
+
+
+           },
+
+
+           {
+
+
+               "max_pay_amount": "150000.00",
+
+
+               "min_pay_amount": "1.00",
+
+
+               "momo_country": [
+
+
+                   "KE"
+
+
+               ],
+
+
+               "momo_currency": "KES",
+
+
+               "momo_logo": null,
+
+
+               "momo_network": "airtel",
+
+
+               "momo_status": "active"
+
+
+           },
+
+
+           {
+
+
+               "max_pay_amount": "300000.00",
+
+
+               "min_pay_amount": "1.00",
+
+
+               "momo_country": [
+
+
+                   "KE"
+
+
+               ],
+
+
+               "momo_currency": "KES",
+
+
+               "momo_logo": null,
+
+
+               "momo_network": "equitel",
+
+
+               "momo_status": "active"
+
+
+           },
+
+
+           {
+
+
+               "max_pay_amount": "100.00",
+
+
+               "min_pay_amount": "1.00",
+
+
+               "momo_country": [
+
+
+                   "TZ"
+
+
+               ],
+
+
+               "momo_currency": "TZS",
+
+
+               "momo_logo": null,
+
+
+               "momo_network": "tigo",
+
+
+               "momo_status": "active"
+
+
+           }
+
+
+       ],
+
+
+       "message": "Supported mobile money",
+
+
+       "status": true,
+
+
+       "status_code": 200
+
+
+   }
+
+
+Check Momo Network Status
+This endpoint can be used to check the telco network status
+POST {{BASE_URL}}/partner/momo_network_status/
+
+
+Parameter
+	Type
+	Description
+	Required
+	country_code
+	string
+	ISO 3166-1 alpha-2 code.
+	true
+	operation_mode
+	string
+	Value could be either collection or payout
+	true
+	
+
+REQUEST
+{
+
+
+  "country_code":"GH",
+
+
+  "operation_mode":"collection"
+
+
+}
+RESPONSE
+OK - 200
+{
+
+
+       "data": [
+
+
+           {
+
+
+               "country": "GH",
+
+
+               "momo_network": "vodafone",
+
+
+               "operation_mode": "collection",
+
+
+               "operation_status": "operational",
+
+
+               "service_type": "mobile_money"
+
+
+           },
+
+
+           {
+
+
+               "country": "GH",
+
+
+               "momo_network": "mtn",
+
+
+               "operation_mode": "collection",
+
+
+               "operation_status": "operational",
+
+
+               "service_type": "mobile_money"
+
+
+           },
+
+
+           {
+
+
+               "country": "GH",
+
+
+               "momo_network": "airteltigo",
+
+
+               "operation_mode": "collection",
+
+
+               "operation_status": "operational",
+
+
+               "service_type": "mobile_money"
+
+
+           }
+
+
+       ],
+
+
+       "message": "network status",
+
+
+       "status": true,
+
+
+       "status_code": 200
+
+
+   }
+
+
+BAD REQUEST - 400
+
+
+{
+
+
+       "field_name": "country_code",
+
+
+       "message": "Country code is required",
+
+
+       "status": false,
+
+
+       "status_code": 400
+
+
+ }
+N:B -  Watch out for the value operational. Any other value except from that means you can't process any transaction till it changes.
+
+
+
+
+Mobile Money Transfer
+Make mobile money transfer
+POST {{BASE_URL}}/partner/payout/initiate_transfer/
+
+
+
+
+
+
+Parameter
+	Type
+	Description
+	Required
+	payout_step
+	string
+	Some payouts might involve multiple steps but since this is just a step we use direct
+	true
+	receiver_currency
+	string
+	The currency of the person you're sending the money to
+	true
+	receiver_amount
+	string
+	The amount you're sending to the person. Kindly make use of the conversion endpoint if the receiver uses a different currency
+	true
+	transfer_method
+	string
+	The mode of transfer, and the value will be mobile_money
+	true
+	transfer_receiver_type
+	string
+	Type of account you're sending the money to. The valid choice is personal
+	true
+	receiver_account_num
+	string
+	This should be the valid phone number of the receiver. This is where the money will be sent to.
+	true
+	receiver_country_code
+	string
+	ISO 3166-1 alpha-2 code. Use the endpoint to get the list of supported countries.
+	true
+	receiver_account_name
+	string
+	The name of the receiver.
+	true
+	sender_amount
+	string
+	The amount you are sending to the second body
+	true
+	sender_currency
+	string
+	The currency you prefer to send money from
+	true
+	transfer_ext_ref
+	string
+	Your preferred unique reference
+	false
+	
+
+HEADERS
+{
+     'Authorization': 'Bearer xhscIjHgpm2ZiPjzKos4ivl4GhyZp5',
+      'Content-Type': 'application/json',
+      'moni-signature': 'wed332eeddrdbdbdbdbvdvdvdvvsbsvsd'
+ }
+
+
+
+
+REQUEST
+{
+  "payout_step":"direct",
+  "receiver_currency":"ZMW",
+  "receiver_amount":"10",
+  "transfer_method":"mobile_money",
+  "transfer_receiver_type":"personal",
+  "receiver_account_num":"+260966750759",
+  "receiver_country_code":"ZM",
+  "sender_currency":"ZMW",
+  "sender_amount":"10"
+}
+
+
+
+
+RESPONSE
+CREATED - 201
+
+
+ {
+
+
+       "transfer_ext_ref": "payout-test-01",
+
+
+       "message": "Payout in progress",
+
+
+       "payout_ref": "WMPRM_5gkk6rtpgw",
+
+
+       "status": true,
+
+
+       "status_code": 201
+
+
+}
+
+
+BAD REQUEST - 400
+
+
+  {
+
+
+       "message": "Unable to process the external transfer at this moment. Kindly try again later.",
+
+
+       "status": false,
+
+
+       "status_code": 400
+
+
+   }
+
+
+
+
+TEST DATA
+Currency - ZMW
+Country code -  ZM
+networks - mtn, airtel
+phone_number = +260966750759 [mtn] , +260977122333[airtel]
+Pay via DLT
+
+
+List Supported Crypto
+This endpoint can be used to get the list of crypto we support
+GET {{BASE_URL}}/partner/list_supported_crypto/
+RESPONSE
+{
+        "data": [
+            {
+                "coin_chain_network": null,
+                "coin_logo": null,
+                "coin_name": "bitcoin",
+                "coin_type": "btc"
+            },
+            {
+                "coin_chain_network": null,
+                "coin_logo": null,
+                "coin_name": "litecoin",
+                "coin_type": "ltc"
+            },
+            {
+                "coin_chain_network": null,
+                "coin_logo": null,
+                "coin_name": "bitcoin cash",
+                "coin_type": "bch"
+            },
+            {
+                "coin_chain_network": null,
+                "coin_logo": null,
+                "coin_name": "usd coin",
+                "coin_type": "usdc"
+            },
+            {
+                "coin_chain_network": "['BTC_USDT', 'TRON_USDT', 'SOL_USDT']",
+                "coin_logo": null,
+                "coin_name": "usdt coin",
+                "coin_type": "usdt"
+            },
+            {
+                "coin_chain_network": null,
+                "coin_logo": null,
+                "coin_name": "ripple",
+                "coin_type": "xrp"
+            },
+            {
+                "coin_chain_network": null,
+                "coin_logo": null,
+                "coin_name": "dodge coin",
+                "coin_type": "dodge"
+            },
+            {
+                "coin_chain_network": null,
+                "coin_logo": null,
+                "coin_name": "ethereum",
+                "coin_type": "eth"
+            },
+            {
+                "coin_chain_network": null,
+                "coin_logo": null,
+                "coin_name": "tron",
+                "coin_type": "tron"
+            },
+            {
+                "coin_chain_network": "['BNB_USD']",
+                "coin_logo": null,
+                "coin_name": "Binance USD",
+                "coin_type": "busd"
+            }
+        ],
+        "message": "Supported Crypto",
+        "status": true,
+        "status_code": 200
+    }
+
+
+Check Network/Miner Fee
+This endpoint can be used to determine the network/miner fee when sending out a cryptocurrency
+POST {{BASE_URL}}/trybe/check_coin_send_fee/
+
+
+Parameter
+	Type
+	Description
+	Required
+	coin_type
+	string
+	The crypto you intend to transfer (e.g., btc)
+	true
+	coin_amount
+	string
+	The amount you intend to transfer out
+	false
+	coin_chain_network
+	string
+	The chain network
+	false
+	
+
+REQUEST
+
+
+{
+
+
+  "coin_type":"btc",
+
+
+  "coin_amount":"0.0232"
+
+
+}
+
+
+RESPONSE
+OK - 200
+
+
+{
+
+
+       "coin_amount": "1.000000000000000000",
+
+
+       "coin_send_fee": "0.00100002",
+
+
+       "coin_type": "btc",
+
+
+       "feedata": {
+
+
+           "cpfpFeePerKb": 1000,
+
+
+           "feeByBlockTarget": {
+
+
+               "1": 1000
+
+
+           },
+
+
+           "feePerKb": 1000,
+
+
+           "numBlocks": 2
+
+
+       },
+
+
+       "message": "Miner fee",
+
+
+       "status": true,
+
+
+       "status_code": 200
+
+
+   }
+
+
+BAD REQUEST - 400
+
+
+{
+
+
+       "field_name": "coin_type",
+
+
+       "message": "\"bchc\" is not a valid choice.",
+
+
+       "status": false,
+
+
+       "status_code": 400
+
+
+ }
+
+
+
+
+Reverse Check Network/Miner Fee
+This endpoint can be used to check the network/miner fee if the sender_coin_type is different from the receiver_coin_type
+POST {{BASE_URL}}/trybe/reverse_coin_send_fee/
+This endpoint can be used to check the network/miner fee if the sender_coin_type is different from the receiver_coin_type e.g sender_coin_type is btc while receiver_coin_type is eth
+Use the value of the field to_coin_amount as the coin_send_fee final value.
+
+
+Parameter
+	Type
+	Description
+	Required
+	receiver_coin_type
+	string
+	Crypto type that will be sent to the other party
+	true
+	sender_coin_type
+	string
+	Crypto wallet type that will be debited
+	true
+	receiver_coin_amount
+	string
+	Crypto amount that will be sent to the other party
+	true
+	receiver_chain_network
+	string
+	The chain network
+	false
+	
+
+
+
+REQUEST
+{
+
+
+ "receiver_coin_type":"btc",
+
+
+ "sender_coin_type":"eth",
+
+
+ "receiver_coin_amount":"0.1"
+
+
+}
+
+
+RESPONSE
+OK - 200
+   {
+
+
+       "from_coin_amount": "0.00001002",
+
+
+       "from_coin_type": "eth",
+
+
+       "from_to_rate": 1,
+
+
+       "message": "Conversion done.",
+
+
+       "status": true,
+
+
+       "status_code": 200,
+
+
+       "to_coin_amount": "0.1002",
+
+
+       "to_coin_type": "btc"
+
+
+   }
+
+
+BAD REQUEST - 400
+
+
+{
+
+
+       "field_name": "sender_coin_type",
+
+
+       "message": "Sender coin type is required.",
+
+
+       "status": false,
+
+
+       "status_code": 400
+
+
+   }
+
+
+Payout via DLT
+Send out cryptocurrency to external address
+POST {{BASE_URL}}/partner/payout/send_a_coin/
+
+
+Parameter
+	Type
+	Description
+	Required
+	sender_coin_type
+	string
+	The crypto wallet type you are sending from
+	true
+	sender_coin_amount
+	string
+	The coin amount you want to send out
+	true
+	receiver_coin_type
+	string
+	The crypto wallet type you are sending funds to
+	true
+	receiver_coin_amount
+	string
+	The amount the receiver will collect. Use the conversion endpoint if the receiver will be taking another coin type
+	true
+	receiver_coin_address
+	string
+	The external wallet address of the receiver
+	true
+	coin_send_fee
+	string
+	Use the Network Send Fee endpoint to fetch the miner/network fee
+	true
+	coin_chain_network
+	string
+	Required if you are sending to a stable coin wallet
+	false
+	transfer_ext_ref
+	string
+	Your preferred unique reference
+	false
+	
+
+
+
+
+
+HEADERS
+{
+
+
+    'Authorization': 'Bearer xhscIjHgpm2ZiPjzKos4ivl4GhyZp5',
+
+
+     'Content-Type': 'application/json',
+
+
+     'moni-signature': 'wed332eeddrdbdbdbdbvdvdvdvvsbsvsd'
+
+
+}
+
+
+REQUEST
+{
+  "sender_coin_type":"btc",
+  "sender_coin_amount":"0.1",
+  "receiver_coin_type":"btc",
+  "receiver_coin_amount":"0.1",
+  "receiver_coin_address":"2N3oefVeg6stiTb5Kh3ozCSkaqmx91FDbsm",
+  "coin_send_fee":"0.0000001"
+}
+
+
+
+
+
+
+RESPONSE
+CREATED - 201
+
+
+ {
+
+
+       "message": "Transfer done successfully.",
+
+
+       "status": true,
+
+
+       "status_code": 201,
+
+
+       "transaction_ref": "6d4bf11c8c871648c324091c24516da4973e45d15e852e47b806384621b25ebc"
+
+
+   }
+BAD REQUEST - 400
+Copy
+  {
+
+
+       "message": "Unable to process the external transfer at this moment. Kindly try again later.",
+
+
+       "status": false,
+
+
+       "status_code": 400
+
+
+   }
+
+
+Verify Payout Status
+
+
+Verify Fiat Payout
+This endpoint can be used to verify fiat payout
+POST {{BASE_URL}}/partner/payout/fiat_status_check/
+The returned payout_status value can either be on_going, in_progress, source_processing, failed, system_closed or completed. If the status is completed then the payout is successful.
+N: B - The final confirmation for payout via bank can be checked after 17 minutes from the time posted. system_closed status is not final, it will always change to failed or completed
+
+
+
+
+Parameter
+	Type
+	Description
+	Required
+	payout_ref
+	string
+	Unique reference generated by Bani
+	false
+	transfer_ext_ref
+	string
+	Unique reference generated by the merchant
+	false
+	
+
+
+
+HEADERS
+{
+     'Authorization': 'Bearer xhscIjHgpm2ZiPjzKos4ivl4GhyZp5',
+      'Content-Type': 'application/json',
+      'moni-signature': 'wed332eeddrdbdbdbdbvdvdvdvvsbsvsd'
+ }
+
+
+
+
+REQUEST
+{
+  "payout_ref":"WMPRM_wcratg7n9b"
+}
+
+
+
+
+RESPONSE
+OK - 200
+
+
+{
+
+
+   "data": {
+
+
+       "modified_date": "2022-03-28T15:42:38.712815Z",
+
+
+       "payout_ext_ref": "WEMBA-001",
+
+
+       "payout_method": "bank",
+
+
+       "payout_receiver_type": "personal",
+
+
+       "payout_ref": "WMPRM_wcratg7n9b",
+
+
+       "payout_status": "completed",
+
+
+       "pub_date": "2022-03-28T15:22:09.094500Z",
+
+
+       "receiver_account_name": "Simao Pongo",
+
+
+       "receiver_account_num": "00243292583",
+
+
+       "receiver_account_type": "",
+
+
+       "receiver_address": "",
+
+
+       "receiver_amount": "100.00",
+
+
+       "receiver_bank_branch": "",
+
+
+       "receiver_bank_name": "",
+
+
+       "receiver_city": "",
+
+
+       "receiver_country_code": "NG",
+
+
+       "receiver_currency": "NGN",
+
+
+       "receiver_first_name": "",
+
+
+       "receiver_last_name": "",
+
+
+       "receiver_personal_num": "",
+
+
+       "receiver_phone": "",
+
+
+       "receiver_postcode": "",
+
+
+       "receiver_sort_code": "000005",
+
+
+       "receiver_state": ""
+
+
+   },
+
+
+   "message": "Payout details",
+
+
+   "status": true,
+
+
+   "status_code": 200
+
+
+}
+BAD REQUEST- 400
+
+
+{
+
+
+   "message": "Kindly supply a reference",
+
+
+   "status": false,
+
+
+   "status_code": 400
+
+
+}
+
+
+
+
+Verify Crypto Payout
+This endpoint can be used to verify crypto payout
+POST {{BASE_URL}}/partner/payout/crypto_status_check/
+The returned payout_status value can either be on_going, in_progress, source_processing, failed, system_closed or completed. If the status is completed then the payout is successful.
+N:B - system_closed status is not final, it will always change to failed or completed
+
+
+
+
+Parameter
+	Type
+	Description
+	Required
+	payout_ref
+	string
+	Unique reference generated by Bani
+	false
+	transfer_ext_ref
+	string
+	Unique reference generated by the merchant
+	false
+	
+
+HEADERS
+{
+     'Authorization': 'Bearer xhscIjHgpm2ZiPjzKos4ivl4GhyZp5',
+      'Content-Type': 'application/json',
+      'moni-signature': 'wed332eeddrdbdbdbdbvdvdvdvvsbsvsd'
+ }
+
+
+
+
+REQUEST
+{
+  "payout_ref":"BNC_xf6m8v80rj17jxvwt9g1bv8qh"
+}
+
+
+
+
+RESPONSE
+OK - 200
+
+
+{
+
+
+       "data": {
+
+
+           "coin_send_fee": "0.000000000000000000",
+
+
+           "custom_data": null,
+
+
+           "modified_date": "2022-02-28T13:26:51.453689Z",
+
+
+           "payout_ref": "BNC_xf6m8v80rj17jxvwt9g1bv8qh",
+
+
+           "pub_date": "2022-02-28T13:26:41.913864Z",
+
+
+           "receiver_chain_network": "",
+
+
+           "receiver_coin_address": "2N3oefVeg6stiTb5Kh3ozCSkaqmx91FDbsm",
+
+
+           "receiver_coin_amount": "0.010000000000000000",
+
+
+           "receiver_coin_type": "btc",
+
+
+           "sender_coin_amount": "0.010000000000000000",
+
+
+           "sender_coin_type": "btc",
+
+
+           "transfer_ext_ref": "aby-02",
+
+
+           "transfer_hash": "6d4bf11c8c871648c324091c24516da4973e45d15e852e47b806384621b25ebc",
+
+
+           "transfer_status": "completed"
+
+
+       },
+
+
+       "message": "Payout details",
+
+
+       "status": true,
+
+
+       "status_code": 200
+
+
+   }
+BAD REQUEST- 400
+
+
+{
+
+
+   "message": "Kindly supply a reference",
+
+
+   "status": false,
+
+
+   "status_code": 400
+
+
+}
+
+
+
+
+Handle webhook
+All things event
+When a payment occurs, Bani sends a webhook event to the webhook URL that you saved on your dashboard.
+It is highly recommended that you use webhooks or verify the payment transaction status before delivering value to your customers.
+We advise you to verify the response before carrying out any further action.
+Please note: if the payout_status value is 'system_closed', kindly wait until the status change to either 'failed' or 'completed' before taking action on your end.
+To verify the response, you will have to form the signature and compare your result with the value of 'BANI-HOOK-SIGNATURE' sent to you. The signature is a combination of your merchant_private_key and request payload.
+Alternatively, you can verify the response by setting a value of your choice for 'webhook verification key' on your Bani merchant dashboard > Setting > Engineering > Webhooks and then comparing it with the value of 'BANI-SHARED-KEY' sent to you.
+
+
+JS
+app.post("/webhook", (req, res) => {
+  const merchant_private_key = "privatekey";
+  const headers = req.headers;
+  const body = req.rawBody;
+  const sig = Buffer.from(headers["bani-hook-signature"] || "", "utf8");
+  //Calculate HMAC
+  const hmac = crypto.createHmac("sha256", merchant_private_key);
+  const digest = Buffer.from(hmac.update(body).digest("hex"), "utf8");
+  if (sig.length !== digest.length || !crypto.timingSafeEqual(digest, sig)) {
+    return false;
+  } else {
+    return true;
+  }
+});
+
+
+
+
+Event
+	Description
+	payin_mobile_money
+	Payment made via mobile money
+	payin_bank_transfer
+	Payment made via bank transfer
+	payin_ewallet
+	Payment made via third party wallet
+	coin_payment_incoming
+	An incoming crypto payment
+	coin_payment_received
+	Payment made via crypto
+	payout
+	A successful transfer to a bank account or mobile money wallet has been completed
+	payout_reversal
+	A transfer to a bank account or mobile money wallet you attempted has been reversed
+	payout_crypto
+	A successful transfer to a crypto wallet has been completed
+	payout_crypto_reversal
+	A transfer to a crypto wallet you attempted has been reversed
+	collection_service_status
+	Sent whenever a payment method/provider is active or inactive. Gives a heads-up on activation status
+	vas_completed
+	Sent after a successful bill payment transaction
+	vas_failed
+	Sent after a failed bill payment transaction
+	
+
+
+
+Find sample request payload below.
+
+
+event. payin_mobile_money
+{
+  "event": "payin_mobile_money",
+  "data": {
+    "pay_ref": "BNPay-j6bva8xcesc2vrhhh4w1vs51t9xj96",
+    "pay_ext_ref": "",
+    "holder_first_name": "Star",
+    "holder_last_name": "Lord",
+    "custom_data": {
+      "me": "userr"
+    },
+    "pay_amount": "30.88",
+    "pay_method": "mobile_money",
+    "holder_phone": "+254713674757",
+    "holder_phone_carrier": "safke",
+    "order_details": null,
+    "holder_currency": "KES",
+    "holder_country_code": "KE",
+    "pay_status": "paid",
+    "holder_account_number": "",
+    "pub_date": "2022-04-07T11:32:24.084772Z",
+    "modified_date": "2022-04-07T11:32:33.166011Z",
+    "holder_bank_name": "",
+    "merch_currency": "NGN",
+    "merch_amount": "150.00"
+  }
+}
+
+
+
+
+
+
+event. payin_bank_transfer
+{
+  "event": "payin_bank_transfer",
+  "data": {
+    "pay_ref": "BNPay-6je71r6y7yd8x0a6pxpp1b2absx56c",
+    "pay_ext_ref": "",
+    "holder_first_name": "Mac",
+    "holder_last_name": "Keita",
+    "custom_data": {
+      "me": "userr"
+    },
+    "pay_amount": "150.00",
+    "pay_method": "bank_transfer",
+    "holder_phone": null,
+    "holder_phone_carrier": "",
+    "order_details": null,
+    "holder_currency": "NGN",
+    "holder_country_code": "NG",
+    "pay_status": "paid",
+    "holder_account_number": "8180000003",
+    "pub_date": "2022-04-07T08:27:54.481411Z",
+    "modified_date": "2022-04-07T08:31:16.452737Z",
+    "holder_bank_name": "Wema Bank",
+    "merch_currency": "NGN",
+    "merch_amount": "150.00",
+
+
+    
+    
+    
+    "customer_ref": "MC-94347797905643707394",
+    "pay_amount_collected": "899.00",
+    "pay_amount_outstanding": "0.00",
+    "holder_account_type": "temporary",
+    "transaction_ref": "95epa8kfzt0p27m2k05wam5gk",
+    "source_account_name": "STAR LORD",
+    "actual_amount_paid": 899.0,
+    "narration": "Inflow from STAR LORD|",
+    "va_perm_type": "",
+    "ext_ref": "000069588981102803710000",
+    "source_bank_name": null,
+    "source_account_number": "0234567890"
+  }
+}
+
+
+
+
+
+
+
+
+event. payin_ewallet
+
+
+{
+  "event": "payin_ewallet",
+  "data": {
+    "pay_ref": "BNPay-ck0rhghzhb8wtaqycmk8b4as2bpdma",
+    "pay_ext_ref": "",
+    "holder_first_name": "Rodney",
+    "holder_last_name": "Jackson-Cole",
+    "custom_data": {
+      "me": "userr"
+    },
+    "pay_amount": "150.00",
+    "pay_method": "ewallet",
+    "holder_phone": "",
+    "holder_phone_carrier": "",
+    "order_details": null,
+    "holder_currency": "NGN",
+    "holder_country_code": "NG",
+    "pay_status": "paid",
+    "holder_account_number": "",
+    "pub_date": "2022-04-06T23:10:13.719380Z",
+    "modified_date": "2022-04-06T23:12:01.638946Z",
+    "holder_bank_name": "",
+    "merch_currency": "NGN",
+    "merch_amount": "150.00"
+  }
+}
+
+
+event.collection_service_status
+{
+    "event": "collection_service_status",
+    "data": {
+        "pay_method": "Bank Transfer",
+        "pay_provider_name": "Ocean Bank",
+        "pay_method_status": "active",
+        "pay_currency": "NGN",
+        "pay_keyword":["ocean", "000017"],
+        "pay_country": [
+            "NG"
+        ]
+    }
+}
+
+
+event.payout
+{
+    "event": "payout",
+    "data": {
+        "transaction_note": "Remittance to 0066492583|John Scodo",
+        "fiat_amount": "10.00",
+        "coin_amount": "0.000000000000000000",
+        "transaction_reference": "f6gktkjykamr40mtq13cc76qx",
+        "pub_date": "2022-10-23T10:59:48.586327Z",
+        "modified_date": "2022-10-23T10:59:48.588187Z",
+        "is_done": true,
+        "payout_details": {
+            "payout_method": "Bank Transfer",
+            "receiver_amount": "10.00",
+            "receiver_phone": "",
+            "receiver_sort_code": "000005",
+            "payout_status": "completed",
+            "payout_ref": "WMPRM_jeebzavhj3",
+            "payout_ext_ref": "WEMBA-1013",
+            "payout_receiver_type": "personal",
+            "receiver_account_name": "John Scodo",
+            "receiver_account_num": "0000010101",
+            "receiver_account_type": "",
+            "receiver_address": "",
+            "receiver_bank_name": "GRANT BANK",
+            "receiver_city": "",
+            "receiver_currency": "NGN",
+            "receiver_personal_num": "",
+            "receiver_postcode": "",
+            "receiver_state": "",
+            "receiver_country_code": "NG",
+            "receiver_bank_branch": "",
+            "receiver_first_name": "",
+            "receiver_last_name": "",
+            "pub_date": "2022-10-23T10:59:48.582486Z",
+            "modified_date": "2022-10-23T11:21:49.899924Z",
+            "is_beneficiary": false
+        },
+        "source_account_name": "Nest Cafe"
+    }
+}
+
+
+{
+    "event": "payout",
+    "data": {
+        "transaction_note": "Remittance to 0066492583|John Scodo",
+        "fiat_amount": "10.00",
+        "coin_amount": "0.000000000000000000",
+        "transaction_reference": "f6gktkjykamr40mtq13cc76qx",
+        "pub_date": "2022-10-23T10:59:48.586327Z",
+        "modified_date": "2022-10-23T10:59:48.588187Z",
+        "is_done": true,
+        "payout_details": {
+            "payout_method": "Bank Transfer",
+            "receiver_amount": "10.00",
+            "receiver_phone": "",
+            "receiver_sort_code": "000005",
+            "payout_status": "completed",
+            "payout_ref": "WMPRM_jeebzavhj3",
+            "payout_ext_ref": "WEMBA-1013",
+            "payout_receiver_type": "personal",
+            "receiver_account_name": "John Scodo",
+            "receiver_account_num": "0000010101",
+            "receiver_account_type": "",
+            "receiver_address": "",
+            "receiver_bank_name": "GRANT BANK",
+            "receiver_city": "",
+            "receiver_currency": "NGN",
+            "receiver_personal_num": "",
+            "receiver_postcode": "",
+            "receiver_state": "",
+            "receiver_country_code": "NG",
+            "receiver_bank_branch": "",
+            "receiver_first_name": "",
+            "receiver_last_name": "",
+            "pub_date": "2022-10-23T10:59:48.582486Z",
+            "modified_date": "2022-10-23T11:21:49.899924Z",
+            "is_beneficiary": false
+        },
+        "source_account_name": "Nest Cafe"
+    }
+}
+
+
+event.payout_reversal
+{
+    "event": "payout_reversal",
+    "data": {
+        "transaction_note": "Remittance to 0066492583|John Scodo",
+        "fiat_amount": "10.00",
+        "coin_amount": "0.000000000000000000",
+        "transaction_reference": "f6gktkjykamr40mtq13cc76qx",
+        "pub_date": "2022-10-23T10:59:48.586327Z",
+        "modified_date": "2022-10-23T10:59:48.588187Z",
+        "is_done": true,
+        "payout_details": {
+            "payout_method": "Bank Transfer",
+            "receiver_amount": "10.00",
+            "receiver_phone": "",
+            "receiver_sort_code": "000005",
+            "payout_status": "failed",
+            "payout_ref": "WMPRM_jeebzavhj3",
+            "payout_ext_ref": "WEMBA-1013",
+            "payout_receiver_type": "personal",
+            "receiver_account_name": "John Scodo",
+            "receiver_account_num": "0000010101",
+            "receiver_account_type": "",
+            "receiver_address": "",
+            "receiver_bank_name": "GRANT BANK",
+            "receiver_city": "",
+            "receiver_currency": "NGN",
+            "receiver_personal_num": "",
+            "receiver_postcode": "",
+            "receiver_state": "",
+            "receiver_country_code": "NG",
+            "receiver_bank_branch": "",
+            "receiver_first_name": "",
+            "receiver_last_name": "",
+            "pub_date": "2022-10-23T10:59:48.582486Z",
+            "modified_date": "2022-10-23T11:21:49.899924Z",
+            "is_beneficiary": false
+        },
+        "source_account_name": "Nest Cafe"
+    }
+}
+
+
+event.vas_completed
+{
+        "event": "vas_completed",
+        "data": {
+            "amount": "3200.00",
+            "biller_customer_item": "12345678910",
+            "customer_biller_code": "91 Abodunrin Street 60 313 IfeomaVille",
+            "customer_biller_name": "Wale Emeka Sylvester",
+            "vas_type": "Bills Payment",
+            "customer_phone_number": "+2348053022958",
+            "currency": "NGN",
+            "transaction_ext_ref": "",
+            "customer_phone_network": "",
+            "transaction_status": "completed",
+            "main_category": "ELECTRICITY",
+            "sub_category": "IKEDC",
+            "biller_extra_info": "60114651373352292125|Units Purchased: 5.1",
+            "vas_item_name": "",
+            "transaction_ref": "BV-xaz8h4c8k7bjwmw",
+            "pub_date": "2023-06-11T20:44:51.648453Z"
+        }
+    }
+
+
+event.vas_failed
+    {
+        "event": "vas_failed",
+        "data": {
+            "amount": "100.00",
+            "biller_customer_item": "",
+            "customer_biller_code": "",
+            "customer_biller_name": "",
+            "vas_type": "Mobile Data",
+            "customer_phone_number": "+2348053022958",
+            "currency": "NGN",
+            "country_code": "NG",
+            "transaction_ext_ref": "",
+            "customer_phone_network": "glo",
+            "transaction_status": "failed",
+            "main_category": "mobile_data",
+            "sub_category": "glo",
+            "biller_extra_info": "",
+            "vas_item_name": "GLO-150MB-3",
+            "transaction_ref": "BV-am75yb6zf82z0k8",
+            "pub_date": "2023-06-11T21:11:26.399568Z"
+        }
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Setup payment collections via API
+
+
+Bank Transfer
+
+
+List Payment Banks (Collections)
+This endpoint can be used to fetch list of supported banks for collections via Pay with Bank Transfer
+GET {{BASE_URL}}/partner/list_payment_banks/{country_code}/
+
+
+Parameter
+	Type
+	Description
+	Required
+	country_code
+	string
+	ISO 3166-1 alpha-2 code.
+
+
+	true
+	
+
+RESPONSE
+OK - 200
+
+
+{
+
+
+   "message": "Payment banks",
+
+
+   "data": [
+
+
+       {
+
+
+           "bank_name": "providus",
+
+
+           "currency": "NGN",
+
+
+           "bank_logo": "https://banizenvault.s3.amazonaws.com/media/pm/avatars/2022/07/15/providus_bank.png"
+
+
+       },
+
+
+       {
+
+
+           "bank_name": "wema",
+
+
+           "currency": "NGN",
+
+
+           "bank_logo": "https://banizenvault.s3.amazonaws.com/media/pm/avatars/2022/07/15/wema_bank.png"
+
+
+       }
+
+
+   ],
+
+
+   "status": true,
+
+
+   "status_code": 200
+
+
+}
+
+
+Pay with Bank Transfer (Virtual account)
+Accept payments from customers via bank transfer
+POST {{BASE_URL}}/partner/collection/bank_transfer/
+
+
+
+
+Parameter
+	Type
+	Description
+	Required
+	pay_va_step
+	string
+	This is the payment step. Some payment methods might require multiple steps but for this, it's just a step. Default value is direct.
+	true
+	country_code
+	string
+	ISO 3166-1 alpha-2 code.
+	true
+	pay_currency
+	string
+	Currency code (ISO 4217)
+	true
+	holder_account_type
+	string
+	Value could be temporary or permanent. Temporary (dynamic) accounts expire after use; permanent (static) accounts can be reused multiple times.
+	true
+	customer_ref
+	string
+	The reference obtained from the Create Customer endpoint
+	true
+	pay_amount
+	number
+	The amount the customer is required to pay. Required only if holder_account_type is temporary
+	false
+	holder_legal_number
+	string
+	The BVN of the customer
+	true
+	bank_name
+	string
+	Use the List Payment Banks (Collections) endpoint to fetch the list of supported payment banks
+	false
+	customer_name_only
+	boolean
+	The customer name will be set as the default account name if passed
+	false
+	pay_ext_ref
+	string
+	Your unique reference. Can be used to fetch the payment details
+	false
+	custom_data
+	dict
+	Your custom data that will be returned
+	false
+	alternate_name
+	string
+	Set the account name. By default, merchant and customer names are used
+	false
+	pay_expiry
+	int
+	Applies only to temporary (dynamic) account numbers. Value should be in days
+	false
+	
+
+HEADERS
+{
+     'Authorization': 'Bearer xhscIjHgpm2ZiPjzKos4ivl4GhyZp5',
+      'Content-Type': 'application/json',
+      'moni-signature': 'wed332eeddrdbdbdbdbvdvdvdvvsbsvsd'
+ }
+
+
+
+
+REQUEST
+{
+   "pay_va_step":"direct",
+   "country_code":"NG",
+   "pay_amount":"105.24",
+   "pay_currency":"NGN",
+   "holder_account_type":"temporary",
+   "customer_ref":"MC-DHEG123EHEH33H2H2",
+   "pay_ext_ref":"12gddhetwdgedgdge"
+}
+
+
+
+
+
+
+RESPONSE
+CREATED 201
+
+
+{
+  "message": "Make payment.",
+  "status": true,
+  "status_code": 201,
+  "payment_reference": "WMPay-hfjw7rmtpazwpfrek5z3rmtszshckr",
+  "holder_account_number": "7470000000",
+  "holder_bank_name":"Casa Bank",
+  "amount":"105.24",
+  "payment_ext_reference":"12gddhetwdgedgdge",
+  "account_type": "temporary",
+  "account_name": "Morty Inc/Roberto Firmino",
+  "custom_data": null
+}
+
+
+BAD REQUEST 400
+ {
+    "message": "Customer ref is required",
+    "status": false,
+    "status_code": 400
+ }
+
+
+
+
+Adjust Virtual Account Amount
+This endpoint can be used to adjust the amount to be paid into a dynamic virtual account provided the transaction is still on-going
+POST {{BASE_URL}}/partner/collection/adjust_virtual_account/
+
+
+Parameter
+	Type
+	Description
+	Required
+	pay_amount
+	string
+	The new amount to be paid by the customer
+	true
+	holder_account_number
+	string
+	The account number assigned to the customer
+	true
+	pay_expiry
+	int
+	Timer for the payment. Required only if you want to extend the payment duration. Value should be in days
+	false
+	notify_customer
+	boolean
+	Set to True if you want us to notify the customer of the price change. Ensure the correct email is provided
+	false
+	
+
+REQUEST
+{
+  "pay_amount":"100000",
+  "holder_account_number":"0148721123",
+  "pay_expiry":10,
+  "notify_customer":true
+}
+
+
+
+
+RESPONSE
+OK- 200
+{
+        "message": "Operation successful",
+        "status": true,
+        "status_code": 200
+    }
+
+
+BAD REQUEST - 400
+
+
+{
+
+
+       "message": "Sorry we are unable to verify account from source at this time. Kindly try again later",
+
+
+       "status": false,
+
+
+       "status_code": 400
+
+
+   }
+
+
+Mobile Money
+List Supported Momo (Collections)
+This endpoint can be used to get the list of countries you can accept mobile money from
+GET {{BASE_URL}}/partner/list_supported_momo/
+RESPONSE
+
+
+{
+
+
+       "data": [
+
+
+           {
+
+
+               "max_pay_amount": "100.00",
+
+
+               "min_pay_amount": "1.00",
+
+
+               "momo_country": [
+
+
+                   "GH"
+
+
+               ],
+
+
+               "momo_currency": "GHS",
+
+
+               "momo_logo": null,
+
+
+               "momo_network": "airteltigo",
+
+
+               "momo_status": "active"
+
+
+           },
+
+
+           {
+
+
+               "max_pay_amount": "0.00",
+
+
+               "min_pay_amount": "0.00",
+
+
+               "momo_country": [
+
+
+                   "GH"
+
+
+               ],
+
+
+               "momo_currency": "GHS",
+
+
+               "momo_logo": null,
+
+
+               "momo_network": "voda",
+
+
+               "momo_status": "active"
+
+
+           },
+
+
+           {
+
+
+               "max_pay_amount": "0.00",
+
+
+               "min_pay_amount": "0.00",
+
+
+               "momo_country": [
+
+
+                   "KE"
+
+
+               ],
+
+
+               "momo_currency": "KES",
+
+
+               "momo_logo": null,
+
+
+               "momo_network": "mpesa",
+
+
+               "momo_status": "active"
+
+
+           },
+
+
+           {
+
+
+               "max_pay_amount": "150000.00",
+
+
+               "min_pay_amount": "1.00",
+
+
+               "momo_country": [
+
+
+                   "KE"
+
+
+               ],
+
+
+               "momo_currency": "KES",
+
+
+               "momo_logo": null,
+
+
+               "momo_network": "airtel",
+
+
+               "momo_status": "active"
+
+
+           },
+
+
+           {
+
+
+               "max_pay_amount": "300000.00",
+
+
+               "min_pay_amount": "1.00",
+
+
+               "momo_country": [
+
+
+                   "KE"
+
+
+               ],
+
+
+               "momo_currency": "KES",
+
+
+               "momo_logo": null,
+
+
+               "momo_network": "equitel",
+
+
+               "momo_status": "active"
+
+
+           },
+
+
+           {
+
+
+               "max_pay_amount": "100.00",
+
+
+               "min_pay_amount": "1.00",
+
+
+               "momo_country": [
+
+
+                   "TZ"
+
+
+               ],
+
+
+               "momo_currency": "TZS",
+
+
+               "momo_logo": null,
+
+
+               "momo_network": "tigo",
+
+
+               "momo_status": "active"
+
+
+           }
+
+
+       ],
+
+
+       "message": "Supported mobile money",
+
+
+       "status": true,
+
+
+       "status_code": 200
+
+
+   }
+
+
+
+
+Check Momo Network Status
+This endpoint can be used to check the telco network status
+POST {{BASE_URL}}/partner/momo_network_status/
+
+
+Parameter
+	Type
+	Description
+	Required
+	country_code
+	string
+	ISO 3166-1 alpha-2 code.
+	true
+	operation_mode
+	string
+	Value could be either collection or payout
+	true
+	
+
+REQUEST
+{
+   "country_code":"GH",
+   "operation_mode":"collection"
+}
+
+
+
+
+RESPONSE
+Copy
+OK - 200
+
+
+    {
+
+
+       "data": [
+
+
+           {
+
+
+               "country": "GH",
+
+
+               "momo_network": "vodafone",
+
+
+               "operation_mode": "collection",
+
+
+               "operation_status": "operational",
+
+
+               "service_type": "mobile_money"
+
+
+           },
+
+
+           {
+
+
+               "country": "GH",
+
+
+               "momo_network": "mtn",
+
+
+               "operation_mode": "collection",
+
+
+               "operation_status": "operational",
+
+
+               "service_type": "mobile_money"
+
+
+           },
+
+
+           {
+
+
+               "country": "GH",
+
+
+               "momo_network": "airteltigo",
+
+
+               "operation_mode": "collection",
+
+
+               "operation_status": "operational",
+
+
+               "service_type": "mobile_money"
+
+
+           }
+
+
+       ],
+
+
+       "message": "network status",
+
+
+       "status": true,
+
+
+       "status_code": 200
+
+
+   }
+BAD REQUEST - 400
+Copy
+{
+
+
+       "field_name": "country_code",
+
+
+       "message": "Country code is required",
+
+
+       "status": false,
+
+
+       "status_code": 400
+
+
+ }
+N:B -  Watch out for the value operational. Any other value except from that means you can't process any transaction till it changes.
+
+
+Pay with Mobile Money
+Accept payments via mobile money from customers
+POST {{BASE_URL}}/partner/collection/mobile_money/
+
+
+Parameter
+	Type
+	Description
+	Required
+	mob_step
+	string
+	The payment step. Some payment methods might require multiple steps but for this, it's just a step. Default is direct.
+	true
+	country_code
+	string
+	ISO 3166-1 alpha-2 code. Use this endpoint to get the list of supported countries.
+	true
+	pay_amount
+	string
+	The amount the customer is required to pay.
+	true
+	pay_currency
+	string
+	Currency code (ISO 4217)
+	true
+	holder_phone
+	string
+	Mobile money phone number of the customer who is paying, in e164 format. Payment requests will be sent to this number by the telco.
+	true
+	holder_ip_address
+	string
+	IP address of the customer who is paying
+	true
+	holder_device_tag
+	string
+	Name of the device used to post this request (e.g., laptop, phone-android/ios)
+	true
+	customer_ref
+	string
+	The reference obtained from the Create Customer endpoint
+	true
+	pay_ext_ref
+	string
+	Your unique reference. Can be used to fetch the payment details
+	false
+	custom_data
+	dict
+	Your custom data that will be returned
+	false
+	
+
+
+
+HEADERS
+{
+     'Authorization': 'Bearer xhscIjHgpm2ZiPjzKos4ivl4GhyZp5',
+      'Content-Type': 'application/json',
+      'moni-signature': 'wed332eeddrdbdbdbdbvdvdvdvvsbsvsd'
+ }
+
+
+
+
+REQUESTS
+{
+   "pay_va_step":"direct",
+   "country_code":"ZM",
+   "pay_amount":"105.24",
+   "pay_currency":"ZMW",
+   "holder_phone":"+260966750759",
+   "holder_ip_address":"47.58.201.124",
+   "holder_device_tag":"iphone",
+   "customer_ref":"MC-DHEG123EHEH33H2H2",
+   "pay_ext_ref":"12gddhetwdgedgdge",
+   "custom_data":{"color":"blue","item_name":"radio"}
+}
+
+
+
+
+RESPONSE
+CREATED 201
+
+
+{
+
+
+ "message": "Payment in progress",
+
+
+ "payin_ref": "WMPay-rwmkq321mvxshjpscv7e8x3grbfxew",
+
+
+ "payment_ext_reference": "12gddhetwdgedgdge",
+
+
+ "status": true,
+
+
+ "status_code": 201,
+
+
+ "custom_data":{"color":"blue","item_name":"radio"},
+
+
+}
+BAD REQUEST 400
+
+
+{
+
+
+  "message": "Phone number is required",
+
+
+  "status": false,
+
+
+  "status_code": 400
+
+
+}
+
+
+TEST DATA
+Copy
+Currency - ZMW
+Country code -  ZM
+networks - mtn, airtel
+phone_number = +260966750759 [mtn] , +260977122333[airtel]
+
+
+Pay via DLT
+
+
+List Supported Crypto
+This endpoint can be used to get the list of crypto we support
+GET {{BASE_URL}}/partner/list_supported_crypto/
+RESPONSE
+
+
+{
+
+
+       "data": [
+
+
+           {
+
+
+               "coin_chain_network": null,
+
+
+               "coin_logo": null,
+
+
+               "coin_name": "bitcoin",
+
+
+               "coin_type": "btc"
+
+
+           },
+
+
+           {
+
+
+               "coin_chain_network": null,
+
+
+               "coin_logo": null,
+
+
+               "coin_name": "litecoin",
+
+
+               "coin_type": "ltc"
+
+
+           },
+
+
+           {
+
+
+               "coin_chain_network": null,
+
+
+               "coin_logo": null,
+
+
+               "coin_name": "bitcoin cash",
+
+
+               "coin_type": "bch"
+
+
+           },
+
+
+           {
+
+
+               "coin_chain_network": null,
+
+
+               "coin_logo": null,
+
+
+               "coin_name": "usd coin",
+
+
+               "coin_type": "usdc"
+
+
+           },
+
+
+           {
+
+
+               "coin_chain_network": "['BTC_USDT', 'TRON_USDT', 'SOL_USDT']",
+
+
+               "coin_logo": null,
+
+
+               "coin_name": "usdt coin",
+
+
+               "coin_type": "usdt"
+
+
+           },
+
+
+           {
+
+
+               "coin_chain_network": null,
+
+
+               "coin_logo": null,
+
+
+               "coin_name": "ripple",
+
+
+               "coin_type": "xrp"
+
+
+           },
+
+
+           {
+
+
+               "coin_chain_network": null,
+
+
+               "coin_logo": null,
+
+
+               "coin_name": "dodge coin",
+
+
+               "coin_type": "dodge"
+
+
+           },
+
+
+           {
+
+
+               "coin_chain_network": null,
+
+
+               "coin_logo": null,
+
+
+               "coin_name": "ethereum",
+
+
+               "coin_type": "eth"
+
+
+           },
+
+
+           {
+
+
+               "coin_chain_network": null,
+
+
+               "coin_logo": null,
+
+
+               "coin_name": "tron",
+
+
+               "coin_type": "tron"
+
+
+           },
+
+
+           {
+
+
+               "coin_chain_network": "['BNB_USD']",
+
+
+               "coin_logo": null,
+
+
+               "coin_name": "Binance USD",
+
+
+               "coin_type": "busd"
+
+
+           }
+
+
+       ],
+
+
+       "message": "Supported Crypto",
+
+
+       "status": true,
+
+
+       "status_code": 200
+
+
+   }
+
+
+
+
+Pay via DLT
+Accept payments from customers via crypto and get settled in fiat
+POST  {{BASE_URL}}/partner/collection/crypto/
+
+
+Parameter
+	Type
+	Description
+	Required
+	coin_type
+	string
+	Preferred coin of the customer. Value should be in lowercase (e.g., btc)
+	true
+	fiat_deposit_amount
+	string
+	Amount to collect in fiat
+	true
+	fiat_deposit_currency
+	string
+	Currency code (ISO 4217)
+	true
+	coin_deposit_amount
+	string
+	Amount to collect in crypto. Value should be obtained from the Conversion endpoint using fiat2coin_collect
+	true
+	customer_ref
+	string
+	The reference obtained from the Create Customer endpoint
+	true
+	coin_deposit_ref
+	string
+	Your unique reference. Can be used to fetch the payment details
+	false
+	coin_chain_network
+	string
+	Required if the coin_type is a stable coin
+	false
+	custom_data
+	dict
+	Your custom data that will be returned
+	false
+	
+
+HEADERS
+{
+     'Authorization': 'Bearer xhscIjHgpm2ZiPjzKos4ivl4GhyZp5',
+      'Content-Type': 'application/json',
+      'moni-signature': 'wed332eeddrdbdbdbdbvdvdvdvvsbsvsd'
+ }
+
+
+
+
+REQUEST
+{
+    "coin_type":"usdc",
+    "fiat_deposit_amount":"1200",
+    "fiat_deposit_currency":"NGN",
+    "coin_deposit_amount":"2"
+    "customer_ref":"MC-34449119471023678325",
+    "coin_deposit_ref":"UDSC-10000001",
+    "coin_chain_network":"SOL"
+}
+
+
+
+
+RESPONSE
+CREATED 201
+
+
+{
+  "message": "New address.",
+  "coin_address": "0xd58904839569bb6357acafa3e8115de852fa0dbc",
+  "status": true,
+  "status_code": 201,
+  "coin_type": "usdc",
+  "payment_ref":"WMADS-bq7w3nc499vz4q0j5m4fwtkwqwxwyv",
+  "coin_deposit_ref":"UDSC-10000001",
+  "coin_amount": "2.00",
+  "fiat_amount": "1200",
+  "fiat_currency": "NGN",
+  "coin_amount_collected": "0.00",
+  "transaction_status": "pending",
+  "custom_data": null
+}
+BAD REQUEST 400
+
+
+ {
+        "message": "Coin deposit ref already exist",
+        "status": false,
+        "status_code": 400
+  }
+
+
+
+
+
+
+
+
+TESTNET
+https://usdcfaucet.com/
+https://coinfaucet.eu/en/btc-testnet/
+
+
+Deposit via DLT
+This endpoint can be used to generate a deposit address to accept strictly DLT payments and get settled with the same currency. No fiat conversion.
+POST  {{BASE_URL}}/partner/collection/fund_with_crypto/
+
+
+Parameter
+	Type
+	Description
+	Required
+	coin_type
+	string
+	Preferred coin of the customer. Value should be in lowercase (e.g., btc)
+	true
+	customer_ref
+	string
+	The reference obtained from the Create Customer endpoint
+	true
+	coin_deposit_ref
+	string
+	Your unique reference. Can be used to fetch the payment details
+	false
+	coin_chain_network
+	string
+	Required if the coin_type is a stablecoin
+	false
+	custom_data
+	dict
+	Your custom data that will be returned
+	false
+	
+
+HEADERS
+{
+     'Authorization': 'Bearer xhscIjHgpm2ZiPjzKos4ivl4GhyZp5',
+      'Content-Type': 'application/json',
+      'moni-signature': 'wed332eeddrdbdbdbdbvdvdvdvvsbsvsd'
+ }
+
+
+
+
+REQUEST
+{
+    "coin_type":"usdc",
+    "customer_ref":"MC-34449119471023678325",
+    "coin_deposit_ref":"UDSC-10000001",
+    "coin_chain_network":"SOL"
+}
+
+
+
+
+RESPONSE
+CREATED 201
+
+
+{
+
+
+ "message": "New address.",
+
+
+ "coin_address": "0xd58904839569bb6357acafa3e8115de852fa0dbc",
+
+
+ "status": true,
+
+
+ "status_code": 201,
+
+
+ "coin_type": "usdc",
+
+
+ "payment_ref":"WMADS-bq7w3nc499vz4q0j5m4fwtkwqwxwyv",
+
+
+ "coin_deposit_ref":"UDSC-10000001",
+
+
+ "transaction_status": "pending",
+
+
+ "custom_data": null
+
+
+}
+BAD REQUEST 400
+
+
+{
+
+
+       "message": "Coin deposit ref already exist",
+
+
+       "status": false,
+
+
+       "status_code": 400
+
+
+ }
+
+
+TESTNET
+
+
+https://usdcfaucet.com/
+https://coinfaucet.eu/en/btc-testnet/
+
+
+Verify Payment Collection Status
+
+
+Verify Temporary Account Payment Status [Fiat]
+It’s recommended to make use of the webhook notifications for all incoming payments.This endpoint is suitable for one-off payments. E.g. payments via static bank account number,mobile money & e-wallet
+POST {{BASE_URL}}/partner/collection/pay_status_check/
+
+
+The returned 'pay_status' value can either be on_going, in_progress, source_processing, failed, completed or paid.
+If pay_status is completed or paid this means the fiat payment transaction is successful
+
+
+
+
+Parameter
+	Type
+	Description
+	Required
+	pay_ref
+	string
+	Reference generated by Bani on merchant's behalf
+	false
+	pay_ext_ref
+	string
+	Reference generated by the merchant
+	false
+	
+
+
+
+HEADERS
+{
+     'Authorization': 'Bearer xhscIjHgpm2ZiPjzKos4ivl4GhyZp5',
+      'Content-Type': 'application/json',
+      'moni-signature': 'wed332eeddrdbdbdbdbvdvdvdvvsbsvsd'
+ }
+
+
+
+
+REQUEST
+{
+   "pay_ref":"BNPay-ywmv4j7crex0ezbcgr0wvpcxfpbyyv"
+}
+
+
+
+
+RESPONSE
+  {
+        "data": {
+            "custom_data": null,
+            "holder_country_code": "NG",
+            "holder_currency": "NGN",
+            "holder_first_name": "",
+            "holder_last_name": "",
+            "holder_phone": "+2348160564736",
+            "holder_phone_carrier": "",
+            "modified_date": "2022-02-04T18:11:40.275748Z",
+            "order_details": null,
+            "pay_amount": "100.00",
+            "pay_ext_ref": "",
+            "pay_method": "ewallet",
+            "pay_ref": "BNPay-ywmv4j7crex0ezbcgr0wvpcxfpbyyv",
+            "pay_status": "on_going",
+            "pub_date": "2022-02-04T18:11:36.565450Z",
+            "till_number": ""
+        },
+        "message": "Pay details",
+        "status": true,
+        "status_code": 200
+    }
+
+
+Verify Payment Status to Permanent Accounts [Fiat]
+It should look like this: https://verify.bani.africa
+
+
+Verify Payment Status [Crypto]
+It’s recommended to make use of the webhook notifications for all incoming payments. However, this endpoint is suitable for one-off payments. E.g. payments via Pay via DLT endpoint
+GET {{BASE_URL}}/partner/collection/coin_payment_status/{payment_ref}/
+The returned 'transaction_status' value can either be pending, in_progress or completed. If transaction_status is completed this means the crypto payment transaction is successful
+
+
+
+
+Parameter
+	Type
+	Description
+	Required
+	payment_ref
+	string
+	Reference can either be coin_deposit_ref (generated by the merchant during the collection process) or payment_ref (generated by Bani and returned after initializing the payment)
+	true
+	
+
+HEADERS
+{
+     'Authorization': 'Bearer xhscIjHgpm2ZiPjzKos4ivl4GhyZp5',
+      'Content-Type': 'application/json',
+      'moni-signature': 'wed332eeddrdbdbdbdbvdvdvdvvsbsvsd'
+ }
+
+
+
+
+RESPONSE
+     {
+        "coin_address": "2NBSxtKGWFZGCJrFv6GCLNPy8ciCbuZuwgg",
+        "coin_amount": "0.000053660000000000",
+        "coin_amount_collected": "0.000000000000000000",
+        "coin_deposit_ref": "buyer002",
+        "coin_type": "btc",
+        "message": "Payment status",
+        "transaction_status":"in_progress",
+        "payment_ref": "WMADS-bre85b8tb1k52vtbh8nhg3x8k6r2f7",
+        "status": true,
+        "status_code": 200
+    }
+
+
+
+
+
+
+
+
+
+
+Agent
+Agent Integration endpoints
+
+
+Account
+Create and manage merchant accounts
+
+
+Create Business Owner Account
+Create a new user account. You have to run this before creating a new merchant account
+POST {{BASE_URL}}/account/agent_create_account/
+
+
+
+
+
+
+Parameter
+	Type
+	Description
+	Required
+	email
+	string
+	Email address
+	true
+	first_name
+	string
+	First name
+	true
+	last_name
+	string
+	Last name
+	true
+	phone
+	string
+	Phone number
+	true
+	bvn_number
+	string
+	BVN
+	true
+	
+
+N:B - Check how the moni-signature is formed and how you can get your Bearer token.
+
+
+HEADERS
+{
+      
+      'Authorization': 'Bearer dcf9e6f376c422d3ca925457b7927793a6d1713034426ccf2c07ae956e39',
+      'Content-Type': 'application/json',
+      'moni-signature': '3cfbfbd7dc975057f10a10b20d5e91b489e15d36778b680be7b34a18e7c587a5',
+      'bani-superagentkey':'SPA-S1WGEDGEBDGEBWBWEBW'
+ }
+
+
+
+
+REQUEST
+{
+    "email":"johndoe@mail.com",
+    "first_name":"john",
+    "last_name":"doe",
+    "phone":"+23480123456",
+    "bvn_number":"22222222222"
+}
+
+
+
+
+RESPONSE
+CREATED 201
+
+
+{
+    "message": "Account created.",
+    "status": true,
+    "status_code": 201,
+    "first_name": "john",
+    "last_name": "doe",
+    "user_type": "customer",
+    "account_holder_id": 17
+}
+
+
+Create Merchant Account
+Create new merchant account
+POST {{BASE_URL}}/account/agent_create_merchant/
+
+
+Parameter
+	Type
+	Description
+	Required
+	account_holder_id
+	integer
+	ID of the account holder
+	true
+	account_legal_name
+	string
+	Legal name of the business
+	true
+	account_trade_name
+	string
+	Trade name of the business
+	true
+	account_country
+	string
+	Country
+	true
+	account_category
+	string
+	Category (use the MISC/List Business Categories endpoint)
+	true
+	
+
+HEADERS
+{
+      
+      'Authorization': 'Bearer dcf9e6f376c422d3ca925457b7927793a6d1713034426ccf2c07ae956e39',
+      'Content-Type': 'application/json',
+      'moni-signature': '3cfbfbd7dc975057f10a10b20d5e91b489e15d36778b680be7b34a18e7c587a5',
+      'bani-superagentkey':'SPA-S1WGEDGEBDGEBWBWEBW'
+ }
+
+
+
+
+REQUEST
+{
+"account_holder_id":260,
+"account_legal_name": "Royal catering services ltd",
+"account_trade_name": "Royal foods",
+"account_country": "NG",
+"account_category": "entertainment"
+}
+
+
+
+
+RESPONSE
+CREATED 201
+
+
+{
+    "message": "Merchant account created",
+    "merchant_tribe_account_id": 28,
+    "status": true,
+    "status_code": 201
+}
+
+
+List Agent Merchants
+List all merchants created by agent
+GET {{BASE_URL}}/account/agent_list_merchants/
+HEADERS
+{ 
+      'Authorization': 'Bearer dcf9e6f376c422d3ca925457b7927793a6d1713034426ccf2c07ae956e39',
+      'Content-Type': 'application/json',
+      'moni-signature': '3cfbfbd7dc975057f10a10b20d5e91b489e15d36778b680be7b34a18e7c587a5',
+      'bani-superagentkey':'SPA-S1WGEDGEBDGEBWBWEBW'
+ }
+
+
+
+
+RESPONSE
+OK 200
+
+
+{
+    "message": "List of merchants onboarded by super agent",
+    "data": [
+        {
+            "tribe_account_id": 3,
+            "account_logo_url": "http://bank.io:8000/media/tribe/logo/2021/08/14/P_WHITE.png",
+            "account_trade_name": "Nest Cafe",
+            "account_website_url": "",
+            "account_twitter_handle": "",
+            "account_fb_handle": "",
+            "account_instagram_handle": "",
+            "account_whatsapp_num": null,
+            "pub_date": "2021-08-14T19:27:50.637573Z",
+            "modified_date": "2023-01-17T14:27:21.369943Z",
+            "account_pub_key": null
+        }
+    ],
+    "status": true,
+    "status_code": 200,
+    "count": 1,
+    "next_page": null,
+    "prev_page": null
+}
+
+
+KYC
+Manage merchant account KYC documents and terminate contracts
+Upload Merchant Business Documents for Verification
+Business Document Upload
+POST {{BASE_URL}}/account/agent_update_kyc/
+
+
+
+
+Parameter
+	Type
+	Description
+	Required
+	merchant_tribe_account_id
+	integer
+	Merchant Tribe Account ID
+	true
+	account_legal_name
+	string
+	Legal registered name of the merchant
+	false
+	account_trade_name
+	string
+	Trade name of the merchant
+	false
+	account_rc_number
+	string
+	Company registration number
+	false
+	account_tin_number
+	string
+	TIN (Tax Identification Number)
+	false
+	account_utility_photo
+	file
+	Utility bill photo
+	false
+	account_legal_cert
+	file
+	Legal certificate
+	false
+	
+
+
+
+HEADERS
+{
+      'Authorization': 'Bearer dcf9e6f376c422d3ca925457b7927793a6d1713034426ccf2c07ae956e39',
+      'Content-Type': 'application/json',
+      'moni-signature': '3cfbfbd7dc975057f10a10b20d5e91b489e15d36778b680be7b34a18e7c587a5',
+      'bani-superagentkey':'SPA-S1WGEDGEBDGEBWBWEBW'
+ }
+
+
+
+
+REQUEST
+{
+    "merchant_tribe_account_id":3,
+    "account_legal_name": "Rick and Morty LCC",
+    "account_trade_name": "Rick and Morty",
+    "account_rc_number": "123456007",
+    "account_tin_number": "12345-009"
+}
+
+
+
+
+RESPONSE
+OK   200
+{
+    "message": "Operation successful",
+    "status": true,
+    "status_code": 200
+}
+
+
+Fetch Merchant KYC Compliance Status
+Fetch merchant compliance status
+GET {{BASE_URL}}/account/agent_tribe_compliance_message/{tribe_account_id}/
+
+
+Parameter
+	Type
+	Description
+	Required
+	tribe_account_id
+	integer
+	Merchant Tribe Account ID
+	true
+	
+
+HEADERS
+{
+      'Authorization': 'Bearer dcf9e6f376c422d3ca925457b7927793a6d1713034426ccf2c07ae956e39',
+      'Content-Type': 'application/json',
+      'moni-signature': '3cfbfbd7dc975057f10a10b20d5e91b489e15d36778b680be7b34a18e7c587a5',
+      'bani-superagentkey':'SPA-S1WGEDGEBDGEBWBWEBW'
+ }
+
+
+
+
+
+
+RESPONSE
+OK 200
+
+
+{
+    "message": "Compliance details",
+    "data": {
+        "tribe_account_id": 3,
+        "account_tin_number_status": "",
+        "account_utility_status": "",
+        "account_rc_status": "",
+        "account_video_status": "",
+        "account_address_status_msg": "",
+        "account_legal_cert_status_msg": "",
+        "account_tin_number_status_msg": "",
+        "account_utility_status_msg": "",
+        "account_rc_status_msg": "",
+        "account_video_status_msg": "",
+        "profile_compliance": {
+            "identity_status": "pending",
+            "identity_status_msg": ""
+        },
+        "account_legal_cert_status": ""
+    },
+    "status": true,
+    "status_code": 200
+}
+
+
+Terminate contract
+Terminate contract
+POST {{BASE_URL}}/account/agent_edit_merchant_account_key/
+
+
+Parameter
+
+
+	
+
+Type
+
+
+	
+
+Description
+
+
+	Required
+	
+
+
+
+merchant_tribe_account_id
+
+
+	
+
+
+
+
+
+integer
+
+
+	
+
+
+
+
+
+Merchant Tribe Accound ID
+true
+	true
+	
+
+HEADERS
+{ 
+      'Authorization': 'Bearer dcf9e6f376c422d3ca925457b7927793a6d1713034426ccf2c07ae956e39',
+      'Content-Type': 'application/json',
+      'moni-signature': '3cfbfbd7dc975057f10a10b20d5e91b489e15d36778b680be7b34a18e7c587a5',
+      'bani-superagentkey':'SPA-S1WGEDGEBDGEBWBWEBW'
+ }
+
+
+
+
+REQUEST
+{
+    "merchant_tribe_account_id":260,
+}
+
+
+
+
+RESPONSE
+OK 200
+{
+    "message": "Operation successful",
+    "status": true,
+    "status_code": 200
+}
+
+
+API keys
+Create and manage agent merchant account API keys
+Fetch Merchant Account Keys
+GET {{BASE_URL}}/account/agent_merchant_account_key/{tribe_account_id}/
+
+
+HEADERS
+
+
+{
+      'Authorization': 'Bearer dcf9e6f376c422d3ca925457b7927793a6d1713034426ccf2c07ae956e39',
+      'Content-Type': 'application/json',
+      'moni-signature': '3cfbfbd7dc975057f10a10b20d5e91b489e15d36778b680be7b34a18e7c587a5',
+      'bani-superagentkey':'SPA-S1WGEDGEBDGEBWBWEBW'
+ }
+
+
+RESPONSE
+OK 200
+
+
+{
+    "message": "account data details",
+    "data": {
+        "tribe_account_id": 3,
+        "merchant_private_key": "<MERCHANT_PRIVATE_KEY>",
+        "access_token": "<ACCESS_TOKEN>",
+        "public_key": "<PUBLIC_KEY>",
+        "pub_date": "2023-02-01T02:04:07.039936Z",
+        "modified_date": "2023-02-01T02:04:07.039952Z",
+        "has_payin": true,
+        "has_verifi": false,
+        "has_crypto_payment": true,
+        "has_settlement": true,
+        "has_payout": true,
+        "webhook_url": "<WEBHOOK_URL>",
+        "account_tribe_ref": "WM-b3dfdagegaehjutsn0cw1",
+        "crypto_settle_status": "auto_settlement"
+    },
+    "status": true,
+    "status_code": 200
+}
+
+
+Create Merchant Account API Keys
+POST {{BASE_URL}}/account/agent_merchant_create_key/
+
+
+
+
+Parameter
+	Type
+	Description
+	Required
+	merchant_tribe_account_id
+	integer
+	Merchant Tribe Account ID
+	true
+	has_payin
+	string
+	If you want to accept fiat payments. Value can be yes or no
+	true
+	has_payout
+	string
+	If you want to send out money from your account. Value can be yes or no
+	true
+	has_crypto_payment
+	string
+	If you want to accept crypto payments. Value can be yes or no
+	true
+	webhook_url
+	string
+	Webhook URL
+	false
+	shared_verify_key
+	string
+	Returned whenever we send a webhook notification. Use it to validate if the request is from Bani
+	false
+	
+
+HEADERS
+{  
+      'Authorization': 'Bearer dcf9e6f376c422d3ca925457b7927793a6d1713034426ccf2c07ae956e39',
+      'Content-Type': 'application/json',
+      'moni-signature': '3cfbfbd7dc975057f10a10b20d5e91b489e15d36778b680be7b34a18e7c587a5',
+      'bani-superagentkey':'SPA-S1WGEDGEBDGEBWBWEBW'
+ }
+
+
+
+
+REQUEST
+{
+    "merchant_tribe_account_id":3,
+    "has_payin": "yes",
+    "has_payout": "yes",
+    "has_settlement": "yes",
+    "has_crypto_payment": "yes"
+    "shared_verify_key":"12083sfdferwtarsawQWpandgd"
+}
+
+
+
+
+RESPONSE
+CREATED 201
+
+
+{
+    "message": "Operation successful",
+    "status": true,
+    "status_code": 201,
+    "data": {
+        "tribe_account_id": 3,
+        "merchant_private_key": "<MERCHANT_PRIVATE_KEY>",
+        "access_token": "<ACCESS_TOKEN>",
+        "public_key": "<PUBLIC_KEY>",
+        "pub_date": "2023-02-01T02:04:07.039936Z",
+        "modified_date": "2023-02-01T02:04:07.039952Z",
+        "has_payin": true,
+        "has_verifi": false,
+        "has_crypto_payment": true,
+        "has_settlement": true,
+        "has_payout": true,
+        "webhook_url": "<WEBHOOK_URL>",
+        "account_tribe_ref": "WM-b3dfdagegaehjutsn0cw1",
+        "crypto_settle_status": "auto_settlement"
+    }
+}
+
+
+Edit Merchant Account API Keys
+Edit Tribe Account Keys
+POST {{BASE_URL}}/account/agent_edit_merchant_account_key/
+
+
+Parameter
+	Type
+	Description
+	Required
+	merchant_tribe_account_id
+	integer
+	Merchant Tribe Account ID
+	true
+	has_payin
+	string
+	If you want to accept fiat payments. Value can be yes or no
+	false
+	has_payout
+	string
+	If you want to send out money from your account. Value can be yes or no
+	false
+	has_crypto_payment
+	string
+	If you want to accept crypto payments. Value can be yes or no
+	false
+	webhook_url
+	string
+	Webhook URL
+	false
+	shared_verify_key
+	string
+	Returned whenever a webhook notification is sent. Use it to validate if the request is from Bani
+	false
+	
+
+HEADERS
+{
+      'Authorization': 'Bearer dcf9e6f376c422d3ca925457b7927793a6d1713034426ccf2c07ae956e39',
+      'Content-Type': 'application/json',
+      'moni-signature': '3cfbfbd7dc975057f10a10b20d5e91b489e15d36778b680be7b34a18e7c587a5',
+      'bani-superagentkey':'SPA-S1WGEDGEBDGEBWBWEBW'
+ }
+
+
+
+
+REQUEST
+{
+    "merchant_tribe_account_id":3,
+    "has_payin": "yes",
+    "has_payout": "yes",
+    "has_settlement": "yes",
+    "has_crypto_payment": "yes"
+}
+
+
+
+
+RESPONSE
+{
+    "message": "Operation successful",
+    "status": true,
+    "status_code": 200,
+    "data": {
+        "tribe_account_id": 3,
+        "merchant_private_key": "<MERCHANT_PRIVATE_KEY>",
+        "access_token": "<ACCESS_TOKEN>",
+        "public_key": "<PUBLIC_KEY>",
+        "pub_date": "2023-02-01T02:04:07.039936Z",
+        "modified_date": "2023-02-01T02:04:07.039952Z",
+        "has_payin": true,
+        "has_verifi": false,
+        "has_crypto_payment": true,
+        "has_settlement": true,
+        "has_payout": true,
+        "webhook_url": "<WEBHOOK_URL>",
+        "account_tribe_ref": "WM-b3dfdagegaehjutsn0cw1",
+        "crypto_settle_status": "auto_settlement"
+    }
+}
+
+
+Transactions
+View and export merchant transactions
+List Agent Merchant Transactions
+POST {{BASE_URL}}/account/agent_list_merchant_transactions/
+
+
+Parameter
+	Type
+	Description
+	Required
+	merchant_tribe_account_id
+
+
+	integer
+	Merchant Tribe Account ID
+
+
+	True
+	
+
+
+
+HEADERS
+{ 
+      'Authorization': 'Bearer dcf9e6f376c422d3ca925457b7927793a6d1713034426ccf2c07ae956e39',
+      'Content-Type': 'application/json',
+      'moni-signature': '3cfbfbd7dc975057f10a10b20d5e91b489e15d36778b680be7b34a18e7c587a5',
+      'bani-superagentkey':'SPA-S1WGEDGEBDGEBWBWEBW'
+ }
+
+
+
+
+REQUEST
+{
+"merchant_tribe_account_id":208
+}
+
+
+
+
+RESPONSE
+OK 200
+
+
+{
+    "message": "All transaction details",
+    "data": [
+        {
+            "transaction_note": "Remittance to 0012345600|JOHN DOE",
+            "fiat_amount": "10.00",
+            "coin_amount": "0.000000000000000000",
+            "transaction_reference": "ljdfjvudjxlotjsje983j2u2hjsdfa",
+            "pub_date": "2022-10-23T10:59:48.586327Z",
+            "modified_date": "2022-10-23T10:59:48.588187Z",
+            "is_done": true,
+            "payout_details": {
+                "payout_method": "Bank Transfer",
+                "receiver_amount": "10.00",
+                "receiver_phone": "",
+                "receiver_sort_code": "000005",
+                "payout_status": "completed",
+                "payout_ref": "WMPRM_jeebzsdfs6",
+                "payout_ext_ref": "WEMBA-1013",
+                "payout_receiver_type": "personal",
+                "receiver_account_name": "JOHN DOE",
+                "receiver_account_num": "0012345600",
+                "receiver_account_type": "",
+                "receiver_address": "",
+                "receiver_bank_name": "ACCESS BANK PLC (DIAMOND)",
+                "receiver_city": "",
+                "receiver_currency": "NGN",
+                "receiver_personal_num": "",
+                "receiver_postcode": "",
+                "receiver_state": "",
+                "receiver_country_code": "NG",
+                "receiver_bank_branch": "",
+                "receiver_first_name": "",
+                "receiver_last_name": "",
+                "pub_date": "2022-10-23T10:59:48.582486Z",
+                "modified_date": "2022-10-23T11:21:49.899924Z",
+                "is_beneficiary": false
+            },
+            "settlement_details": null,
+            "balance_coin_after": "0.000000000000000000",
+            "balance_fiat_after": "35952.97",
+            "source_account_name": "Royal foods",
+            "payin_details": null,
+            "crypto_payout_details": null,
+            "exchange_details": null,
+            "crypto_payin_details": null,
+            "tx_wallet_details": {
+                "currency": "NGN",
+                "tx_type": "fiat"
+            },
+            "tx_verb": "debit_fiat_remit_payout",
+            "tx_note": "Remittance to 0012345600|JOHN DOE",
+            "ex_hash": null,
+            "ex_address": null
+        },
+    ],
+    "status": true,
+    "status_code": 200,
+    "count": 1,
+    "next_page": null,
+    "prev_page": null
+}
+
+
+Price Markup
+Fetch agent custom merchant charges
+List Price Markup
+GET {{BASE_URL}}/account/list_markup_price/
+
+
+HEADERS
+{
+      'Authorization': 'Bearer dcf9e6f376c422d3ca925457b7927793a6d1713034426ccf2c07ae956e39',
+      'Content-Type': 'application/json',
+      'moni-signature': '3cfbfbd7dc975057f10a10b20d5e91b489e15d36778b680be7b34a18e7c587a5',
+      'bani-superagentkey':'SPA-S1WGEDGEBDGEBWBWEBW'
+ }
+
+
+
+
+RESPONSE
+OK 200
+
+
+{
+    "message": "Price markup",
+    "data": [
+        {
+            "price_markup_id": 3,
+            "merchant_tribe_account_id": 24,
+            "agent_tribe_account_id": 18,
+            "currency": "NGN",
+            "markup_type": "per_biz",
+            "our_percent_charge": "0.1",
+            "partner_percent_charge": "0.0",
+            "our_capped_amount": "0.00",
+            "pay_method": "ewallet",
+            "status": "active",
+            "pub_date": "2022-12-28T07:40:33.747706Z",
+            "modified_date": "2022-12-28T07:40:33.747723Z",
+            "partner_capped_amount": "0.00"
+        },
+        {
+            "price_markup_id": 2,
+            "merchant_tribe_account_id": 23,
+            "agent_tribe_account_id": 18,
+            "currency": "NGN",
+            "markup_type": "per_biz",
+            "our_percent_charge": "0.1",
+            "partner_percent_charge": "0.0",
+            "our_capped_amount": "0.00",
+            "pay_method": "ewallet",
+            "status": "active",
+            "pub_date": "2022-12-26T14:00:43.270589Z",
+            "modified_date": "2022-12-26T14:00:43.270611Z",
+            "partner_capped_amount": "0.00"
+        }
+    ],
+    "status": true,
+    "status_code": 200,
+    "count": 2,
+    "next_page": "null",
+    "prev_page": null
+}
+
+
+Fetch Single Markup Price
+GET {{BASE_URL}}/account/markup_price/{price_markup_id}/
+
+
+HEADERS
+{
+      
+      'Authorization': 'Bearer dcf9e6f376c422d3ca925457b7927793a6d1713034426ccf2c07ae956e39',
+      'Content-Type': 'application/json',
+      'moni-signature': '3cfbfbd7dc975057f10a10b20d5e91b489e15d36778b680be7b34a18e7c587a5',
+      'bani-superagentkey':'SPA-S1WGEDGEBDGEBWBWEBW'
+ }
+
+
+
+
+RESPONSE
+OK 200
+
+
+{
+    "message": "Price markup",
+    "data": {
+        "price_markup_id": 1,
+        "merchant_tribe_account_id": null,
+        "agent_tribe_account_id": 199,
+        "currency": "NGN",
+        "markup_type": "general",
+        "our_percent_charge": "1.0",
+        "partner_percent_charge": "0.5",
+        "capped_amount": "2000.00",
+        "pay_method": "bank_transfer",
+        "status": "active",
+        "pub_date": "2023-01-08T16:54:43.867696Z",
+        "modified_date": "2023-01-08T16:58:31.193820Z"
+    },
+    "status": true,
+    "status_code": 200
+}
+
+
+
+
+Copy
+Bill Payment Service
+Offer bill payment service to your customers. Make them buy airtime, mobile data, and more via your platform while you earn.
+List Mobile Data Plans
+Fetch the list of data plans based on your mobile network
+POST {{BASE_URL}}/partner/vas/list_mobile_data_plan/
+
+
+Parameter
+	Type
+	Description
+	Required
+	country_code
+	string
+	ISO 3166-1 alpha-2 code.
+	true
+	phone_number
+	string
+	Phone number of the customer in e164 format
+	false
+	phone_network_name
+	string
+	Name of the mobile network. You can pass this or phone_number
+	false
+	
+
+HEADERS
+{
+     'Authorization': 'Bearer xhscIjHgpm2ZiPjzKos4ivl4GhyZp5',
+      'Content-Type': 'application/json',
+      'moni-signature': 'wed332eeddrdbdbdbdbvdvdvdvvsbsvsd'
+ }
+
+
+
+
+REQUEST
+{
+  "country_code":"NG",
+  "phone_network_name":"glo"
+}
+
+
+
+
+RESPONSE
+ {
+        "data": [
+            {
+                "country_code": "NG",
+                "data_amount": "25.00",
+                "data_bundle": "250MB",
+                "data_currency": "NGN",
+                "data_id": 1,
+                "data_network": "glo",
+                "data_validity": "Night_1day",
+                "vas_code": "PB01"
+            },
+            
+            {
+                "country_code": "NG",
+                "data_amount": "200.00",
+                "data_bundle": "350MB",
+                "data_currency": "NGN",
+                "data_id": 7,
+                "data_network": "glo",
+                "data_validity": "2days",
+                "vas_code": "PB01"
+            },
+            {
+                "country_code": "NG",
+                "data_amount": "500.00",
+                "data_bundle": "1.35GB",
+                "data_currency": "NGN",
+                "data_id": 8,
+                "data_network": "glo",
+                "data_validity": "14days",
+                "vas_code": "PB01"
+            },
+            {
+                "country_code": "NG",
+                "data_amount": "1000.00",
+                "data_bundle": "2.9GB",
+                "data_currency": "NGN",
+                "data_id": 9,
+                "data_network": "glo",
+                "data_validity": "30days",
+                "vas_code": "PB01"
+            },
+            {
+                "country_code": "NG",
+                "data_amount": "1500.00",
+                "data_bundle": "7GB",
+                "data_currency": "NGN",
+                "data_id": 10,
+                "data_network": "glo",
+                "data_validity": "7days",
+                "vas_code": "PB01"
+            },
+            {
+                "country_code": "NG",
+                "data_amount": "1500.00",
+                "data_bundle": "4.1GB",
+                "data_currency": "NGN",
+                "data_id": 11,
+                "data_network": "glo",
+                "data_validity": "30days",
+                "vas_code": "PB01"
+            },
+            {
+                "country_code": "NG",
+                "data_amount": "2000.00",
+                "data_bundle": "5.8GB",
+                "data_currency": "NGN",
+                "data_id": 12,
+                "data_network": "glo",
+                "data_validity": "30days",
+                "vas_code": "PB01"
+            },
+            {
+                "country_code": "NG",
+                "data_amount": "2500.00",
+                "data_bundle": "7.7GB",
+                "data_currency": "NGN",
+                "data_id": 13,
+                "data_network": "glo",
+                "data_validity": "30days",
+                "vas_code": "PB01"
+            },
+            {
+                "country_code": "NG",
+                "data_amount": "3000.00",
+                "data_bundle": "10GB",
+                "data_currency": "NGN",
+                "data_id": 14,
+                "data_network": "glo",
+                "data_validity": "30days",
+                "vas_code": "PB01"
+            },
+            {
+                "country_code": "NG",
+                "data_amount": "4000.00",
+                "data_bundle": "13.25GB",
+                "data_currency": "NGN",
+                "data_id": 15,
+                "data_network": "glo",
+                "data_validity": "30days",
+                "vas_code": "PB01"
+            },
+            {
+                "country_code": "NG",
+                "data_amount": "5000.00",
+                "data_bundle": "18.25GB",
+                "data_currency": "NGN",
+                "data_id": 16,
+                "data_network": "glo",
+                "data_validity": "30days",
+                "vas_code": "PB01"
+            },
+            {
+                "country_code": "NG",
+                "data_amount": "8000.00",
+                "data_bundle": "29.5GB",
+                "data_currency": "NGN",
+                "data_id": 17,
+                "data_network": "glo",
+                "data_validity": "30days",
+                "vas_code": "PB01"
+            },
+            {
+                "country_code": "NG",
+                "data_amount": "10000.00",
+                "data_bundle": "50GB",
+                "data_currency": "NGN",
+                "data_id": 18,
+                "data_network": "glo",
+                "data_validity": "30days",
+                "vas_code": "PB01"
+            },
+        ],
+        "message": "Mobile Data",
+        "status": true,
+        "status_code": 200
+    }
+
+
+List Biller Category
+Fetch the list of billers - Electricity, Internet Services, Cable TV et al
+GET{{BASE_URL}}/partner/vas/biller_category/{country_code}/
+
+
+
+
+
+
+Parameter
+	Type
+	Description
+	Required
+	country_code
+	string
+	ISO 3166-1 alpha-2 code.
+
+
+	true
+	
+
+HEADERS
+{
+     'Authorization': 'Bearer xhscIjHgpm2ZiPjzKos4ivl4GhyZp5',
+      'Content-Type': 'application/json',
+      'moni-signature': 'wed332eeddrdbdbdbdbvdvdvdvvsbsvsd'
+ }
+
+
+
+
+RESPONSE
+{
+        "data": [
+            {
+                "biller_category_id": 1,
+                "biller_category_name": "ELECTRICITY",
+                "country_code": "NG"
+            },
+            {
+                "biller_category_id": 2,
+                "biller_category_name": "BETTING/LOTTERY",
+                "country_code": "NG"
+            },
+            {
+                "biller_category_id": 3,
+                "biller_category_name": "CABLE TV",
+                "country_code": "NG"
+            }
+        ],
+        "message": "Biller categories",
+        "status": true,
+        "status_code": 200
+    }
+
+
+List Biller Subcategories
+Fetch the list of a biller subcategories using the category ID
+GET {{BASE_URL}}/partner/vas/biller_sub_category/{biller_category_id}/
+
+
+
+
+
+
+Parameter
+	Type
+	Description
+	Required
+	biller_category_id
+
+
+	integer
+	You can get this from the List Biller Category
+
+
+
+
+	true
+	
+
+HEADERS
+{
+     'Authorization': 'Bearer xhscIjHgpm2ZiPjzKos4ivl4GhyZp5',
+      'Content-Type': 'application/json',
+      'moni-signature': 'wed332eeddrdbdbdbdbvdvdvdvvsbsvsd'
+ }
+
+
+
+
+RESPONSE
+     {
+        "data": [
+            {
+                "amount_validation_required": false,
+                "biller_category_id": 3,
+                "biller_category_name": "CABLE TV",
+                "biller_currency": "NGN",
+                "biller_item_details": {
+                    "biller_item_amount": "2500.00",
+                    "biller_item_id": 230,
+                    "biller_item_name": "PADI - #2,500"
+                },
+                "biller_sub_category_name": "DSTV",
+                "country_code": "NG",
+                "customer_validation_required": true,
+                "has_biller_item_details": true
+            },
+            {
+                "amount_validation_required": false,
+                "biller_category_id": 3,
+                "biller_category_name": "CABLE TV",
+                "biller_currency": "NGN",
+                "biller_item_details": {
+                    "biller_item_amount": "3500.00",
+                    "biller_item_id": 231,
+                    "biller_item_name": "YANGA - #3,500"
+                },
+                "biller_sub_category_name": "DSTV",
+                "country_code": "NG",
+                "customer_validation_required": true,
+                "has_biller_item_details": true
+            },
+            {
+                "amount_validation_required": false,
+                "biller_category_id": 3,
+                "biller_category_name": "CABLE TV",
+                "biller_currency": "NGN",
+                "biller_item_details": {
+                    "biller_item_amount": "4550.00",
+                    "biller_item_id": 232,
+                    "biller_item_name": "PADI+GREAT WALL STANDALONE - #4,550"
+                },
+                "biller_sub_category_name": "DSTV",
+                "country_code": "NG",
+                "customer_validation_required": true,
+                "has_biller_item_details": true
+            },
+            {
+                "amount_validation_required": false,
+                "biller_category_id": 3,
+                "biller_category_name": "CABLE TV",
+                "biller_currency": "NGN",
+                "biller_item_details": {
+                    "biller_item_amount": "18650.00",
+                    "biller_item_id": 243,
+                    "biller_item_name": "COMPACT PLUS+GREAT WALL STANDALONE - 18,650"
+                },
+                "biller_sub_category_name": "DSTV",
+                "country_code": "NG",
+                "customer_validation_required": true,
+                "has_biller_item_details": true
+            },
+            {
+                "amount_validation_required": false,
+                "biller_category_id": 3,
+                "biller_category_name": "CABLE TV",
+                "biller_currency": "NGN",
+                "biller_item_details": {
+                    "biller_item_amount": "20000.00",
+                    "biller_item_id": 244,
+                    "biller_item_name": "COMPACT PLUS+HDPVR/XTRAVIEW - 20,000"
+                },
+                "biller_sub_category_name": "DSTV",
+                "country_code": "NG",
+                "customer_validation_required": true,
+                "has_biller_item_details": true
+            },
+            {
+                "amount_validation_required": false,
+                "biller_category_id": 3,
+                "biller_category_name": "CABLE TV",
+                "biller_currency": "NGN",
+                "biller_item_details": {
+                    "biller_item_amount": "24500.00",
+                    "biller_item_id": 245,
+                    "biller_item_name": "PREMIUM - #20,000"
+                },
+                "biller_sub_category_name": "DSTV",
+                "country_code": "NG",
+                "customer_validation_required": true,
+                "has_biller_item_details": true
+            },
+            {
+                "amount_validation_required": false,
+                "biller_category_id": 3,
+                "biller_category_name": "CABLE TV",
+                "biller_currency": "NGN",
+                "biller_item_details": {
+                    "biller_item_amount": "26550.00",
+                    "biller_item_id": 246,
+                    "biller_item_name": "PREMIUM+GREAT WALL STANDALONE - #26,550"
+                },
+                "biller_sub_category_name": "DSTV",
+                "country_code": "NG",
+                "customer_validation_required": true,
+                "has_biller_item_details": true
+            },
+        ],
+        "message": "Biller items",
+        "status": true,
+        "status_code": 200
+    }
+
+
+Find Biller By Subcategory Name
+Search for biller based on the subcategory name
+POST {{BASE_URL}}/partner/vas/find_by_biller_sub_name/
+
+
+
+
+
+
+Parameter
+	Type
+	Description
+	Required
+	country_code
+
+
+	string
+	ISO 3166-1 alpha-2 code.
+
+
+	true
+	biller_category_id
+
+
+	integer
+	You can get this value via List Biller Subcategories
+
+
+	true
+	
+
+Copy
+HEADERS
+{
+     'Authorization': 'Bearer xhscIjHgpm2ZiPjzKos4ivl4GhyZp5',
+      'Content-Type': 'application/json',
+      'moni-signature': 'wed332eeddrdbdbdbdbvdvdvdvvsbsvsd'
+ }
+
+
+
+
+REQUEST
+{
+  "country_code":"NG",
+  "biller_sub_category_name":"showmax"
+}
+
+
+
+
+RESPONSE
+    {
+        "data": [
+            {
+                "amount_validation_required": false,
+                "biller_category_id": 3,
+                "biller_category_name": "CABLE TV",
+                "biller_currency": "NGN",
+                "biller_item_details": {
+                    "biller_item_amount": "1200.00",
+                    "biller_item_id": 275,
+                    "biller_item_name": "Showmax Mobile - N1,200"
+                },
+                "biller_sub_category_name": "SHOWMAX",
+                "country_code": "NG",
+                "customer_validation_required": true,
+                "has_biller_item_details": true
+            },
+            {
+                "amount_validation_required": false,
+                "biller_category_id": 3,
+                "biller_category_name": "CABLE TV",
+                "biller_currency": "NGN",
+                "biller_item_details": {
+                    "biller_item_amount": "1200.00",
+                    "biller_item_id": 276,
+                    "biller_item_name": "Showmax - N1,200"
+                },
+                "biller_sub_category_name": "SHOWMAX",
+                "country_code": "NG",
+                "customer_validation_required": true,
+                "has_biller_item_details": true
+            },
+            {
+                "amount_validation_required": false,
+                "biller_category_id": 3,
+                "biller_category_name": "CABLE TV",
+                "biller_currency": "NGN",
+                "biller_item_details": {
+                    "biller_item_amount": "3200.00",
+                    "biller_item_id": 277,
+                    "biller_item_name": "Showmax Pro Mobile - N3,200"
+                },
+                "biller_sub_category_name": "SHOWMAX",
+                "country_code": "NG",
+                "customer_validation_required": true,
+                "has_biller_item_details": true
+            },
+            {
+                "amount_validation_required": false,
+                "biller_category_id": 3,
+                "biller_category_name": "CABLE TV",
+                "biller_currency": "NGN",
+                "biller_item_details": {
+                    "biller_item_amount": "6300.00",
+                    "biller_item_id": 278,
+                    "biller_item_name": "Showmax Pro - N6,300"
+                },
+                "biller_sub_category_name": "SHOWMAX",
+                "country_code": "NG",
+                "customer_validation_required": true,
+                "has_biller_item_details": true
+            }
+        ],
+        "message": "Biller items",
+        "status": true,
+        "status_code": 200
+    }
+
+
+Validate Biller
+Validate a customer account with the biller. For example, validate a smartcard number with DSTV
+POST {{BASE_URL}}/partner/vas/validate_biller/
+
+
+Parameter
+	Type
+	Description
+	Required
+	biller_item_id
+	integer
+	Get the value from List Biller Subcategories
+	true
+	biller_customer_item
+	string
+	Smartcard number or ISP User ID
+	true
+	biller_item_amount
+	number
+	Intended amount to pay for the service
+	true
+	biller_currency
+	string
+	Get the value from List Biller Subcategories
+	true
+	
+
+
+
+HEADERS
+{
+     'Authorization': 'Bearer xhscIjHgpm2ZiPjzKos4ivl4GhyZp5',
+      'Content-Type': 'application/json',
+      'moni-signature': 'wed332eeddrdbdbdbdbvdvdvdvvsbsvsd'
+ }
+
+
+
+
+REQUEST
+{
+ "biller_item_id":122,
+ "biller_customer_item":"7032691481",
+ "biller_item_amount":3200,
+ "biller_currency":"NGN"
+}
+
+
+
+
+RESPONSE
+  {
+        "biller_currency": "NGN",
+        "biller_customer_item": "7032691481",
+        "biller_item_amount": "3200",
+        "biller_item_id": 277,
+        "country_code": "NG",
+        "customer_biller_code": "N/A0",
+        "customer_name": "Showmax Customer",
+        "message": "Validation",
+        "status": true,
+        "status_code": 200
+    }
+
+
+
+
+
+
+TEST DATA
+ELECTRICITY / 12345678910
+BETTING / 34382
+CABLE TV / 7032691481
+
+
+Buy Airtime
+Buy airtime for calling your loved ones
+POST {{BASE_URL}}/partner/vas/buy_airtime/
+
+
+
+
+Parameter
+	Type
+	Description
+	Required
+	customer_phone_number
+	string
+	Phone number of the customer in e164 format
+	true
+	amount
+	number
+	Intended amount to pay for the airtime
+	true
+	transaction_ext_ref
+	string
+	Random unique reference
+	false
+	network_name
+	string
+	Used if you want to handle network selection manually
+	false
+	
+
+HEADERS
+{
+     'Authorization': 'Bearer xhscIjHgpm2ZiPjzKos4ivl4GhyZp5',
+      'Content-Type': 'application/json',
+      'moni-signature': 'wed332eeddrdbdbdbdbvdvdvdvvsbsvsd'
+ }
+
+
+
+
+REQUEST
+{
+ "customer_phone_number":"+2348053022123",
+ "amount":10000,
+ "transaction_ext_ref":"PQ001"
+}
+
+
+
+
+RESPONSE
+    {
+        "message": "Order in progress",
+        "status": true,
+        "status_code": 201,
+        "transaction_ext_ref": "PQ001",
+        "vas_ref": "BV-1qnw5yyfnjt12zb"
+    }
+
+
+
+
+SUPPORTED NETWORK
+NG
+['glo', 'airtel', '9mobile', 'mtn', 'smile']
+
+
+Buy Mobile Data
+Buy mobile data for surfing the web
+POST {{BASE_URL}}/partner/vas/buy_mobile_data/
+
+
+
+
+Parameter
+	Type
+	Description
+	Required
+	customer_phone_number
+	string
+	Phone number of the customer in e164 format
+	true
+	amount
+	number
+	Intended amount to pay for the airtime
+	true
+	transaction_ext_ref
+	string
+	Random unique reference
+	false
+	data_id
+	integer
+	Value from List Mobile Data Plans endpoint
+	true
+	network_name
+	string
+	Used if you want to handle network selection manually
+	false
+	
+
+HEADERS
+{
+     'Authorization': 'Bearer xhscIjHgpm2ZiPjzKos4ivl4GhyZp5',
+      'Content-Type': 'application/json',
+      'moni-signature': 'wed332eeddrdbdbdbdbvdvdvdvvsbsvsd'
+ }
+
+
+
+
+
+
+REQUEST
+{
+ "customer_phone_number":"+2348053022123",
+ "amount":200,
+ "transaction_ext_ref":"PQ-000002",
+ "data_id":7,
+}
+
+
+
+
+RESPONSE
+        {
+        "message": "Order in progress",
+        "status": true,
+        "status_code": 201,
+        "transaction_ext_ref": "PQ-000002",
+        "vas_ref": "BV-k7x7c6qejr3mc0s"
+    }
+
+
+
+
+SUPPORTED NETWORK
+NG
+['glo', 'airtel', '9mobile', 'mtn', 'smile']
+
+
+
+
+Buy Biller
+Pay for dstv, internet service and more
+POST {{BASE_URL}}/partner/vas/buy_biller/
+
+
+Parameter
+	Type
+	Description
+	Required
+	customer_phone_number
+	string
+	Phone number of the customer in e164 format. The e-value OTP or token will be sent to this number
+	true
+	biller_item_amount
+	number
+	Intended amount to pay for the service. Can also be obtained from the Validate Biller endpoint
+	true
+	transaction_ext_ref
+	string
+	Random unique reference
+	false
+	biller_item_id
+	integer
+	Value passed to the Validate Biller endpoint
+	true
+	biller_customer_item
+	string
+	Smartcard number or ISP User ID. Can also be obtained from the Validate Biller endpoint
+	true
+	customer_biller_name
+	string
+	Returned by the Validate Biller endpoint
+	true
+	customer_biller_code
+	string
+	Returned by the Validate Biller endpoint
+	true
+	
+
+HEADERS
+    {
+        "message": "Order in progress",
+        "status": true,
+        "status_code": 201,
+        "transaction_ext_ref": "",
+        "vas_ref": "BV-hw6z2y12h0zzkvt"
+    }
+
+
+
+
+REQUEST
+ {
+        "biller_customer_item": "7032691481",
+        "biller_item_amount": "3200",
+        "biller_item_id": 277,
+        "customer_biller_code": "N/A0",
+        "customer_name": "Showmax Customer",
+        "customer_phone_number":"+2348054033921"
+    }{
+
+
+
+
+RESPONSE
+    {
+        "message": "Order in progress",
+        "status": true,
+        "status_code": 201,
+        "transaction_ext_ref": "",
+        "vas_ref": "BV-hw6z2y12h0zzkvt"
+    }
+
+
+Validate Bill Transaction
+Validate mobile data, airtime, or biller transaction
+POST {{BASE_URL}}/partner/vas/verify_vas_pay/
+
+
+Parameter
+	Type
+	Description
+	Required
+	transaction_ref
+	string
+	The vas_ref returned after a transaction has been posted
+	false
+	transaction_ext_ref
+	string
+	Your unique reference passed during the initiation of the transaction
+	false
+	
+
+HEADERS
+{
+     'Authorization': 'Bearer xhscIjHgpm2ZiPjzKos4ivl4GhyZp5',
+      'Content-Type': 'application/json',
+      'moni-signature': 'wed332eeddrdbdbdbdbvdvdvdvvsbsvsd'
+ }
+
+
+
+
+REQUEST
+{
+ "transaction_ext_ref":"PQ001"
+}
+
+
+
+
+RESPONSE
+     {
+        "data": {
+            "amount": "3200.00",
+            "biller_customer_item": "12345678910",
+            "biller_extra_info": "",
+            "currency": "NGN",
+            "customer_biller_code": "91 Abodunrin Street 60 313 IfeomaVille",
+            "customer_biller_name": "Wale Emeka Sylvester",
+            "customer_phone_network": "",
+            "customer_phone_number": "+2348053028758",
+            "main_category": "ELECTRICITY",
+            "pub_date": "2023-06-10T15:34:26.899435Z",
+            "sub_category": "IKEDC",
+            "transaction_ext_ref": "",
+            "transaction_ref": "BV-hw6z2y12h0zzkvt",
+            "transaction_status": "on_going",
+            "vas_item_name": "",
+            "vas_type": "Bills Payment"
+        },
+        "message": "VAS details",
+        "status": true,
+        "status_code": 200
+    }
+
+
+N:B - For transaction_status field, only completed and failed should be considered. Any other value should be treated as pending. 
+
+
+
+
+Misc
+Supporting endpoints can be found here
+
+
+
+
+Conversion
+Fiat Conversion
+This endpoint can be used to convert one currency to another
+POST {{BASE_URL}}/partner/collection/fiat/
+
+
+Parameter
+	Type
+	Description
+	Required
+	from_currency
+	string
+	The currency you are giving out
+	true
+	to_currency
+	string
+	The currency that will be collected. Currency code (ISO 4217)
+	true
+	convert_amount
+	string
+	Amount that should be converted
+	true
+
+
+	
+
+REQUEST
+{
+   "from_currency":"USD",
+   "to_currency":"NGN",
+   "convert_amount":"10"
+}
+RESPONSE
+
+
+OK - 200
+
+
+{
+
+
+       "from_amount": "10.00",
+
+
+       "from_currency": "USD",
+
+
+       "from_to_rate": "418.0000",
+
+
+       "message": "Conversion done.",
+
+
+       "status": true,
+
+
+       "status_code": 200,
+
+
+       "to_amount": "4180.00",
+
+
+       "to_currency": "NGN"
+
+
+ }
+BAD REQUEST - 400
+
+
+{
+
+
+       "field_name": "from_currency",
+
+
+       "message": "From Currency is needed.",
+
+
+       "status": false,
+
+
+       "status_code": 400
+
+
+   }
+
+
+Coin Conversion
+This endpoint can be used to convert one coin price to another
+POST {{BASE_URL}}/partner/collection/convert_coin_to_coin/
+
+
+Parameter
+	Type
+	Description
+	Required
+	from_coin_type
+	string
+	The coin you are giving out
+	true
+	to_coin_type
+	string
+	The coin you will be receiving
+	true
+	from_coin_amount
+	string
+	Coin amount you need to convert
+	true
+	
+
+REQUEST
+{
+  "from_coin_type":"btc",
+  "from_coin_amount":"0.1",
+  "to_coin_type":"eth"
+}
+
+
+
+
+RESPONSE
+OK - 200
+
+
+{
+
+
+       "from_coin_amount": "0.100000000000000000",
+
+
+       "from_coin_type": "btc",
+
+
+       "from_to_rate": "0.069303",
+
+
+       "message": "Conversion done.",
+
+
+       "status": true,
+
+
+       "status_code": 200,
+
+
+       "to_coin_amount": "1.442931",
+
+
+       "to_coin_type": "eth"
+
+
+   }
+BAD REQUEST - 400
+
+
+{
+
+
+       "field_name": "from_coin_type",
+
+
+       "message": "From Coin type is required.",
+
+
+       "status": false,
+
+
+       "status_code": 400
+
+
+}
+
+
+Coin/Fiat Conversion
+This endpoint can be used to cross-convert fiat and coin
+POST {{BASE_URL}}/partner/collection/convert_coin_fiat/
+Conversion Choices
+
+
+fiat2coin
+fiat2coin_collect [This should strictly be used with Pay via DLT endpoint]
+Coin2fiat
+
+
+Params for conversion_type fiat2coin or fiat2coin_collect
+conversion_type
+fiat_amount e.g 100
+to_currency e.g USD
+coin_type   e.g BTC
+
+
+Params for conversion_type coin2fiat
+conversion_type
+coin_amount e.g 0.1
+to_currency e.g USD
+coin_type e.g BTC
+
+
+
+
+Parameter
+	Type
+	Description
+	Required
+	conversion_type
+	string
+	Type of conversion that needs to be carried out (e.g., coin2fiat)
+	true
+	fiat_amount
+	string
+	Amount to be converted
+	false
+	to_currency
+	string
+	Currency code (ISO 4217)
+	false
+	coin_type
+	string
+	Cryptocurrency type
+	false
+	coin_amount
+	string
+	Cryptocurrency amount to be converted
+	false
+	
+
+REQUEST
+{
+   "conversion_type":"coin2fiat",
+   "coin_amount":"0.1",
+   "to_currency":"GBP",
+   "coin_type":"BTC"
+}
+
+
+
+
+
+
+RESPONSES
+COIN2FIAT - 200
+
+
+{
+
+
+       "fiat_currency_code": "GBP",
+
+
+       "message": "Conversion done.",
+
+
+       "status": true,
+
+
+       "status_code": 200,
+
+
+       "to_get_fiat": 3286,
+
+
+       "to_pay_coin": "0.10000000"
+
+
+   }
+FIAT2COIN - 200
+
+
+{
+
+
+       "fiat_currency_code": "GBP",
+
+
+       "message": "Conversion done.",
+
+
+       "status": true,
+
+
+       "status_code": 200,
+
+
+       "to_get_coin": "0.00009130",
+
+
+       "to_pay_fiat": "3.00"
+
+
+   }
+BAD REQUEST - 400
+
+
+{
+
+
+       "field_name": "to_currency",
+
+
+       "message": "Currency is needed.",
+
+
+       "status": false,
+
+
+       "status_code": 400
+
+
+   }
+
+
+Carry out Conversion
+This endpoint can be used to swap/exchange from one currency or coin to another
+POST {{BASE_URL}}/trybe/exchange_express/
+We have three swap/exchange choices and they are coin2fiat, fiat2coin, and fiat2fiat.
+
+
+Parameters for exchange_type coin2fiat
+
+
+exchange_type
+coin_type
+coin_amount
+fiat_currency
+fiat_amount - (use the conversion endpoint to get this value)
+
+
+Parameters for exchange_type fiat2coin
+
+
+exchange_type
+fiat_currency
+fiat_amount
+coin_type
+coin_amount - (use the conversion endpoint to get this value)
+
+
+Parameters for exchange_type fiat2fiat
+
+
+exchange_type
+from_fiat_currency
+to_fiat_currency
+from_fiat_amount
+to_fiat_amount - (use the conversion endpoint to get this value)
+
+
+
+
+Parameter
+	Type
+	Description
+	Required
+	exchange_type
+	string
+	Type of swap/exchange you want to carry out
+	true
+	coin_type
+	string
+	Preferred crypto type
+	false
+	coin_amount
+	string
+	This could be the crypto amount you need or want to get via swap/exchange
+	false
+	fiat_currency
+	string
+	Currency code (ISO 4217)
+	false
+	fiat_amount
+	string
+	This could be the fiat amount you need or want to get via swap/exchange
+	false
+	from_fiat_currency
+	string
+	The currency you want to give out [Currency code (ISO 4217)]
+	false
+	to_fiat_currency
+	string
+	The currency you want to receive [Currency code (ISO 4217)]
+	false
+	from_fiat_amount
+	string
+	The fiat amount you want to give out
+	false
+	to_fiat_amount
+	string
+	The fiat amount you want to receive
+	false
+	
+
+
+
+HEADERS
+{
+
+
+    'Authorization': 'Bearer xhscIjHgpm2ZiPjzKos4ivl4GhyZp5',
+
+
+     'Content-Type': 'application/json',
+
+
+     'moni-signature': 'wed332eeddrdbdbdbdbvdvdvdvvsbsvsd'
+
+
+}
+
+
+REQUEST
+{
+  "exchange_type":"coin2fiat",
+  "coin_type":"btc",
+  "coin_amount":"0.1",
+  "fiat_currency":"USD",
+  "fiat_amount":"40394"
+}
+
+
+
+
+RESPONSE
+CREATED - 201
+{
+
+
+       "message": "Exchange done successfully.",
+
+
+       "status": true,
+
+
+       "status_code": 201
+
+
+}
+
+
+BAD REQUEST - 400
+
+
+{
+
+
+       "field_name": "fiat_amount",
+
+
+       "message": Fiat Amount is required.",
+
+
+       "status": false,
+
+
+       "status_code": 400
+
+
+}
+
+
+Enquiry - Mobile Money
+This endpoint can be used to determine the network carrier and currency of a phone number.
+POST {{BASE_URL}}/partner/info/phone_network_name/
+
+
+Parameter
+	Type
+	Description
+	Required
+	holder_phone
+	string
+	Mobile money phone number of the customer who is paying, in e164 format
+	true
+	
+
+HEADERS
+{
+     'Authorization': 'Bearer xhscIjHgpm2ZiPjzKos4ivl4GhyZp5',
+      'Content-Type': 'application/json',
+      'moni-signature': 'wed332eeddrdbdbdbdbvdvdvdvvsbsvsd'
+ }
+
+
+
+
+REQUEST
+{
+  "holder_phone":"+23480438231"
+}
+
+
+
+
+
+
+RESPONSE
+OK - 200
+
+
+ {
+
+
+       "country_code": "NG",
+
+
+       "currency_details": {
+
+
+           "country_flag": "http://bank.io/static/flags/ng.gif",
+
+
+           "country_flag_css": "http://bank.io/static/flags/sprite-hq.css",
+
+
+           "country_flag_css_class": "flag-sprite flag-n flag-_g",
+
+
+           "currency": "NGN",
+
+
+           "currency_name": "Naira"
+
+
+       },
+
+
+       "message": "Info",
+
+
+       "phone_network_name": "glo",
+
+
+       "status": true,
+
+
+       "status_code": 200
+
+
+ }
+BAD REQUEST - 400
+
+
+{
+
+
+   "field_name": "holder_phone",
+
+
+    "message": "Phone number is required.",
+
+
+    "status": false,
+
+
+    "status_code": 400
+
+
+ }
+
+
+
+
+List Customer Permanent Account Number(s)
+This endpoint can be used to fetch list of permanent account numbers generated for a customer
+POST {{BASE_URL}}/partner/collection/customer_perm_account_number/
+
+
+
+
+Parameter
+	Type
+	​​Description
+	Required
+	customer_ref
+	string
+	Customer unique reference
+
+
+	true
+	
+
+REQUEST
+{
+   "customer_ref":"MC-38356443336278178243"
+}
+
+
+
+
+RESPONSE
+ {
+        "count": 1,
+        "data": [
+        
+         {
+            "customer_ref": "MC-38356443336278178243",
+            "holder_account_number": "7470777810",
+            "holder_bank_name": "Wema Bank",
+            "holder_country_code": "NG",
+            "holder_currency": "NGN",
+            "holder_first_name": "Ruben",
+            "holder_last_name": "Arjen",
+            "holder_phone": null,
+            "internal_customer_name": null,
+            "modified_date": "2023-04-01T11:10:36.043553Z",
+            "pay_keyword": [
+                "wema",
+                "000017"
+            ],
+            "pay_method": "bank_transfer",
+            "pub_date": "2023-04-01T11:04:40.037413Z"
+        },
+        {
+            "customer_ref": "MC-38356443336278178243",
+            "holder_account_number": "0602000003",
+            "holder_bank_name": "Parkway-ReadyCash Bank",
+            "holder_country_code": "NG",
+            "holder_currency": "NGN",
+            "holder_first_name": "Ruben",
+            "holder_last_name": "Arjen",
+            "holder_phone": null,
+            "internal_customer_name": null,
+            "modified_date": "2023-02-11T19:12:33.968870Z",
+            "pay_keyword": [
+                "readycash",
+                "parkway",
+                "readycash-parkway",
+                "100003"
+            ],
+            "pay_method": "bank_transfer",
+            "pub_date": "2023-02-11T19:12:33.967090Z"
+        }
+        ],
+        "message": "Account numbers",
+        "next_page": null,
+        "prev_page": null,
+        "status": true,
+        "status_code": 200
+    }
+
+
+Enquiry - Wallet Details
+This endpoint can be used to check the details of an account
+GET {{BASE_URL}}/partner/info/wallet_account_details/{wallet_account_ref}/
+The wallet_account_ref can be picked from this endpoint -  Enquiry - Account Details
+
+
+HEADERS
+{
+     'Authorization': 'Bearer xhscIjHgpm2ZiPjzKos4ivl4GhyZp5',
+      'Content-Type': 'application/json',
+      'moni-signature': 'wed332eeddrdbdbdbdbvdvdvdvvsbsvsd'
+ }
+
+
+
+
+RESPONSE
+OK - 200
+
+
+{
+    "data": {
+        "available_balance": "0.00",
+        "currency": "ZAR",
+        "modified_date": "2021-08-14T19:27:50.646049Z",
+        "pub_date": "2021-08-14T19:27:50.646035Z",
+        "total_balance": "0.00",
+        "wallet_account_ref": "2hqq5s1fr2y1s5g3yrhp",
+        "wallet_alias": "Rand wallet"
+    },
+    "message": "Details",
+    "status": true,
+    "status_code": 200
+}
+
+
+BAD REQUEST - 400
+
+
+  {
+      "message": "Account not found",
+      "status": false,
+       "status_code": 400
+    }
+
+
+Enquiry - Wallet Details
+This endpoint can be used to check the details of an account
+GET {{BASE_URL}}/partner/info/wallet_account_details/{wallet_account_ref}/
+The wallet_account_ref can be picked from this endpoint -  Enquiry - Account Details
+
+
+HEADERS
+{
+     'Authorization': 'Bearer xhscIjHgpm2ZiPjzKos4ivl4GhyZp5',
+      'Content-Type': 'application/json',
+      'moni-signature': 'wed332eeddrdbdbdbdbvdvdvdvvsbsvsd'
+ }
+
+
+
+
+RESPONSE
+
+
+OK - 200
+
+
+{
+    "data": {
+        "account_trade_name": "Nest Cafe",
+        "fiat_wallet_details": [
+            {
+                "available_balance": "0.00",
+                "currency": "SOS",
+                "modified_date": "2021-08-14T19:27:50.646049Z",
+                "pub_date": "2021-08-14T19:27:50.646035Z",
+                "total_balance": "0.00",
+                "wallet_account_ref": "6hce5s1fr2y3s5g3yrhp",
+                "wallet_alias": "current"
+            },
+            {
+                "available_balance": "2101.82",
+                "currency": "GBP",
+                "modified_date": "2022-03-03T16:51:40.389071Z",
+                "pub_date": "2021-08-15T16:55:50.946460Z",
+                "total_balance": "2301.82",
+                "wallet_account_ref": "75bjm8x53ydsqf07yp5a",
+                "wallet_alias": "POUNDS WALLET"
+            },
+            {
+                "available_balance": "900.00",
+                "currency": "EGP",
+                "modified_date": "2021-10-15T15:04:48.688861Z",
+                "pub_date": "2021-08-15T16:55:50.946460Z",
+                "total_balance": "1000.00",
+                "wallet_account_ref": "75bjm8x53ydsqf01wp5a",
+                "wallet_alias": "EGP WALLET"
+            },
+            {
+                "available_balance": "900.00",
+                "currency": "MAD",
+                "modified_date": "2021-10-15T15:15:30.937806Z",
+                "pub_date": "2021-08-15T16:55:50.946460Z",
+                "total_balance": "1000.00",
+                "wallet_account_ref": "75bjaqx53ydsqf01wp5a",
+                "wallet_alias": "MAD WALLET"
+            },
+            {
+                "available_balance": "56613.45",
+                "currency": "NGN",
+                "modified_date": "2023-02-03T23:14:23.450120Z",
+                "pub_date": "2021-08-15T16:55:50.946460Z",
+                "total_balance": "70353.75",
+                "wallet_account_ref": "71bjaqx53ydsqf01wp5q",
+                "wallet_alias": "NGN WALLET"
+            },
+            {
+                "available_balance": "38.00",
+                "currency": "ZMW",
+                "modified_date": "2022-02-11T11:26:14.346520Z",
+                "pub_date": "2021-08-14T19:27:50.646035Z",
+                "total_balance": "62.00",
+                "wallet_account_ref": "6hce5s1fr2y1s5g3yrhp",
+                "wallet_alias": "zambia wallet"
+            },
+            {
+                "available_balance": "0.00",
+                "currency": "GHS",
+                "modified_date": "2021-08-14T19:27:50.646049Z",
+                "pub_date": "2021-08-14T19:27:50.646035Z",
+                "total_balance": "0.00",
+                "wallet_account_ref": "6hqe5s1fr2y1s5g3yrhp",
+                "wallet_alias": "ghana wallet"
+            },
+            {
+                "available_balance": "17.00",
+                "currency": "KES",
+                "modified_date": "2022-10-21T12:40:32.212765Z",
+                "pub_date": "2021-08-14T19:27:50.646035Z",
+                "total_balance": "40.00",
+                "wallet_account_ref": "6hqq5s1fr2y1s5g3yrhp",
+                "wallet_alias": "kenya wallet"
+            },
+            {
+                "available_balance": "0.00",
+                "currency": "UGX",
+                "modified_date": "2021-08-14T19:27:50.646049Z",
+                "pub_date": "2021-08-14T19:27:50.646035Z",
+                "total_balance": "0.00",
+                "wallet_account_ref": "1hqq5s1fr2y1s5g3yrhp",
+                "wallet_alias": "uganda wallet"
+            },
+            {
+                "available_balance": "0.00",
+                "currency": "ZAR",
+                "modified_date": "2021-08-14T19:27:50.646049Z",
+                "pub_date": "2021-08-14T19:27:50.646035Z",
+                "total_balance": "0.00",
+                "wallet_account_ref": "2hqq5s1fr2y1s5g3yrhp",
+                "wallet_alias": "south african wallet"
+            }
+        ],
+        "modified_date": "2022-10-09T11:49:16.466584Z",
+        "pub_date": "2021-08-14T19:27:50.637573Z",
+        "tribe_account_id": 3
+    },
+    "message": "Details",
+    "status": true,
+    "status_code": 200
+}
+
+
+BAD REQUEST - 400
+
+
+  {
+      "message": "Account not found",
+      "status": false,
+       "status_code": 400
+    }
+
+
+Validate Phone Number
+This endpoint can be used to determine the service details of a phone number
+POST {{BASE_URL}}/partner/info/phone_network_name/
+
+
+Parameter
+	Type
+	Description
+	Required
+	holder_phone
+
+
+	string
+	phone number in e164 format
+
+
+	true
+	
+
+REQUEST
+{
+   "holder_phone":"+2348052121212",
+}
+
+
+
+
+RESPONSE
+OK - 200
+
+
+ {
+    "country_code": "NG",
+    "currency_details": {
+        "country_flag": "http://stagemedia.bn.com/static/flags/ng.gif",
+        "country_flag_css": "http://stagemedia.bn.com/static/flags/sprite-hq.css",
+        "country_flag_css_class": "flag-sprite flag-n flag-_g",
+        "currency": "NGN",
+        "currency_name": "Naira"
+    },
+    "message": "Info",
+    "phone_network_name": "glo",
+    "status": true,
+    "status_code": 200
+}
+
+
+BAD REQUEST - 400
+
+
+ {
+        "field_name": "holder_phone",
+        "message": "phone is required",
+        "status": false,
+        "status_code": 400
+  }
+
+
+Add/Update Customer Metadata
+This endpoint can be used to add or update customer metadata.
+POST {{BASE_URL}}/comhub/add_update_customer_metadata/
+
+
+Parameter
+	Type
+	Description
+	Required
+	customer_ref
+	string
+	Customer reference
+	true
+	meta_data
+	string
+	Any data relating to the customer you intend to store. This is a JSON field
+	true
+	
+
+HEADERS
+{
+     'Authorization': 'Bearer xhscIjHgpm2ZiPjzKos4ivl4GhyZp5',
+      'Content-Type': 'application/json',
+      'moni-signature': 'wed332eeddrdbdbdbdbvdvdvdvvsbsvsd'
+ }
+
+
+
+
+REQUEST
+{
+  "customer_ref":"MC-84219268136662065542",
+  "meta_data":"{'customer_pin':'sddsds','customer_color':'blue'}"
+}
+
+
+
+
+RESPONSE
+OK - 200
+
+
+{
+    "customer_ref": "MC-84219268136662065542",
+    "message": "Operation successful",
+    "meta_data": {
+        "customer_color": "blue",
+        "customer_pin": "sddsds"
+    },
+    "status": true,
+    "status_code": 200
+}
+
+
+BAD REQUEST - 400
+
+
+ {
+        "message":"meta data is required.",
+        "status": false,
+        "status_code": 400
+ }
+
+
+Fetch Customer Metadata
+This endpoint can be used to fetch customer metadata.
+GET {{BASE_URL}}/comhub/customer_metadata_details/{customer_ref}/
+
+
+Parameter
+	Type
+	Description
+	Required
+	customer_ref
+	string
+	Customer reference
+	true
+	
+
+
+
+HEADERS
+{
+     'Authorization': 'Bearer xhscIjHgpm2ZiPjzKos4ivl4GhyZp5',
+      'Content-Type': 'application/json',
+      'moni-signature': 'wed332eeddrdbdbdbdbvdvdvdvvsbsvsd'
+ }
+
+
+
+
+RESPONSE
+OK - 200
+
+
+{
+    "customer_ref": "MC-84219268136662065542",
+    "message": "Operation successful",
+    "meta_data": {
+        "customer_color": "blue",
+        "customer_pin": "sddsds"
+    },
+    "status": true,
+    "status_code": 200
+}
+
+
+BAD REQUEST - 400
+
+
+ {
+        "message":"customer reference is required.",
+        "status": false,
+        "status_code": 400
+ }
+
+
+Fetch Virtual Account Transactions
+This endpoint can be used to fetch all transactions for a virtual account.
+GET {{BASE_URL}}/partner/holder_account/{holder_account_number}/
+
+
+Parameter
+	Type
+	Description
+	Required
+	holder_account_number
+	string
+	Virtual account number
+	true
+	
+
+
+
+
+
+HEADERS
+{
+     'Authorization': 'Bearer xhscIjHgpm2ZiPjzKos4ivl4GhyZp5',
+      'Content-Type': 'application/json',
+      'moni-signature': 'wed332eeddrdbdbdbdbvdvdvdvvsbsvsd'
+ }
+
+
+
+
+RESPONSE
+OK - 200
+
+
+{
+    "customer_ref": "MC-84219268136662065542",
+    "message": "Operation successful",
+    "meta_data": {
+        "customer_color": "blue",
+        "customer_pin": "sddsds"
+    },
+    "status": true,
+    "status_code": 200
+}
+
+
+BAD REQUEST - 400
+
+
+ {
+        "message":"customer reference is required.",
+        "status": false,
+        "status_code": 400
+ }
