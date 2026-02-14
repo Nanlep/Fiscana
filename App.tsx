@@ -11,12 +11,13 @@ import BudgetModule from './components/Budget';
 import LandingPage from './components/LandingPage';
 import AdminDashboard from './components/AdminDashboard';
 import WithdrawModal from './components/WithdrawModal';
+import AddFundsModal from './components/AddFundsModal';
 import KYCVerification from './components/KYCVerification';
 import Toast, { ToastMessage, ToastType } from './components/Toast';
-import { ViewState, Transaction, Invoice, TransactionType, InvoiceStatus, PaymentMethod, Asset, Liability, UserProfile, KYCRequest, ExpenseCategoryType, Budget } from './types';
+import { ViewState, Transaction, Invoice, TransactionType, InvoiceStatus, PaymentMethod, Asset, Liability, UserProfile, KYCRequest, ExpenseCategoryType, Budget, WalletBalance } from './types';
 import { Menu, Loader2 } from 'lucide-react';
 import { DEFAULT_EXCHANGE_RATE } from './utils/currency';
-import { transactionsApi, invoicesApi, assetsApi, liabilitiesApi, budgetsApi, kycApi } from './services/apiClient';
+import { transactionsApi, invoicesApi, assetsApi, liabilitiesApi, budgetsApi, kycApi, paymentsApi } from './services/apiClient';
 
 function App() {
   // --- Use Auth Context ---
@@ -55,7 +56,9 @@ function App() {
   // App View State
   const [currentView, setView] = useState<ViewState>('DASHBOARD');
   const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false);
+  const [isAddFundsModalOpen, setIsAddFundsModalOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [walletBalances, setWalletBalances] = useState<WalletBalance[]>([]);
 
   // Toast State
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
@@ -180,8 +183,24 @@ function App() {
 
 
   // Derived Values
-  const walletBalanceNGN = assets.find(a => a.id === 'wallet_ngn' || a.name === 'Wallet Balance')?.value || 0;
-  const walletBalanceUSDC = assets.find(a => a.id === 'wallet_usdc' || a.name === 'USDC Balance')?.value || 0;
+  // Wallet balances — fetch from API
+  const loadWalletBalances = useCallback(async () => {
+    if (!isAuthenticated) return;
+    try {
+      const res = await paymentsApi.getWallet();
+      if (res.success && res.data?.balances) {
+        setWalletBalances(res.data.balances);
+      }
+    } catch {
+      // Wallet not yet created — show empty
+    }
+  }, [isAuthenticated]);
+
+  useEffect(() => { loadWalletBalances(); }, [loadWalletBalances]);
+
+  // Derive NGN/USDC for backward compatibility with WithdrawModal
+  const walletBalanceNGN = walletBalances.find(b => b.currency === 'NGN')?.available || 0;
+  const walletBalanceUSDC = walletBalances.find(b => b.currency === 'USDT')?.available || walletBalances.find(b => b.currency === 'USD')?.available || 0;
 
   // Handlers
   const handleLogout = async () => {
@@ -273,6 +292,7 @@ function App() {
       tags: ['#Withdrawal']
     };
     setTransactions([newTx, ...transactions]);
+    loadWalletBalances(); // Refresh wallet balances from server
     notify('SUCCESS', `Withdrawal of ${currency === 'NGN' ? '₦' : '$'}${amount} successful`);
   };
 
@@ -588,8 +608,8 @@ function App() {
         onLogout={handleLogout}
         user={userProfile!}
         onWithdraw={() => { setIsWithdrawModalOpen(true); setIsMobileMenuOpen(false); }}
-        walletBalanceNGN={walletBalanceNGN}
-        walletBalanceUSDC={walletBalanceUSDC}
+        onAddFunds={() => { setIsAddFundsModalOpen(true); setIsMobileMenuOpen(false); }}
+        walletBalances={walletBalances}
         isOpen={isMobileMenuOpen}
         onClose={() => setIsMobileMenuOpen(false)}
       />
@@ -604,6 +624,15 @@ function App() {
         onWithdraw={handleWithdraw}
         balanceNGN={walletBalanceNGN}
         balanceUSDC={walletBalanceUSDC}
+      />
+
+      <AddFundsModal
+        isOpen={isAddFundsModalOpen}
+        onClose={() => setIsAddFundsModalOpen(false)}
+        onFundsAdded={() => { loadWalletBalances(); setIsAddFundsModalOpen(false); }}
+        userId={user.id}
+        userEmail={user.email}
+        userName={user.name}
       />
     </div>
   );

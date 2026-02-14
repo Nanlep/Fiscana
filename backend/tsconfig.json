@@ -18,7 +18,8 @@
         "declarationMap": true,
         "sourceMap": true,
         "types": [
-            "node"
+            "node",
+            "jest"
         ]
     },
     "include": [

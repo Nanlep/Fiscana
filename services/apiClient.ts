@@ -632,7 +632,45 @@ export const paymentsApi = {
         apiRequest<{ payRef: string; payStatus: string; payAmount: string; payMethod: string }>('/payments/payment-status', {
             method: 'POST',
             body: JSON.stringify(data)
-        })
+        }),
+
+    // ==================== Wallet & Account ====================
+
+    /** Check if user has activated their Bani funding account */
+    getAccountStatus: () =>
+        apiRequest<{ activated: boolean; customerRef: string | null; phone: string | null }>('/payments/account-status'),
+
+    /** Activate funding account by creating Bani customer */
+    activateAccount: (data: { firstName: string; lastName: string; phone: string }) =>
+        apiRequest<{ customerRef: string }>('/payments/activate-account', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        }),
+
+    /** Get wallet balances for current user */
+    getWallet: () =>
+        apiRequest<{ balances: Array<{ currency: string; available: number; pending: number }> }>('/payments/wallet'),
+
+    /** Generate a virtual bank account for funding via bank transfer */
+    addFunds: (data: { amount: number; currency: string }) =>
+        apiRequest<PaymentCollectionResponse>('/payments/add-funds', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        }),
+
+    /** Generate a crypto payment collection for funding */
+    addFundsCrypto: (data: { coinType: string; fiatAmount: number; fiatCurrency: string }) =>
+        apiRequest<{ paymentReference: string; coinAddress: string; coinType: string; coinAmount: string; fiatAmount: string; externalReference: string }>('/payments/add-funds-crypto', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        }),
+
+    /** Confirm a Bani Pop payment and credit wallet */
+    confirmPopupPayment: (data: { merchantRef: string; amount: number; currency: string }) =>
+        apiRequest<{ credited: boolean }>('/payments/confirm-popup-payment', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        }),
 };
 
 // ==================== BANKING API ====================

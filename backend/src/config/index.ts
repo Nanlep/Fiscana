@@ -33,7 +33,7 @@ export const config = {
         accessToken: process.env.BANI_ACCESS_TOKEN || '',
         privateKey: process.env.BANI_PRIVATE_KEY || '',
         webhookKey: process.env.BANI_WEBHOOK_KEY || '',
-        baseUrl: 'https://api.bani.africa',
+        baseUrl: 'https://live.getbani.com/api/v1',
     },
 
     // Mono

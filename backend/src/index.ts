@@ -3,7 +3,6 @@ import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { config, validateConfig } from './config/index.js';
-import { prisma } from './config/database.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { logger } from './utils/logger.js';
 
@@ -133,6 +132,7 @@ const gracefulShutdown = async (signal: string) => {
 
     // Close database connections
     try {
+        const { prisma } = await import('./config/database.js');
         await prisma.$disconnect();
         logger.info('Database connection closed');
     } catch (error) {

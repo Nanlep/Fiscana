@@ -3,6 +3,7 @@
  * Runs before all tests
  */
 
+import { jest, afterAll } from '@jest/globals';
 import { prisma } from '../src/config/database.js';
 
 // Increase timeout for integration tests

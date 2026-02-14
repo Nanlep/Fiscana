@@ -12,29 +12,33 @@ datasource db {
 }
 
 model User {
-  id            String   @id @default(uuid())
-  email         String   @unique
-  name          String
-  role          String   @default("USER") // USER or ADMIN
-  type          String   @default("INDIVIDUAL") // INDIVIDUAL or CORPORATE
-  status        String   @default("ACTIVE") // ACTIVE or SUSPENDED
-  companyName   String?
-  kycStatus     String   @default("UNVERIFIED") // UNVERIFIED, PENDING, VERIFIED, REJECTED
-  tier          String   @default("TIER_1") // TIER_1, TIER_2, TIER_3
-  tin           String?  // Tax Identification Number
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id              String   @id @default(uuid())
+  email           String   @unique
+  name            String
+  role            String   @default("USER") // USER or ADMIN
+  type            String   @default("INDIVIDUAL") // INDIVIDUAL or CORPORATE
+  status          String   @default("ACTIVE") // ACTIVE or SUSPENDED
+  companyName     String?
+  kycStatus       String   @default("UNVERIFIED") // UNVERIFIED, PENDING, VERIFIED, REJECTED
+  tier            String   @default("TIER_1") // TIER_1, TIER_2, TIER_3
+  tin             String? // Tax Identification Number
+  phone           String? // Phone number in E.164 format
+  baniCustomerRef String? // Bani customer reference (e.g. MC-xxxxx)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   // Relationships
-  transactions  Transaction[]
-  invoices      Invoice[]
-  assets        Asset[]
-  liabilities   Liability[]
-  budgets       Budget[]
-  kycRequests   KYCRequest[]
+  transactions Transaction[]
+  invoices     Invoice[]
+  assets       Asset[]
+  liabilities  Liability[]
+  budgets      Budget[]
+  kycRequests  KYCRequest[]
+  wallet       Wallet?
 
   @@index([email])
   @@index([status])
+  @@index([baniCustomerRef])
 }
 
 model PlatformConfig {
@@ -45,84 +49,84 @@ model PlatformConfig {
 }
 
 model Transaction {
-  id                  String   @id @default(uuid())
-  userId              String
-  date                DateTime
-  description         String
-  payee               String
-  amount              Float    // Net amount (cash impact)
-  grossAmount         Float?   // Amount before WHT deduction
-  currency            String   // NGN or USD
+  id                   String   @id @default(uuid())
+  userId               String
+  date                 DateTime
+  description          String
+  payee                String
+  amount               Float // Net amount (cash impact)
+  grossAmount          Float? // Amount before WHT deduction
+  currency             String // NGN or USD
   exchangeRateSnapshot Float?
-  type                String   // INCOME or EXPENSE
-  expenseCategory     String?  // BUSINESS or PERSONAL
-  category            String
-  taxTag              String?  // TAXABLE_INCOME, ALLOWABLE_EXPENSE, etc.
-  tags                String[] @default([])
-  receiptUrl          String?
-  taxDeductible       Boolean  @default(false)
-  status              String   @default("CLEARED") // CLEARED, PENDING, VOID
-  
+  type                 String // INCOME or EXPENSE
+  expenseCategory      String? // BUSINESS or PERSONAL
+  category             String
+  taxTag               String? // TAXABLE_INCOME, ALLOWABLE_EXPENSE, etc.
+  tags                 String[] @default([])
+  receiptUrl           String?
+  taxDeductible        Boolean  @default(false)
+  status               String   @default("CLEARED") // CLEARED, PENDING, VOID
+
   // Tax Details (stored as JSON)
-  vatAmount           Float?
-  whtAmount           Float?
-  isRemitted          Boolean  @default(false)
-  
+  vatAmount  Float?
+  whtAmount  Float?
+  isRemitted Boolean @default(false)
+
   // Audit Log
-  source              String   // MANUAL, BANK_IMPORT, INVOICE_GENERATED, SYSTEM
-  createdAt           DateTime @default(now())
-  createdBy           String
-  modifiedAt          DateTime?
-  
+  source     String // MANUAL, BANK_IMPORT, INVOICE_GENERATED, SYSTEM
+  createdAt  DateTime  @default(now())
+  createdBy  String
+  modifiedAt DateTime?
+
   // Relationships
-  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, date])
   @@index([userId, type])
 }
 
 model Invoice {
-  id                String          @id @default(uuid())
-  userId            String
-  clientName        String
-  clientEmail       String
-  issueDate         DateTime
-  dueDate           DateTime
-  currency          String          // NGN or USD
-  subTotal          Float
-  vatAmount         Float
-  whtDeduction      Float
-  totalAmount       Float
-  amountPaid        Float           @default(0)
-  status            String          @default("DRAFT") // DRAFT, SENT, PARTIALLY_PAID, PAID, OVERDUE
-  paidDate          DateTime?
-  paymentMethods    String[]        @default([])
-  paymentBankName       String?   // Receiving bank name
-  paymentAccountNumber  String?   // Receiving account number
-  paymentAccountName    String?   // Receiving account name
-  paymentWalletAddress  String?   // USDT wallet address
-  paymentWalletNetwork  String?   // e.g. TRC-20
-  createdAt         DateTime        @default(now())
-  updatedAt         DateTime        @updatedAt
+  id                   String    @id @default(uuid())
+  userId               String
+  clientName           String
+  clientEmail          String
+  issueDate            DateTime
+  dueDate              DateTime
+  currency             String // NGN or USD
+  subTotal             Float
+  vatAmount            Float
+  whtDeduction         Float
+  totalAmount          Float
+  amountPaid           Float     @default(0)
+  status               String    @default("DRAFT") // DRAFT, SENT, PARTIALLY_PAID, PAID, OVERDUE
+  paidDate             DateTime?
+  paymentMethods       String[]  @default([])
+  paymentBankName      String? // Receiving bank name
+  paymentAccountNumber String? // Receiving account number
+  paymentAccountName   String? // Receiving account name
+  paymentWalletAddress String? // USDT wallet address
+  paymentWalletNetwork String? // e.g. TRC-20
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
   // Relationships
-  user              User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  items             InvoiceItem[]
-  payments          PaymentRecord[]
+  user     User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items    InvoiceItem[]
+  payments PaymentRecord[]
 
   @@index([userId, status])
   @@index([userId, dueDate])
 }
 
 model InvoiceItem {
-  id          String  @id @default(uuid())
+  id          String @id @default(uuid())
   invoiceId   String
   description String
   quantity    Int
   unitPrice   Float
 
   // Relationships
-  invoice     Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
 
   @@index([invoiceId])
 }
@@ -136,7 +140,7 @@ model PaymentRecord {
   createdAt DateTime @default(now())
 
   // Relationships
-  invoice   Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
 
   @@index([invoiceId])
 }
@@ -147,67 +151,95 @@ model Asset {
   name        String
   description String?
   value       Float
-  currency    String   // NGN or USD
-  type        String   // CASH, BANK_ACCOUNT, CRYPTO, STOCKS, etc.
+  currency    String // NGN or USD
+  type        String // CASH, BANK_ACCOUNT, CRYPTO, STOCKS, etc.
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   // Relationships
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, type])
 }
 
 model Liability {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   userId      String
   name        String
   description String?
   amount      Float
-  currency    String   // NGN or USD
-  type        String?  // CREDIT_CARD, LOAN, MORTGAGE, etc.
+  currency    String // NGN or USD
+  type        String? // CREDIT_CARD, LOAN, MORTGAGE, etc.
   dueDate     DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   // Relationships
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, type])
 }
 
 model Budget {
-  id       String @id @default(uuid())
-  userId   String
-  category String
-  limit    Float
-  currency String // NGN or USD
-  type     String // BUSINESS or PERSONAL
-  period   String @default("MONTHLY")
+  id        String   @id @default(uuid())
+  userId    String
+  category  String
+  limit     Float
+  currency  String // NGN or USD
+  type      String // BUSINESS or PERSONAL
+  period    String   @default("MONTHLY")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   // Relationships
-  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId, period])
   @@unique([userId, category, period])
+  @@index([userId, period])
 }
 
 model KYCRequest {
-  id        String   @id @default(uuid())
-  userId    String
-  userName  String
-  userEmail String
-  bvn       String
-  nin       String
-  status    String   @default("PENDING") // PENDING, APPROVED, REJECTED
-  date      DateTime @default(now())
+  id         String    @id @default(uuid())
+  userId     String
+  userName   String
+  userEmail  String
+  bvn        String
+  nin        String
+  status     String    @default("PENDING") // PENDING, APPROVED, REJECTED
+  date       DateTime  @default(now())
   reviewedAt DateTime?
   reviewedBy String?
 
   // Relationships
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, status])
+}
+
+model Wallet {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  user     User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  balances WalletBalance[]
+
+  @@index([userId])
+}
+
+model WalletBalance {
+  id        String   @id @default(uuid())
+  walletId  String
+  currency  String // NGN, USD, GBP, EUR, KES, GHS, ZAR, USDT, BTC, ETH, etc.
+  available Decimal  @default(0) @db.Decimal(18, 8)
+  pending   Decimal  @default(0) @db.Decimal(18, 8)
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  wallet Wallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
+  @@unique([walletId, currency])
+  @@index([walletId])
 }

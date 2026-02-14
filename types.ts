@@ -196,3 +196,42 @@ export interface TaxReport {
 }
 
 export type ViewState = 'DASHBOARD' | 'INVOICES' | 'LEDGER' | 'REPORTS' | 'ASSETS' | 'BUDGETS' | 'TAX_AI' | 'KYC';
+
+// ==================== Wallet & Payment Types ====================
+
+export interface WalletBalance {
+  currency: string;
+  available: number;
+  pending: number;
+}
+
+export interface VirtualAccountInfo {
+  paymentReference: string;
+  accountNumber: string;
+  bankName: string;
+  accountName: string;
+  amount: string;
+  externalReference: string;
+  accountType: string;
+}
+
+export interface CryptoCollectionInfo {
+  paymentReference: string;
+  coinAddress: string;
+  coinType: string;
+  coinAmount: string;
+  fiatAmount: string;
+  externalReference: string;
+}
+
+export interface AccountActivationData {
+  firstName: string;
+  lastName: string;
+  phone: string;
+}
+
+export interface AccountStatus {
+  activated: boolean;
+  customerRef: string | null;
+  phone: string | null;
+}

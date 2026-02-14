@@ -6526,3 +6526,475 @@ BAD REQUEST - 400
         "status": false,
         "status_code": 400
  }
+
+
+Customers
+This section is for customers
+Customer Lookup
+Check if the customer already exist
+POST {{BASE_URL}}/comhub/check_customer/
+It's recommended that you do a lookup before creating a new customer object. If found, you can make use of the customer details. For this, you either pass the customer_phone or customer_ref
+
+Parameter
+
+
+
+Type
+Description
+customer_phone
+
+
+string
+Phone number of the customer who is paying in e164 format.
+
+
+customer_ref
+
+
+string
+Customer unique reference given after creation of customer object
+
+
+
+
+HEADERS
+{
+     'Authorization': 'Bearer xhscIjHgpm2ZiPjzKos4ivl4GhyZp5',
+      'Content-Type': 'application/json',
+      'moni-signature': 'wed332eeddrdbdbdbdbvdvdvdvvsbsvsd'
+ }
+
+REQUEST
+{ 
+  "customer_phone":"+2348023123200"
+}
+
+
+RESPONSE
+OK - 200
+
+{
+
+ "message": "Customer details",
+
+ "status": true,
+
+ "status_code": 200,
+
+ "data": {
+
+   "customer_first_name": "John",
+
+   "customer_email": "doeman@gmail.com",
+
+   "customer_ref": "MC-34449119471023678325",
+
+   "customer_phone": "+2348023123200",
+
+   "customer_last_name": "Doe"
+
+ }
+
+}
+
+
+BAD REQUEST - 400
+
+{
+
+  "message": "Customer Phone does not exist",
+
+  "status": false,
+
+  "status_code": 400
+
+}
+
+Create Customer
+Create a customer object
+POST {{BASE_URL}}/comhub/add_my_customer/
+Use this endpoint to create a customer.
+
+
+Parameter
+Type
+Description
+Required
+customer_first_name
+string
+First name of the customer
+true
+customer_last_name
+string
+Last name of the customer
+true
+customer_phone
+string
+Phone number of the customer who is paying in E.164 format
+true
+customer_email
+string
+Email of the customer
+true
+customer_address
+string
+Address of the customer
+false
+customer_city
+string
+City of the customer
+false
+customer_state
+string
+State of the customer
+false
+customer_note
+string
+Random note
+false
+
+
+HEADERS
+{
+     'Authorization': 'Bearer xhscIjHgpm2ZiPjzKos4ivl4GhyZp5',
+      'Content-Type': 'application/json',
+      'moni-signature': 'wed332eeddrdbdbdbdbvdvdvdvvsbsvsd'
+ }
+
+REQUEST
+{
+   "customer_first_name":"John",
+   "customer_last_name":"Doe",
+   "customer_phone":"+2348043232121,
+   "customer_email":"doeman@mail.com",
+   "customer_address":"7b dave avenue",
+   "customer_state":"Lagos",
+   "customer_city":"Snake Island"  
+}
+
+
+RESPONSE
+CREATED - 201
+{
+  "message": "Operation successful",
+  "status": true,
+  "status_code": 201,
+  "customer_ref": "MC-73762778644203148854"
+}
+
+BAD REQUEST - 400
+ {
+        "message": "Customer already exist",
+        "status": false,
+        "status_code": 400
+ }
+
+Update Customer
+Update customer details
+POST {{BASE_URL}}/comhub/edit_my_customer/
+
+Parameter
+Type
+Description
+Required
+customer_ref
+string
+Unique customer ref
+true
+customer_first_name
+string
+First name of the customer
+false
+customer_last_name
+string
+Last name of the customer
+false
+customer_email
+string
+Email of the customer
+false
+customer_address
+string
+Address of the customer
+false
+customer_city
+string
+City of the customer
+false
+customer_state
+string
+State of the customer
+false
+customer_note
+string
+Random note
+false
+
+
+HEADERS
+{
+     'Authorization': 'Bearer xhscIjHgpm2ZiPjzKos4ivl4GhyZp5',
+      'Content-Type': 'application/json',
+      'moni-signature': 'wed332eeddrdbdbdbdbvdvdvdvvsbsvsd'
+ }
+
+
+
+REQUEST
+{
+  "customer_ref":"MC-34449119471023678325",
+  "customer_email":"doeontherun@mail.com"
+}
+
+RESPONSE
+OK - 200
+ {
+     "message": "John Doe details edited.",
+     "status": true,
+     "status_code": 200
+}
+BAD REQUEST - 400
+ {
+        "message": "Customer already exist",
+        "status": false,
+        "status_code": 400
+    }
+
+List Customer Delivery/Billing Address
+To avoid customers from filling billing or delivery address forms multiple times, we had to provide a way to ease that stress.
+POST {{BASE_URL}}/comhub/list_customer_billing/
+To avoid customers from filling billing or delivery address forms multiple times, we had to provide a way to ease that stress. With this endpoint, you can fetch your customer delivery/billing address(es). Allow the customer select his or her preferred address during your checkout process. The delivery address can be used by any merchant patronize by the customer.
+
+
+Parameter
+
+
+
+Type
+Description
+delivery_country_code
+
+
+
+string
+Customer country of delivery. ISO 3166-1 alpha-2 code.
+
+
+
+customer_ref
+
+
+string
+Unique customer ref
+
+
+
+HEADERS
+{
+     'Authorization': 'Bearer xhscIjHgpm2ZiPjzKos4ivl4GhyZp5',
+      'Content-Type': 'application/json',
+      'moni-signature': 'wed332eeddrdbdbdbdbvdvdvdvvsbsvsd'
+ }
+
+
+REQUEST
+{
+  "delivery_country_code":"NG",
+  "customer_ref":"MC-34449119471023678325"
+}
+
+
+RESPONSE
+  {
+        "count": 1,
+        "customer_details": {
+            "customer_address": "",
+            "customer_city": "",
+            "customer_email": "holibaddie+23@gmail.com",
+            "customer_first_name": "baggio",
+            "customer_last_name": "bobby",
+            "customer_note": "",
+            "customer_phone": "+2348053022951",
+            "customer_phone_details": {
+                "country_code": "+234",
+                "national_number": 8053022951,
+                "short_country_code": "NG"
+            },
+            "customer_photo": null,
+            "customer_ref": "MC-36708296194151234922",
+            "customer_state": "",
+            "modified_date": "2022-03-15T08:27:14.913892Z",
+            "pub_date": "2022-03-15T08:27:14.913875Z"
+        },
+        "data": [
+            {
+                "delivery_address": "10 edidi lane, onitsha, nigeria",
+                "delivery_city": "Onitsha",
+                "delivery_country": "NG",
+                "delivery_id": 1,
+                "delivery_note": "Call chuks on this number when you get there +2348053022343",
+                "delivery_state": "Anambra",
+                "delivery_zip_code": "",
+                "modified_date": "2022-03-30T07:36:48.204628Z",
+                "pub_date": "2022-03-30T07:16:46.872394Z"
+            }
+        ],
+        "message": "Customer Delivery Modes",
+        "next_page": null,
+        "prev_page": null,
+        "status": true,
+        "status_code": 200
+    }
+
+
+Add Customer Delivery/Billing Address
+This endpoint can be used to add customer delivery/billing address(es)
+POST {{BASE_URL}}/comhub/add_customer_billing/
+
+Parameter
+Type
+Description
+Required
+customer_ref
+string
+Unique customer ref
+true
+delivery_address
+string
+Customer's delivery address
+true
+delivery_country
+string
+Customer's delivery country (ISO 3166-1 alpha-2 code)
+true
+delivery_city
+string
+Customer's delivery city
+false
+delivery_state
+string
+Customer's delivery state
+false
+delivery_zip_code
+string
+Customer's delivery zip code
+false
+delivery_note
+string
+Customer's delivery note
+false
+
+
+HEADERS
+{
+     'Authorization': 'Bearer xhscIjHgpm2ZiPjzKos4ivl4GhyZp5',
+      'Content-Type': 'application/json',
+      'moni-signature': 'wed332eeddrdbdbdbdbvdvdvdvvsbsvsd'
+ }
+
+REQUEST
+{
+   "delivery_country":"NG",
+   "customer_ref":"MC-34449119471023678325",
+   "delivery_address":"10 Ozumba Mbadiwe",
+   "delivery_city":"Victoria Island",
+   "delivery_state":"Lagos",
+   "delivery_zip_code":"23401",
+   "delivery_note":"Always call my gateman when you get there.08023463523"
+}
+
+RESPONSE
+CREATED - 201
+{
+        "message": "Operation successful",
+        "status": true,
+        "status_code": 201
+  }
+
+BAD REQUEST - 400
+{
+        "message": "Address already exist",
+        "status": false,
+        "status_code": 400
+ }
+
+Update Customer Billing/Delivery Address
+This endpoint can be used to update customer's delivery/billing address
+POST {{BASE_URL}}/comhub/edit_customer_billing/
+
+
+Parameter
+Type
+Description
+Required
+delivery_id
+integer
+ID of the created delivery object
+true
+customer_ref
+integer
+Unique customer ref
+true
+delivery_address
+string
+Customer's delivery address
+false
+delivery_country
+string
+Customer's delivery country
+false
+delivery_city
+string
+Customer's delivery city
+false
+delivery_state
+string
+Customer's delivery state
+false
+delivery_zip_code
+string
+Customer's delivery zip code
+false
+delivery_note
+string
+Customer's delivery note
+false
+is_delete
+boolean
+Use this field to delete the address
+false
+
+
+HEADERS
+{
+     'Authorization': 'Bearer xhscIjHgpm2ZiPjzKos4ivl4GhyZp5',
+      'Content-Type': 'application/json',
+      'moni-signature': 'wed332eeddrdbdbdbdbvdvdvdvvsbsvsd'
+ }
+
+
+REQUEST
+{
+   "delivery_country":"NG",
+   "customer_ref":"MC-34449119471023678325",
+   "delivery_address":"10 Ozumba Mbadiwe",
+   "delivery_city":"Victoria Island",
+   "delivery_state":"Lagos",
+   "delivery_zip_code":"23401",
+   "delivery_note":"Always call my gateman when you get there.08023463523"
+}
+
+
+RESPONSE
+OK - 200
+{
+    "message": "Operation successful",
+    "status": true,
+    "status_code": 200
+ }
+BAD REQUEST - 400
+{
+    "message": "Address already exist",
+    "status": false,
+    "status_code": 400
+ }

@@ -25,6 +25,7 @@ interface BankAccountDetails {
 interface PayoutRequest {
     amount: number;
     currency: string;
+    userId: string;
     destination: {
         type: 'BANK' | 'MOBILE_MONEY';
         bankCode?: string;
@@ -102,6 +103,37 @@ interface WebhookPayload {
         actual_amount_paid?: number;
         [key: string]: unknown;
     };
+}
+
+/** Request to create a Bani customer */
+interface CreateCustomerData {
+    firstName: string;
+    lastName: string;
+    phone: string; // E.164 format
+    email: string;
+    address?: string;
+    city?: string;
+    state?: string;
+}
+
+/** Request to create a crypto payment collection */
+interface CryptoCollectionRequest {
+    coinType: string; // btc, eth, usdt, etc.
+    fiatAmount: number;
+    fiatCurrency: string; // NGN, USD, etc.
+    customerRef: string;
+    externalRef?: string;
+    customData?: Record<string, unknown>;
+}
+
+/** Crypto collection response */
+interface CryptoCollectionResponse {
+    paymentReference: string;
+    coinAddress: string;
+    coinType: string;
+    coinAmount: string;
+    fiatAmount: string;
+    externalReference: string;
 }
 
 // Generic Bani API response shape
@@ -185,9 +217,10 @@ class PaymentService {
                 throw new Error(data.message || 'Failed to fetch banks');
             }
 
-            return (data.data as Array<{ bank_code: string; bank_name: string }>).map(bank => ({
+            return (data.data as Array<{ bank_code: string; bank_name: string; list_code: string }>).map(bank => ({
                 code: bank.bank_code,
                 name: bank.bank_name,
+                listCode: bank.list_code,
             }));
 
         } catch (error: any) {
@@ -200,14 +233,14 @@ class PaymentService {
      * Verify a Nigerian bank account number.
      * API: POST /partner/payout/verify_bank_account/
      */
-    async resolveBankAccount(accountNumber: string, bankCode: string): Promise<BankAccountDetails> {
+    async resolveBankAccount(accountNumber: string, bankCode: string, listCode?: string): Promise<BankAccountDetails> {
         if (!accountNumber || accountNumber.length !== 10) {
             throw new ValidationError('Account number must be 10 digits');
         }
 
         try {
             const payload = {
-                list_code: 'T001',
+                list_code: listCode || '01',
                 bank_code: bankCode,
                 country_code: 'NG',
                 account_number: accountNumber,
@@ -245,6 +278,9 @@ class PaymentService {
      */
     async initiatePayout(request: PayoutRequest): Promise<PayoutResponse> {
         const reference = request.reference || this.generateReference('payout');
+
+        // Debit the user's wallet FIRST (will throw if insufficient balance)
+        await this.debitWallet(request.userId, request.currency, request.amount);
 
         try {
             const payload: Record<string, string> = {
@@ -285,23 +321,25 @@ class PaymentService {
             const data = await response.json() as BaniApiResponse;
 
             if (!data.status) {
+                // Re-credit the wallet since Bani rejected the payout
+                await this.creditWallet(request.userId, request.currency, request.amount, `refund_${reference}`);
                 throw new Error(data.message || 'Payout initiation failed');
             }
 
-            // Log payout in database
+            // Log payout in database with actual userId
             try {
                 await prisma.transaction.create({
                     data: {
-                        userId: 'system',
+                        userId: request.userId,
                         type: 'EXPENSE',
                         amount: request.amount,
                         currency: request.currency,
-                        description: `Payout to ${request.destination.accountNumber || request.destination.phoneNumber}`,
+                        description: `Payout [${reference}] to ${request.destination.accountNumber || request.destination.phoneNumber}`,
                         payee: request.destination.accountName || 'Unknown',
                         category: 'Transfer',
                         status: 'PENDING',
-                        source: 'SYSTEM',
-                        createdBy: 'system',
+                        source: 'BANI_PAYOUT',
+                        createdBy: request.userId,
                         date: new Date(),
                     },
                 });
@@ -317,6 +355,8 @@ class PaymentService {
             };
 
         } catch (error: any) {
+            // If it's our own re-throw after re-credit, just propagate
+            if (error instanceof ExternalServiceError || error instanceof ValidationError) throw error;
             logger.error('Payout failed', { error: error.message, reference });
             throw new ExternalServiceError(`Bani: ${error.message}`);
         }
@@ -499,6 +539,310 @@ class PaymentService {
         }
     }
 
+    // ==================== Crypto Collections ====================
+
+    /**
+     * Create a crypto payment collection.
+     * API: POST /partner/collection/crypto/
+     */
+    async createCryptoCollection(request: CryptoCollectionRequest): Promise<CryptoCollectionResponse> {
+        const externalRef = request.externalRef || this.generateReference('crypto');
+
+        try {
+            const payload = {
+                coin_type: request.coinType,
+                fiat_deposit_amount: request.fiatAmount.toString(),
+                fiat_deposit_currency: request.fiatCurrency || 'NGN',
+                customer_ref: request.customerRef,
+                pay_ext_ref: externalRef,
+                custom_data: request.customData || {},
+            };
+
+            const body = JSON.stringify(payload);
+            const response = await fetch(`${BANI_BASE_URL}/partner/collection/crypto/`, {
+                method: 'POST',
+                headers: this.getHeaders(body),
+                body,
+            });
+
+            const data = await response.json() as BaniApiResponse & {
+                coin_address?: string;
+                coin_type?: string;
+                coin_amount?: string;
+                fiat_amount?: string;
+                payment_reference?: string;
+            };
+
+            if (!data.status) {
+                throw new Error(data.message || 'Failed to create crypto collection');
+            }
+
+            return {
+                paymentReference: data.payment_reference || '',
+                coinAddress: data.coin_address || '',
+                coinType: data.coin_type || request.coinType,
+                coinAmount: data.coin_amount || '0',
+                fiatAmount: data.fiat_amount || request.fiatAmount.toString(),
+                externalReference: externalRef,
+            };
+
+        } catch (error: any) {
+            logger.error('Failed to create crypto collection', { error: error.message });
+            throw new ExternalServiceError(`Bani: ${error.message}`);
+        }
+    }
+
+    // ==================== Customer Management ====================
+
+    /**
+     * Lookup a customer on Bani by phone number or customer_ref.
+     * API: POST /comhub/check_customer/
+     * Returns customer data if found, null if not.
+     */
+    async lookupCustomer(phone?: string, customerRef?: string): Promise<{
+        customerRef: string;
+        firstName: string;
+        lastName: string;
+        email: string;
+        phone: string;
+    } | null> {
+        try {
+            const payload: Record<string, string> = {};
+            if (phone) payload.customer_phone = phone;
+            if (customerRef) payload.customer_ref = customerRef;
+
+            const body = JSON.stringify(payload);
+            const response = await fetch(`${BANI_BASE_URL}/comhub/check_customer/`, {
+                method: 'POST',
+                headers: this.getHeaders(body),
+                body,
+            });
+
+            const data = await response.json() as BaniApiResponse & {
+                data?: {
+                    customer_ref: string;
+                    customer_first_name: string;
+                    customer_last_name: string;
+                    customer_email: string;
+                    customer_phone: string;
+                };
+            };
+
+            if (!data.status || !data.data) {
+                return null; // Customer not found
+            }
+
+            return {
+                customerRef: data.data.customer_ref,
+                firstName: data.data.customer_first_name,
+                lastName: data.data.customer_last_name,
+                email: data.data.customer_email,
+                phone: data.data.customer_phone,
+            };
+
+        } catch (error: any) {
+            logger.error('Customer lookup failed', { error: error.message });
+            return null; // Treat errors as "not found" to allow creation flow
+        }
+    }
+
+    /**
+     * Create a customer on Bani and store the customer_ref.
+     * API: POST /comhub/add_my_customer/
+     * Also creates the local Wallet record.
+     */
+    async createCustomer(userId: string, data: CreateCustomerData): Promise<string> {
+        try {
+            // First, check if customer already exists on Bani
+            const existing = await this.lookupCustomer(data.phone);
+            if (existing) {
+                // Customer exists on Bani — store ref locally and create wallet
+                await prisma.user.update({
+                    where: { id: userId },
+                    data: {
+                        baniCustomerRef: existing.customerRef,
+                        phone: data.phone,
+                    },
+                });
+                await this.getOrCreateWallet(userId);
+                logger.info('Linked existing Bani customer', { userId, customerRef: existing.customerRef });
+                return existing.customerRef;
+            }
+
+            // Create new customer on Bani
+            const payload = {
+                customer_first_name: data.firstName,
+                customer_last_name: data.lastName,
+                customer_phone: data.phone,
+                customer_email: data.email,
+                ...(data.address && { customer_address: data.address }),
+                ...(data.city && { customer_city: data.city }),
+                ...(data.state && { customer_state: data.state }),
+            };
+
+            const body = JSON.stringify(payload);
+            const response = await fetch(`${BANI_BASE_URL}/comhub/add_my_customer/`, {
+                method: 'POST',
+                headers: this.getHeaders(body),
+                body,
+            });
+
+            const result = await response.json() as BaniApiResponse & { customer_ref?: string };
+
+            if (!result.status || !result.customer_ref) {
+                throw new Error(result.message || 'Failed to create customer on Bani');
+            }
+
+            // Store the customer ref and phone in User
+            await prisma.user.update({
+                where: { id: userId },
+                data: {
+                    baniCustomerRef: result.customer_ref,
+                    phone: data.phone,
+                },
+            });
+
+            // Create wallet
+            await this.getOrCreateWallet(userId);
+
+            logger.info('Created Bani customer', { userId, customerRef: result.customer_ref });
+            return result.customer_ref;
+
+        } catch (error: any) {
+            logger.error('Failed to create customer', { error: error.message, userId });
+            throw new ExternalServiceError(`Bani: ${error.message}`);
+        }
+    }
+
+    // ==================== Wallet Management ====================
+
+    /**
+     * Get or create a wallet for a user.
+     * Initializes with default currency balances.
+     */
+    async getOrCreateWallet(userId: string) {
+        let wallet = await prisma.wallet.findUnique({
+            where: { userId },
+            include: { balances: true },
+        });
+
+        if (!wallet) {
+            wallet = await prisma.wallet.create({
+                data: {
+                    userId,
+                    balances: {
+                        createMany: {
+                            data: [
+                                { currency: 'NGN' },
+                                { currency: 'USD' },
+                                { currency: 'GBP' },
+                                { currency: 'KES' },
+                                { currency: 'GHS' },
+                                { currency: 'ZAR' },
+                                { currency: 'USDT' },
+                                { currency: 'BTC' },
+                                { currency: 'ETH' },
+                            ],
+                        },
+                    },
+                },
+                include: { balances: true },
+            });
+            logger.info('Created wallet with default balances', { userId });
+        }
+
+        return wallet;
+    }
+
+    /**
+     * Get wallet balances for a user.
+     */
+    async getWalletBalances(userId: string) {
+        const wallet = await this.getOrCreateWallet(userId);
+        return wallet.balances.map((b: { currency: string; available: any; pending: any }) => ({
+            currency: b.currency,
+            available: Number(b.available),
+            pending: Number(b.pending),
+        }));
+    }
+
+    /**
+     * Credit a user's wallet. Idempotent via transactionRef check.
+     */
+    async creditWallet(userId: string, currency: string, amount: number, transactionRef: string): Promise<void> {
+        // Idempotency check — skip if this transaction was already processed
+        const existingTx = await prisma.transaction.findFirst({
+            where: {
+                userId,
+                description: { contains: transactionRef },
+                source: 'BANI_PAYMENT',
+            },
+        });
+
+        if (existingTx) {
+            logger.info('Skipping duplicate wallet credit', { transactionRef, userId });
+            return;
+        }
+
+        const wallet = await this.getOrCreateWallet(userId);
+
+        // Find or create the balance for this currency
+        let balance = wallet.balances.find((b: { currency: string }) => b.currency === currency);
+        if (!balance) {
+            balance = await prisma.walletBalance.create({
+                data: { walletId: wallet.id, currency },
+            });
+        }
+
+        // Credit the balance
+        await prisma.walletBalance.update({
+            where: { id: balance.id },
+            data: {
+                available: { increment: amount },
+            },
+        });
+
+        // Log the transaction
+        await prisma.transaction.create({
+            data: {
+                userId,
+                date: new Date(),
+                description: `Payment received [${transactionRef}]`,
+                payee: 'Bani Payment',
+                amount,
+                currency,
+                type: 'INCOME',
+                category: 'Payment Received',
+                status: 'CLEARED',
+                source: 'BANI_PAYMENT',
+                createdBy: 'system',
+            },
+        });
+
+        logger.info('Wallet credited', { userId, currency, amount, transactionRef });
+    }
+
+    /**
+     * Debit a user's wallet. Validates sufficient balance.
+     */
+    async debitWallet(userId: string, currency: string, amount: number): Promise<void> {
+        const wallet = await this.getOrCreateWallet(userId);
+        const balance = wallet.balances.find((b: { currency: string; available: any; id: string }) => b.currency === currency);
+
+        if (!balance || Number(balance.available) < amount) {
+            throw new ValidationError(`Insufficient ${currency} balance`);
+        }
+
+        await prisma.walletBalance.update({
+            where: { id: balance.id },
+            data: {
+                available: { decrement: amount },
+            },
+        });
+
+        logger.info('Wallet debited', { userId, currency, amount });
+    }
+
     // ==================== Webhooks ====================
 
     /**
@@ -566,15 +910,36 @@ class PaymentService {
         const payRef = data.pay_ref;
         const payStatus = data.pay_status;
         const amount = data.actual_amount_paid || parseFloat(data.pay_amount || '0');
+        const currency = data.holder_currency || data.merch_currency || 'NGN';
+        const customerRef = data.customer_ref;
+        const transactionRef = (data as any).transaction_ref || payRef || '';
 
-        logger.info('Payment received', { payRef, payStatus, amount });
+        logger.info('Payment received', { payRef, payStatus, amount, currency, customerRef });
 
         if (payStatus !== 'paid' && payStatus !== 'completed') {
             logger.info('Payment not yet completed, skipping', { payStatus });
             return;
         }
 
-        // Find and update invoice by payment reference
+        // 1. Credit the user's wallet if we can identify them by customer_ref
+        if (customerRef && amount > 0) {
+            try {
+                const user = await prisma.user.findFirst({
+                    where: { baniCustomerRef: customerRef },
+                });
+
+                if (user) {
+                    await this.creditWallet(user.id, currency, amount, transactionRef);
+                    logger.info('Wallet credited from webhook', { userId: user.id, currency, amount });
+                } else {
+                    logger.warn('No user found for customer_ref', { customerRef });
+                }
+            } catch (walletError: any) {
+                logger.error('Failed to credit wallet from webhook', { error: walletError.message, customerRef });
+            }
+        }
+
+        // 2. Update invoice by payment reference (existing behavior)
         try {
             const invoice = await prisma.invoice.findFirst({
                 where: {
@@ -599,29 +964,63 @@ class PaymentService {
                     amountPaid: newAmountPaid,
                     status: isPaidInFull ? 'PAID' : 'PARTIAL',
                 });
-            } else {
-                logger.warn('No matching invoice found for payment', { payRef });
             }
         } catch (dbError: any) {
             logger.error('Failed to update invoice from webhook', { error: dbError.message, payRef });
         }
     }
 
-    /** Handle successful payout webhook */
+    /** Handle successful payout webhook — update transaction status */
     private async handlePayoutCompleted(data: WebhookPayload['data']): Promise<void> {
+        const extRef = data.transfer_ext_ref;
         logger.info('Payout completed', {
             payoutRef: data.payout_ref,
             status: data.payout_status,
-            extRef: data.transfer_ext_ref,
+            extRef,
         });
+
+        if (extRef) {
+            try {
+                const tx = await prisma.transaction.findFirst({
+                    where: { description: { contains: extRef }, source: 'BANI_PAYOUT' },
+                });
+                if (tx) {
+                    const newStatus = data.payout_status === 'successful' ? 'COMPLETED' : 'FAILED';
+                    await prisma.transaction.update({
+                        where: { id: tx.id },
+                        data: { status: newStatus },
+                    });
+                    logger.info('Updated payout transaction status', { txId: tx.id, status: newStatus });
+                }
+            } catch (dbErr: any) {
+                logger.error('Failed to update payout transaction', { error: dbErr.message, extRef });
+            }
+        }
     }
 
-    /** Handle payout reversal webhook */
+    /** Handle payout reversal webhook — re-credit user wallet */
     private async handlePayoutReversed(data: WebhookPayload['data']): Promise<void> {
-        logger.warn('Payout reversed', {
-            payoutRef: data.payout_ref,
-            extRef: data.transfer_ext_ref,
-        });
+        const extRef = data.transfer_ext_ref;
+        logger.warn('Payout reversed', { payoutRef: data.payout_ref, extRef });
+
+        if (extRef) {
+            try {
+                const tx = await prisma.transaction.findFirst({
+                    where: { description: { contains: extRef }, source: 'BANI_PAYOUT' },
+                });
+                if (tx) {
+                    // Re-credit the user's wallet
+                    await this.creditWallet(tx.userId, tx.currency, Number(tx.amount), `reversal_${extRef}`);
+                    await prisma.transaction.update({
+                        where: { id: tx.id },
+                        data: { status: 'REVERSED' },
+                    });
+                    logger.info('Payout reversed and wallet re-credited', { txId: tx.id, userId: tx.userId });
+                }
+            } catch (dbErr: any) {
+                logger.error('Failed to handle payout reversal', { error: dbErr.message, extRef });
+            }
+        }
     }
 }
 
@@ -637,4 +1036,7 @@ export type {
     PaymentCollectionResponse,
     PaymentStatusRequest,
     WebhookPayload,
+    CreateCustomerData,
+    CryptoCollectionRequest,
+    CryptoCollectionResponse,
 };

@@ -6,6 +6,9 @@ import { validate } from '../middleware/validate.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 import { logger } from '../utils/logger.js';
 import { config } from '../config/index.js';
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
 
 const router = Router();
 
@@ -115,10 +118,12 @@ router.post(
     validate,
     asyncHandler(async (req: Request, res: Response) => {
         const { amount, currency, destination, narration } = req.body;
+        const userId = (req as any).user?.id;
 
         const result = await paymentService.initiatePayout({
             amount,
             currency,
+            userId,
             destination,
             narration
         });
@@ -233,6 +238,250 @@ router.post(
             success: true,
             data: result
         });
+    })
+);
+
+// ==================== Customer & Wallet Routes ====================
+
+/**
+ * @route   GET /api/payments/account-status
+ * @desc    Check if user has activated their Bani funding account
+ * @access  Private
+ */
+router.get(
+    '/account-status',
+    authenticate,
+    asyncHandler(async (req: Request, res: Response) => {
+        const userId = (req as any).user?.id;
+        if (!userId) {
+            res.status(401).json({ success: false, error: 'Unauthorized' });
+            return;
+        }
+
+        const { prisma } = await import('../config/database.js');
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { baniCustomerRef: true, phone: true },
+        });
+
+        res.json({
+            success: true,
+            data: {
+                activated: !!user?.baniCustomerRef,
+                customerRef: user?.baniCustomerRef || null,
+                phone: user?.phone || null,
+            },
+        });
+    })
+);
+
+/**
+ * @route   POST /api/payments/activate-account
+ * @desc    Create a Bani customer profile and wallet
+ * @access  Private
+ */
+router.post(
+    '/activate-account',
+    authenticate,
+    [
+        body('firstName').isString().trim().notEmpty().withMessage('First name is required'),
+        body('lastName').isString().trim().notEmpty().withMessage('Last name is required'),
+        body('phone').isString().trim().notEmpty().withMessage('Phone number is required (E.164 format)'),
+    ],
+    validate,
+    asyncHandler(async (req: Request, res: Response) => {
+        const userId = (req as any).user?.id;
+        const userEmail = (req as any).user?.email;
+        if (!userId) {
+            res.status(401).json({ success: false, error: 'Unauthorized' });
+            return;
+        }
+
+        const { firstName, lastName, phone } = req.body;
+
+        const customerRef = await paymentService.createCustomer(userId, {
+            firstName,
+            lastName,
+            phone,
+            email: userEmail || '',
+        });
+
+        res.status(201).json({
+            success: true,
+            message: 'Funding account activated',
+            data: { customerRef },
+        });
+    })
+);
+
+/**
+ * @route   GET /api/payments/wallet
+ * @desc    Get wallet balances for the authenticated user
+ * @access  Private
+ */
+router.get(
+    '/wallet',
+    authenticate,
+    asyncHandler(async (req: Request, res: Response) => {
+        const userId = (req as any).user?.id;
+        if (!userId) {
+            res.status(401).json({ success: false, error: 'Unauthorized' });
+            return;
+        }
+
+        const balances = await paymentService.getWalletBalances(userId);
+
+        res.json({
+            success: true,
+            data: { balances },
+        });
+    })
+);
+
+/**
+ * @route   POST /api/payments/add-funds
+ * @desc    Generate a temporary virtual account for bank transfer funding
+ * @access  Private
+ */
+router.post(
+    '/add-funds',
+    authenticate,
+    [
+        body('amount').isFloat({ min: 100 }).withMessage('Amount must be at least 100'),
+        body('currency').isString().trim().notEmpty().withMessage('Currency is required'),
+    ],
+    validate,
+    asyncHandler(async (req: Request, res: Response) => {
+        const userId = (req as any).user?.id;
+        if (!userId) {
+            res.status(401).json({ success: false, error: 'Unauthorized' });
+            return;
+        }
+
+        const { prisma } = await import('../config/database.js');
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { baniCustomerRef: true },
+        });
+
+        if (!user?.baniCustomerRef) {
+            res.status(400).json({
+                success: false,
+                error: 'Please activate your funding account first',
+            });
+            return;
+        }
+
+        const { amount, currency } = req.body;
+
+        const result = await paymentService.createPaymentCollection({
+            amount,
+            currency,
+            customerRef: user.baniCustomerRef,
+            accountType: 'temporary',
+            customData: { userId },
+        });
+
+        res.json({
+            success: true,
+            data: result,
+        });
+    })
+);
+
+/**
+ * @route   POST /api/payments/add-funds-crypto
+ * @desc    Generate a crypto payment collection for funding
+ * @access  Private
+ */
+router.post(
+    '/add-funds-crypto',
+    authenticate,
+    [
+        body('coinType').isString().trim().notEmpty().withMessage('Coin type is required (btc, eth, usdt)'),
+        body('fiatAmount').isFloat({ min: 1 }).withMessage('Fiat amount is required'),
+        body('fiatCurrency').isString().trim().notEmpty().withMessage('Fiat currency is required'),
+    ],
+    validate,
+    asyncHandler(async (req: Request, res: Response) => {
+        const userId = (req as any).user?.id;
+        if (!userId) {
+            res.status(401).json({ success: false, error: 'Unauthorized' });
+            return;
+        }
+
+        const { prisma } = await import('../config/database.js');
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { baniCustomerRef: true },
+        });
+
+        if (!user?.baniCustomerRef) {
+            res.status(400).json({
+                success: false,
+                error: 'Please activate your funding account first',
+            });
+            return;
+        }
+
+        const { coinType, fiatAmount, fiatCurrency } = req.body;
+
+        const result = await paymentService.createCryptoCollection({
+            coinType,
+            fiatAmount,
+            fiatCurrency,
+            customerRef: user.baniCustomerRef,
+            customData: { userId },
+        });
+
+        res.json({
+            success: true,
+            data: result,
+        });
+    })
+);
+
+/**
+ * @route   POST /api/payments/confirm-popup-payment
+ * @desc    Confirm a Bani Pop payment and credit the user's wallet
+ * @access  Private
+ */
+router.post(
+    '/confirm-popup-payment',
+    authenticate,
+    [
+        body('merchantRef').isString().notEmpty().withMessage('merchantRef is required'),
+        body('amount').isNumeric().withMessage('Amount is required'),
+        body('currency').isString().notEmpty().withMessage('Currency is required'),
+    ],
+    validate,
+    asyncHandler(async (req: Request, res: Response) => {
+        const userId = (req as any).user?.id;
+        const { merchantRef, amount, currency } = req.body;
+
+        if (!userId) {
+            res.status(401).json({ success: false, error: 'User not authenticated' });
+            return;
+        }
+
+        logger.info('Confirming popup payment', { userId, merchantRef, amount, currency });
+
+        try {
+            await paymentService.creditWallet(userId, currency, parseFloat(amount), merchantRef);
+
+            logger.info('Wallet credited from popup payment', { userId, amount, currency, merchantRef });
+
+            res.json({
+                success: true,
+                data: { credited: true },
+            });
+        } catch (error: any) {
+            logger.error('Failed to credit wallet from popup', { error: error.message, userId, merchantRef });
+            res.status(500).json({
+                success: false,
+                error: 'Failed to credit wallet',
+            });
+        }
     })
 );
 

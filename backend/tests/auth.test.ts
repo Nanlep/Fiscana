@@ -1,3 +1,4 @@
+/// <reference types="jest" />
 /**
  * Auth API Integration Tests
  */
@@ -85,10 +86,10 @@ describe('Auth API', () => {
         });
     });
 
-    describe('GET /api/auth/profile', () => {
+    describe('GET /api/auth/me', () => {
         it('should reject request without token', async () => {
             const response = await request(app)
-                .get('/api/auth/profile')
+                .get('/api/auth/me')
                 .expect(401);
 
             expect(response.body.success).toBe(false);
@@ -96,7 +97,7 @@ describe('Auth API', () => {
 
         it('should reject request with invalid token', async () => {
             const response = await request(app)
-                .get('/api/auth/profile')
+                .get('/api/auth/me')
                 .set('Authorization', 'Bearer invalid_token_here')
                 .expect(401);
 

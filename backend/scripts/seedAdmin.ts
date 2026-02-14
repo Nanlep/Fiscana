@@ -55,7 +55,7 @@ async function seedAdmin() {
             if (authError.message?.includes('already') || authError.message?.includes('exists')) {
                 console.log('   ⚠️  User already exists in Supabase Auth, fetching existing user...');
                 const { data: listData } = await supabaseAdmin.auth.admin.listUsers();
-                const existingUser = listData?.users?.find(u => u.email === ADMIN_EMAIL);
+                const existingUser = (listData?.users as Array<{ id: string; email?: string }>)?.find(u => u.email === ADMIN_EMAIL);
                 if (existingUser) {
                     console.log(`   ✅ Found existing auth user: ${existingUser.id}`);
                     // Update password just in case
