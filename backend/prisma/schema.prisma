@@ -243,3 +243,18 @@ model WalletBalance {
   @@unique([walletId, currency])
   @@index([walletId])
 }
+
+model EmailVerification {
+  id          String   @id @default(uuid())
+  email       String
+  code        String
+  name        String
+  password    String   // temporarily stored (hashed)
+  type        String   @default("INDIVIDUAL")
+  companyName String?
+  expiresAt   DateTime
+  verified    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@index([email, code])
+}

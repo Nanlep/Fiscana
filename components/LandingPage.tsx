@@ -9,27 +9,47 @@ interface LandingPageProps {
 }
 
 const LandingPage: React.FC<LandingPageProps> = ({ onLoginSuccess }) => {
-    const { login, signup } = useAuth();
-    const [authMode, setAuthMode] = useState<'LOGIN' | 'SIGNUP' | 'FORGOT_PASSWORD'>('LOGIN');
+    const { login, refreshUser } = useAuth();
+    const [authMode, setAuthMode] = useState<'LOGIN' | 'SIGNUP' | 'FORGOT_PASSWORD' | 'VERIFY_CODE' | 'RESET_NEW_PASSWORD'>('LOGIN');
     const [resetSent, setResetSent] = useState(false);
     const [userType, setUserType] = useState<UserType>('INDIVIDUAL');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [successMessage, setSuccessMessage] = useState<string | null>(null);
+    const [resetToken, setResetToken] = useState<string | null>(null);
+
+    // Check for password reset hash on mount
+    React.useEffect(() => {
+        const hash = window.location.hash;
+        // Check for Supabase recovery redirect (contains access_token and type=recovery)
+        // or support legacy/manual link if present
+        if (hash.includes('access_token') && (hash.includes('type=recovery') || hash.includes('reset-password'))) {
+            // Remove the leading # if present for URLSearchParams
+            const hashString = hash.startsWith('#') ? hash.substring(1) : hash;
+            const params = new URLSearchParams(hashString);
+            const accessToken = params.get('access_token');
+            if (accessToken) {
+                setResetToken(accessToken);
+                setAuthMode('RESET_NEW_PASSWORD');
+            }
+        }
+    }, []);
 
     // Form State
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [fullName, setFullName] = useState('');
     const [companyName, setCompanyName] = useState('');
+    const [verificationCode, setVerificationCode] = useState('');
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError(null);
+        setSuccessMessage(null);
         setIsLoading(true);
 
         try {
             if (authMode === 'LOGIN') {
-                // Use AuthContext login which properly sets user state
                 const success = await login(email, password);
                 if (success) {
                     onLoginSuccess();
@@ -37,18 +57,47 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginSuccess }) => {
                     setError('Login failed. Please check your credentials.');
                 }
             } else if (authMode === 'SIGNUP') {
-                // Use AuthContext signup which properly sets user state
-                const success = await signup({
+                // Step 1: Send verification code
+                const response = await authApi.initiateSignup({
                     email,
                     password,
                     name: fullName,
                     type: userType,
                     companyName: userType === 'CORPORATE' ? companyName : undefined
                 });
-                if (success) {
+                if (response.success) {
+                    setAuthMode('VERIFY_CODE');
+                    setSuccessMessage(response.message || 'Verification code sent to your email');
+                } else {
+                    setError(response.error || 'Signup failed. Please try again.');
+                }
+            } else if (authMode === 'VERIFY_CODE') {
+                // Step 2: Verify code and complete signup
+                const response = await authApi.verifySignup(email, verificationCode);
+                if (response.success && response.data) {
+                    // Refresh AuthContext user state with the new session
+                    await refreshUser();
                     onLoginSuccess();
                 } else {
-                    setError('Signup failed. Please try again.');
+                    setError(response.error || 'Invalid verification code.');
+                }
+            } else if (authMode === 'RESET_NEW_PASSWORD') {
+                if (!resetToken) {
+                    setError('Missing reset token.');
+                    return;
+                }
+                const response = await authApi.resetPassword(resetToken, password);
+                if (response.success) {
+                    setSuccessMessage('Password updated successfully. Please log in.');
+                    setTimeout(() => {
+                        setAuthMode('LOGIN');
+                        setSuccessMessage(null);
+                        setPassword('');
+                        // Clear hash and query params
+                        window.history.replaceState(null, '', window.location.pathname);
+                    }, 2000);
+                } else {
+                    setError(response.error || 'Failed to reset password.');
                 }
             } else if (authMode === 'FORGOT_PASSWORD') {
                 const response = await authApi.requestPasswordReset(email);
@@ -82,7 +131,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginSuccess }) => {
                     <span className="text-xl font-bold tracking-tight">Fiscana</span>
                 </div>
 
-                {authMode !== 'LOGIN' && (
+                {authMode !== 'LOGIN' && authMode !== 'VERIFY_CODE' && (
                     <button
                         onClick={() => { setAuthMode('LOGIN'); setError(null); document.getElementById('auth')?.scrollIntoView({ behavior: 'smooth' }); }}
                         className="text-sm font-semibold text-green-600 hover:text-green-700"
@@ -206,6 +255,128 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginSuccess }) => {
                                     </>
                                 )}
                             </div>
+                        ) : authMode === 'VERIFY_CODE' ? (
+                            /* --- VERIFY CODE VIEW --- */
+                            <>
+                                <div className="text-center mb-8">
+                                    <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                        <Mail className="text-green-600" size={28} />
+                                    </div>
+                                    <h2 className="text-2xl font-bold text-slate-900">Check Your Email</h2>
+                                    <p className="text-slate-500 text-sm mt-2">
+                                        We sent a 6-digit code to <strong>{email}</strong>
+                                    </p>
+                                </div>
+
+                                {successMessage && (
+                                    <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                                        <p className="text-green-700 text-sm">{successMessage}</p>
+                                    </div>
+                                )}
+
+                                {error && (
+                                    <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                                        <p className="text-red-600 text-sm">{error}</p>
+                                    </div>
+                                )}
+
+                                <form onSubmit={handleSubmit} className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-2 text-center">Verification Code</label>
+                                        <input
+                                            type="text"
+                                            required
+                                            maxLength={6}
+                                            className="w-full px-4 py-4 border border-slate-200 rounded-lg focus:ring-2 focus:ring-green-500 outline-none transition-all text-center text-2xl font-bold tracking-[0.5em] placeholder:tracking-normal placeholder:text-base placeholder:font-normal"
+                                            placeholder="Enter 6-digit code"
+                                            value={verificationCode}
+                                            onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                                            autoFocus
+                                        />
+                                        <p className="text-xs text-slate-400 mt-2 text-center">Code expires in 10 minutes</p>
+                                    </div>
+
+                                    <button
+                                        type="submit"
+                                        disabled={isLoading || verificationCode.length !== 6}
+                                        className="w-full bg-green-600 hover:bg-green-700 disabled:bg-slate-400 text-white font-bold py-3 rounded-xl transition-all shadow-lg flex items-center justify-center space-x-2"
+                                    >
+                                        {isLoading ? (
+                                            <Loader2 className="animate-spin" size={18} />
+                                        ) : (
+                                            <>
+                                                <span>Verify & Create Account</span>
+                                                <CheckCircle size={18} />
+                                            </>
+                                        )}
+                                    </button>
+                                </form>
+
+                                <div className="mt-6 text-center">
+                                    <button
+                                        onClick={() => {
+                                            setAuthMode('SIGNUP');
+                                            setVerificationCode('');
+                                            setError(null);
+                                            setSuccessMessage(null);
+                                        }}
+                                        className="text-sm text-slate-500 hover:text-slate-700"
+                                    >
+                                        ← Back to signup
+                                    </button>
+                                </div>
+                            </>
+                        ) : authMode === 'RESET_NEW_PASSWORD' ? (
+                            /* --- RESET NEW PASSWORD VIEW --- */
+                            <>
+                                <div className="text-center mb-8">
+                                    <h2 className="text-2xl font-bold text-slate-900">Set New Password</h2>
+                                    <p className="text-slate-500 text-sm mt-2">Enter your new password below</p>
+                                </div>
+
+                                {successMessage && (
+                                    <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                                        <p className="text-green-700 text-sm">{successMessage}</p>
+                                    </div>
+                                )}
+
+                                {error && (
+                                    <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                                        <p className="text-red-600 text-sm">{error}</p>
+                                    </div>
+                                )}
+
+                                <form onSubmit={handleSubmit} className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">New Password</label>
+                                        <input
+                                            type="password"
+                                            required
+                                            minLength={8}
+                                            className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-green-500 outline-none transition-all"
+                                            placeholder="••••••••"
+                                            value={password}
+                                            onChange={(e) => setPassword(e.target.value)}
+                                        />
+                                        <p className="text-xs text-slate-400 mt-1">Min 8 chars with uppercase, lowercase, and number</p>
+                                    </div>
+
+                                    <button
+                                        type="submit"
+                                        disabled={isLoading}
+                                        className="w-full bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white font-bold py-3 rounded-xl transition-all shadow-lg flex items-center justify-center space-x-2"
+                                    >
+                                        {isLoading ? (
+                                            <Loader2 className="animate-spin" size={18} />
+                                        ) : (
+                                            <>
+                                                <span>Update Password</span>
+                                                <ArrowRight size={18} />
+                                            </>
+                                        )}
+                                    </button>
+                                </form>
+                            </>
                         ) : (
                             /* --- LOGIN / SIGNUP VIEW --- */
                             <>

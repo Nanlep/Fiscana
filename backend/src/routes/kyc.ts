@@ -6,6 +6,7 @@ import { validate } from '../middleware/validate.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 import { NotFoundError } from '../utils/errors.js';
 import { logger } from '../utils/logger.js';
+import { emailService } from '../services/emailService.js';
 
 const router = Router();
 
@@ -50,6 +51,11 @@ router.post('/', authenticate, [
     });
 
     logger.info('[KYC] Request submitted', { id: request.id, userId });
+
+    // Send emails (fire-and-forget)
+    emailService.sendKYCSubmittedEmail(user.email, user.name).catch(() => { });
+    emailService.sendKYCAdminAlert(user.name, user.email).catch(() => { });
+
     res.status(201).json({ success: true, data: request });
 }));
 
@@ -85,11 +91,15 @@ router.post('/:id/review', authenticate, [
             where: { id: request.userId },
             data: { kycStatus: 'VERIFIED', tier: 'TIER_2' }
         });
+        // Send approval email
+        emailService.sendKYCApprovedEmail(request.userEmail, request.userName).catch(() => { });
     } else {
         await prisma.user.update({
             where: { id: request.userId },
             data: { kycStatus: 'REJECTED' }
         });
+        // Send rejection email
+        emailService.sendKYCRejectedEmail(request.userEmail, request.userName).catch(() => { });
     }
 
     logger.info('[KYC] Reviewed', { id, action, adminId: adminUser.id });

@@ -4,6 +4,7 @@ import { paymentService } from '../services/paymentService.js';
 import { authenticate } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
+import { emailService } from '../services/emailService.js';
 import { logger } from '../utils/logger.js';
 import { config } from '../config/index.js';
 import { PrismaClient } from '@prisma/client';
@@ -127,6 +128,22 @@ router.post(
             destination,
             narration
         });
+
+        // Send withdrawal confirmation email (fire-and-forget)
+        (async () => {
+            try {
+                const { prisma } = await import('../config/database.js');
+                const user = await prisma.user.findUnique({ where: { id: userId } });
+                if (user) {
+                    await emailService.sendTransactionEmail(user.email, user.name, {
+                        type: 'WITHDRAWAL',
+                        amount: parseFloat(amount),
+                        currency,
+                        narration,
+                    });
+                }
+            } catch (_) { }
+        })();
 
         res.json({
             success: true,
@@ -470,6 +487,21 @@ router.post(
             await paymentService.creditWallet(userId, currency, parseFloat(amount), merchantRef);
 
             logger.info('Wallet credited from popup payment', { userId, amount, currency, merchantRef });
+
+            // Send add-funds confirmation email (fire-and-forget)
+            (async () => {
+                try {
+                    const { prisma } = await import('../config/database.js');
+                    const user = await prisma.user.findUnique({ where: { id: userId } });
+                    if (user) {
+                        await emailService.sendTransactionEmail(user.email, user.name, {
+                            type: 'ADD_FUNDS',
+                            amount: parseFloat(amount),
+                            currency,
+                        });
+                    }
+                } catch (_) { }
+            })();
 
             res.json({
                 success: true,

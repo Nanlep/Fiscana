@@ -42,7 +42,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     };
 
     const sidebarClasses = `
-    w-64 bg-slate-900 text-white h-screen flex flex-col border-r border-slate-800
+    w-64 bg-slate-900 text-white h-[100dvh] flex flex-col border-r border-slate-800
     fixed left-0 top-0 z-50 transition-transform duration-300 ease-in-out
     ${isOpen ? 'translate-x-0' : '-translate-x-full'} 
     md:translate-x-0 md:static
@@ -87,7 +87,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                     </div>
                 </div>
 
-                <nav className="flex-1 p-4 space-y-2">
+                <nav className="flex-1 p-4 space-y-2 overflow-y-auto min-h-0">
                     {menuItems.map((item) => {
                         const Icon = item.icon;
                         const isActive = currentView === item.id;

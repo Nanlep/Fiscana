@@ -144,7 +144,8 @@ async function apiRequest<T>(
         ...options.headers
     };
 
-    if (accessToken) {
+    // Only add stored token if Authorization header is not already set
+    if (accessToken && !(headers as Record<string, string>)['Authorization']) {
         (headers as Record<string, string>)['Authorization'] = `Bearer ${accessToken}`;
     }
 
@@ -202,6 +203,36 @@ async function apiRequest<T>(
 
 // ==================== AUTH API ====================
 export const authApi = {
+    /** Step 1: Send verification code to email */
+    initiateSignup: async (data: {
+        email: string;
+        password: string;
+        name: string;
+        type?: 'INDIVIDUAL' | 'CORPORATE';
+        companyName?: string;
+    }) => {
+        return apiRequest<{ message: string }>(
+            '/auth/initiate-signup',
+            { method: 'POST', body: JSON.stringify(data) }
+        );
+    },
+
+    /** Step 2: Verify code and complete registration */
+    verifySignup: async (email: string, code: string) => {
+        const response = await apiRequest<{ user: User; accessToken: string; refreshToken: string }>(
+            '/auth/verify-signup',
+            { method: 'POST', body: JSON.stringify({ email, code }) }
+        );
+        if (response.success && response.data) {
+            setTokens({
+                accessToken: response.data.accessToken,
+                refreshToken: response.data.refreshToken
+            });
+        }
+        return response;
+    },
+
+    /** Legacy signup (no email verification) */
     signup: async (data: {
         email: string;
         password: string;
@@ -251,7 +282,14 @@ export const authApi = {
         apiRequest<User>('/auth/profile', { method: 'PUT', body: JSON.stringify(data) }),
 
     requestPasswordReset: (email: string) =>
-        apiRequest('/auth/password-reset', { method: 'POST', body: JSON.stringify({ email }) }),
+        apiRequest('/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email }) }),
+
+    resetPassword: (token: string, password: string) =>
+        apiRequest('/auth/reset-password', {
+            method: 'POST',
+            body: JSON.stringify({ password }),
+            headers: { 'Authorization': `Bearer ${token}` }
+        }),
 
     deleteAccount: () => apiRequest('/auth/account', { method: 'DELETE' })
 };

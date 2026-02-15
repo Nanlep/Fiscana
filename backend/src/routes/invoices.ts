@@ -6,6 +6,8 @@ import { validate } from '../middleware/validate.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 import { NotFoundError, ValidationError } from '../utils/errors.js';
 import { logger } from '../utils/logger.js';
+import { emailService } from '../services/emailService.js';
+import { pdfService } from '../services/pdfService.js';
 
 const router = Router();
 
@@ -144,6 +146,51 @@ router.post(
         });
 
         logger.info('[INVOICE] Created invoice', { id: invoice.id, userId });
+
+        // Send invoice email with PDF attachment (fire-and-forget)
+        (async () => {
+            try {
+                const user = req.user!;
+                const pdfBuffer = await pdfService.generateInvoicePDF({
+                    id: invoice.id,
+                    clientName: invoice.clientName,
+                    clientEmail: invoice.clientEmail,
+                    issueDate: invoice.issueDate.toISOString(),
+                    dueDate: invoice.dueDate.toISOString(),
+                    currency: invoice.currency,
+                    items: invoice.items.map((item: any) => ({
+                        description: item.description,
+                        quantity: item.quantity,
+                        unitPrice: item.unitPrice,
+                    })),
+                    subTotal: invoice.subTotal,
+                    vatAmount: invoice.vatAmount,
+                    whtDeduction: invoice.whtDeduction,
+                    totalAmount: invoice.totalAmount,
+                    paymentBankName: invoice.paymentBankName || undefined,
+                    paymentAccountNumber: invoice.paymentAccountNumber || undefined,
+                    paymentAccountName: invoice.paymentAccountName || undefined,
+                    paymentWalletAddress: invoice.paymentWalletAddress || undefined,
+                    paymentWalletNetwork: invoice.paymentWalletNetwork || undefined,
+                    userName: user.name,
+                    userEmail: user.email,
+                });
+                await emailService.sendInvoiceEmail(
+                    user.email,
+                    user.name,
+                    {
+                        id: invoice.id,
+                        clientName: invoice.clientName,
+                        totalAmount: invoice.totalAmount,
+                        currency: invoice.currency,
+                        dueDate: invoice.dueDate.toLocaleDateString(),
+                    },
+                    pdfBuffer
+                );
+            } catch (err: any) {
+                logger.error('[INVOICE] Failed to send invoice email:', err.message);
+            }
+        })();
 
         res.status(201).json({
             success: true,

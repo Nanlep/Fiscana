@@ -43,6 +43,18 @@ export const config = {
         baseUrl: 'https://api.withmono.com/v2',
     },
 
+    // Email (SMTP via Resend)
+    email: {
+        host: process.env.SMTP_HOST || 'smtp.resend.com',
+        port: parseInt(process.env.SMTP_PORT || '465', 10),
+        user: process.env.SMTP_USER || 'resend',
+        pass: process.env.SMTP_PASS || '',
+        from: process.env.SMTP_FROM || 'Fiscana <no-reply@fiscana.pro>',
+    },
+
+    // Admin
+    adminEmail: process.env.ADMIN_EMAIL || 'contactmike@fiscana.pro',
+
     // Rate limiting
     rateLimit: {
         windowMs: 15 * 60 * 1000, // 15 minutes

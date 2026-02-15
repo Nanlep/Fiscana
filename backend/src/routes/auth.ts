@@ -8,8 +8,86 @@ import { asyncHandler } from '../middleware/errorHandler.js';
 const router = Router();
 
 /**
+ * @route   POST /api/auth/initiate-signup
+ * @desc    Step 1: Send verification code to email
+ * @access  Public
+ */
+router.post(
+    '/initiate-signup',
+    [
+        body('email').isEmail().normalizeEmail().withMessage('Valid email is required'),
+        body('password')
+            .isLength({ min: 8 })
+            .withMessage('Password must be at least 8 characters')
+            .matches(/[A-Z]/)
+            .withMessage('Password must contain at least one uppercase letter')
+            .matches(/[a-z]/)
+            .withMessage('Password must contain at least one lowercase letter')
+            .matches(/[0-9]/)
+            .withMessage('Password must contain at least one number'),
+        body('name').trim().notEmpty().withMessage('Name is required'),
+        body('type').optional().isIn(['INDIVIDUAL', 'CORPORATE']).withMessage('Type must be INDIVIDUAL or CORPORATE'),
+        body('companyName').optional().trim()
+    ],
+    validate,
+    asyncHandler(async (req: Request, res: Response) => {
+        const { email, password, name, type, companyName } = req.body;
+
+        const result = await authService.initiateSignup({
+            email,
+            password,
+            name,
+            type,
+            companyName
+        });
+
+        res.status(200).json({
+            success: true,
+            message: result.message
+        });
+    })
+);
+
+/**
+ * @route   POST /api/auth/verify-signup
+ * @desc    Step 2: Verify code and complete registration
+ * @access  Public
+ */
+router.post(
+    '/verify-signup',
+    [
+        body('email').isEmail().normalizeEmail().withMessage('Valid email is required'),
+        body('code').trim().isLength({ min: 6, max: 6 }).withMessage('Verification code must be 6 digits')
+    ],
+    validate,
+    asyncHandler(async (req: Request, res: Response) => {
+        const { email, code } = req.body;
+
+        const result = await authService.verifyAndCompleteSignup(email, code);
+
+        res.status(201).json({
+            success: true,
+            message: 'Account created successfully',
+            data: {
+                user: {
+                    id: result.user.id,
+                    email: result.user.email,
+                    name: result.user.name,
+                    type: result.user.type,
+                    role: result.user.role,
+                    kycStatus: result.user.kycStatus,
+                    tier: result.user.tier
+                },
+                accessToken: result.accessToken,
+                refreshToken: result.refreshToken
+            }
+        });
+    })
+);
+
+/**
  * @route   POST /api/auth/signup
- * @desc    Register a new user
+ * @desc    Register a new user (legacy — kept for backward compatibility)
  * @access  Public
  */
 router.post(

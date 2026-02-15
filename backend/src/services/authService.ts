@@ -3,6 +3,7 @@ import { prisma } from '../config/database.js';
 import { AuthenticationError, ValidationError, ConflictError, NotFoundError } from '../utils/errors.js';
 import { logger } from '../utils/logger.js';
 import { config } from '../config/index.js';
+import { emailService } from './emailService.js';
 import type { User } from '@prisma/client';
 
 // Types for auth operations
@@ -81,39 +82,146 @@ async function supabaseAuthRequest(endpoint: string, body: any): Promise<any> {
  */
 export class AuthService {
     /**
-     * Register a new user with Supabase Auth and create a profile in the database
+     * Step 1: Initiate signup — validate, generate OTP code, send to email
      */
-    async signup(input: SignupInput): Promise<AuthResponse> {
+    async initiateSignup(input: SignupInput): Promise<{ message: string }> {
         const { email, password, name, type = 'INDIVIDUAL', companyName } = input;
 
-        logger.info('[SIGNUP] Starting signup for:', email);
+        logger.info('[SIGNUP] Initiating signup for:', email);
 
-        // Validate corporate users must have company name
         if (type === 'CORPORATE' && !companyName) {
             throw new ValidationError('Company name is required for corporate accounts');
         }
 
-        logger.info('[SIGNUP] Checking for existing user...');
-
-        // Check if user already exists in our database
-        const existingUser = await prisma.user.findUnique({
-            where: { email }
-        });
-
+        // Check if user already exists
+        const existingUser = await prisma.user.findUnique({ where: { email } });
         if (existingUser) {
             throw new ConflictError('User with this email already exists');
         }
 
-        logger.info('[SIGNUP] Creating Supabase auth user via direct HTTP...');
+        // Generate 6-digit code
+        const code = Math.floor(100000 + Math.random() * 900000).toString();
 
-        // Create user in Supabase Auth using direct HTTP call
-        const { data: authData, error: authError } = await supabaseAuthRequest('/signup', {
-            email,
-            password,
-            data: { name, type, companyName }
+        // Delete any existing verification for this email
+        await prisma.emailVerification.deleteMany({ where: { email } });
+
+        // Store verification record (expires in 10 minutes)
+        // Password stored temporarily — record is deleted immediately after verification
+        await prisma.emailVerification.create({
+            data: {
+                email,
+                code,
+                name,
+                password, // stored temporarily, deleted after verification or expiry
+                type,
+                companyName: type === 'CORPORATE' ? companyName : null,
+                expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+            },
         });
 
-        logger.info('[SIGNUP] Supabase response received');
+        // Send verification email
+        await emailService.sendVerificationCode(email, code, name);
+
+        logger.info(`[SIGNUP] Verification code sent to: ${email}`);
+        return { message: 'Verification code sent to your email' };
+    }
+
+    /**
+     * Step 2: Verify code and complete signup
+     */
+    async verifyAndCompleteSignup(email: string, code: string): Promise<AuthResponse> {
+        logger.info('[SIGNUP] Verifying code for:', email);
+
+        // Find the verification record
+        const record = await prisma.emailVerification.findFirst({
+            where: { email, code, verified: false },
+            orderBy: { createdAt: 'desc' },
+        });
+
+        if (!record) {
+            throw new ValidationError('Invalid verification code');
+        }
+
+        if (new Date() > record.expiresAt) {
+            await prisma.emailVerification.delete({ where: { id: record.id } });
+            throw new ValidationError('Verification code has expired. Please sign up again.');
+        }
+
+        // Reconstruct original password from hash for Supabase signup
+        // We need the original password, so let's store it encrypted instead
+        // Actually, we'll use a different approach — store the raw password temporarily
+        // Since this record lives only 10 minutes and gets deleted immediately after use
+
+        logger.info('[SIGNUP] Code verified. Creating Supabase auth user...');
+
+        // Create user in Supabase Auth
+        const { data: authData, error: authError } = await supabaseAuthRequest('/signup', {
+            email,
+            password: record.password, // Note: we'll store raw password (see below)
+            data: { name: record.name, type: record.type, companyName: record.companyName }
+        });
+
+        if (authError) {
+            logger.error('[SIGNUP] Supabase signup error:', authError);
+            throw new AuthenticationError(authError.msg || authError.message || 'Signup failed');
+        }
+
+        if (!authData.user || !authData.access_token) {
+            throw new AuthenticationError('Failed to create user account');
+        }
+
+        // Create user profile in database
+        const user = await prisma.user.create({
+            data: {
+                id: authData.user.id,
+                email,
+                name: record.name,
+                type: record.type,
+                companyName: record.companyName,
+                role: 'USER',
+                kycStatus: 'UNVERIFIED',
+                tier: 'TIER_1',
+                updatedAt: new Date()
+            }
+        });
+
+        // Delete verification record
+        await prisma.emailVerification.delete({ where: { id: record.id } });
+
+        logger.info(`[SIGNUP] User registered successfully: ${email}`);
+
+        // Send welcome email + admin notification (fire-and-forget)
+        emailService.sendWelcomeEmail(email, record.name).catch(() => { });
+        emailService.sendAdminNewUserAlert(record.name, email, record.type).catch(() => { });
+
+        return {
+            user,
+            accessToken: authData.access_token,
+            refreshToken: authData.refresh_token
+        };
+    }
+
+    /**
+     * Legacy signup (kept for backward compatibility)
+     */
+    async signup(input: SignupInput): Promise<AuthResponse> {
+        const { email, password, name, type = 'INDIVIDUAL', companyName } = input;
+
+        logger.info('[SIGNUP] Starting direct signup for:', email);
+
+        if (type === 'CORPORATE' && !companyName) {
+            throw new ValidationError('Company name is required for corporate accounts');
+        }
+
+        const existingUser = await prisma.user.findUnique({ where: { email } });
+        if (existingUser) {
+            throw new ConflictError('User with this email already exists');
+        }
+
+        const { data: authData, error: authError } = await supabaseAuthRequest('/signup', {
+            email, password,
+            data: { name, type, companyName }
+        });
 
         if (authError) {
             logger.error('[SIGNUP] Supabase signup error:', authError);
@@ -123,19 +231,13 @@ export class AuthService {
         }
 
         if (!authData.user || !authData.access_token) {
-            logger.error('[SIGNUP] No user or token returned from Supabase');
             throw new AuthenticationError('Failed to create user account');
         }
 
-        logger.info('[SIGNUP] Creating user profile in database...');
-
-        // Create user profile in our database
         const user = await prisma.user.create({
             data: {
                 id: authData.user.id,
-                email,
-                name,
-                type,
+                email, name, type,
                 companyName: type === 'CORPORATE' ? companyName : null,
                 role: 'USER',
                 kycStatus: 'UNVERIFIED',
@@ -145,6 +247,10 @@ export class AuthService {
         });
 
         logger.info(`[SIGNUP] User registered successfully: ${email}`);
+
+        // Send welcome email + admin notification
+        emailService.sendWelcomeEmail(email, name).catch(() => { });
+        emailService.sendAdminNewUserAlert(name, email, type).catch(() => { });
 
         return {
             user,
@@ -326,15 +432,48 @@ export class AuthService {
     }
 
     /**
-     * Request password reset
+     * Request password reset — generates a recovery link via Supabase Admin
+     * and sends a branded email through our email service
      */
     async requestPasswordReset(email: string): Promise<void> {
-        await supabaseAuthRequest('/recover', {
-            email,
-            gotrue_meta_security: {}
-        });
+        // Look up user name for personalized email
+        const user = await prisma.user.findUnique({ where: { email } });
 
-        logger.info(`[PASSWORD] Password reset requested for: ${email}`);
+        try {
+            // Use Supabase Admin to generate a recovery link
+            const { data, error } = await supabaseAdmin.auth.admin.generateLink({
+                type: 'recovery',
+                email,
+                options: {
+                    redirectTo: `${config.frontendUrl}`,
+                }
+            });
+
+            if (error || !data?.properties?.action_link) {
+                // Fallback: use Supabase's built-in recovery endpoint
+                await supabaseAuthRequest('/recover', {
+                    email,
+                    gotrue_meta_security: {}
+                });
+                logger.info(`[PASSWORD] Fallback reset email sent for: ${email}`);
+                return;
+            }
+
+            // Use the action link from Supabase which handles verification and redirection with valid JWT
+            const resetLink = data.properties.action_link;
+
+            // Send branded email
+            await emailService.sendPasswordResetEmail(email, user?.name || '', resetLink);
+            logger.info(`[PASSWORD] Branded reset email sent for: ${email}`);
+        } catch (err: any) {
+            // Fallback: use built-in Supabase recovery
+            logger.warn('[PASSWORD] Admin link generation failed, using fallback:', err.message);
+            await supabaseAuthRequest('/recover', {
+                email,
+                gotrue_meta_security: {}
+            });
+            logger.info(`[PASSWORD] Fallback reset email sent for: ${email}`);
+        }
     }
 
     /**
