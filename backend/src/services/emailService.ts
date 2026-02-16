@@ -1,29 +1,25 @@
-import nodemailer from 'nodemailer';
 import { config } from '../config/index.js';
 import { logger } from '../utils/logger.js';
 
 // ============================================================
-// Nodemailer Transporter (Resend SMTP)
+// Resend HTTP API (bypasses SMTP port blocking on cloud platforms)
 // ============================================================
 
-const transporter = nodemailer.createTransport({
-    host: config.email.host,
-    port: config.email.port,
-    secure: config.email.port === 465,
-    auth: {
-        user: config.email.user,
-        pass: config.email.pass,
-    },
-    connectionTimeout: 10_000,  // 10 seconds to establish connection
-    greetingTimeout: 10_000,    // 10 seconds for SMTP greeting
-    socketTimeout: 15_000,      // 15 seconds for socket inactivity
-});
+const RESEND_API_URL = 'https://api.resend.com/emails';
+const RESEND_API_KEY = config.email.pass; // re_... API key
 
-// Verify connection on startup (non-blocking)
-transporter.verify().then(() => {
-    logger.info('📧 Email transporter ready');
+// Verify API key on startup (non-blocking)
+fetch('https://api.resend.com/domains', {
+    method: 'GET',
+    headers: { 'Authorization': `Bearer ${RESEND_API_KEY}` },
+}).then(res => {
+    if (res.ok) {
+        logger.info('📧 Resend email API ready');
+    } else {
+        logger.warn(`📧 Resend API key issue (status ${res.status}) — emails may not be sent`);
+    }
 }).catch((err) => {
-    logger.warn('📧 Email transporter not configured:', err.message);
+    logger.warn('📧 Resend API not reachable:', err.message);
 });
 
 // ============================================================
@@ -78,13 +74,35 @@ ${body}
 
 async function sendMail(to: string, subject: string, html: string, attachments?: any[]) {
     try {
-        await transporter.sendMail({
+        const body: any = {
             from: config.email.from,
-            to,
+            to: [to],
             subject,
             html,
-            attachments,
+        };
+
+        // Convert nodemailer-style attachments to Resend format
+        if (attachments && attachments.length > 0) {
+            body.attachments = attachments.map((att: any) => ({
+                filename: att.filename,
+                content: att.content instanceof Buffer ? att.content.toString('base64') : att.content,
+            }));
+        }
+
+        const response = await fetch(RESEND_API_URL, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${RESEND_API_KEY}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(body),
         });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(`Resend API ${response.status}: ${JSON.stringify(errorData)}`);
+        }
+
         logger.info(`[EMAIL] Sent "${subject}" to ${to}`);
     } catch (error: any) {
         logger.error(`[EMAIL] Failed to send "${subject}" to ${to}:`, error.message);
