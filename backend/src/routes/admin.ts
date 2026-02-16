@@ -151,7 +151,10 @@ router.get('/stats', asyncHandler(async (req: Request, res: Response) => {
         prisma.user.count({ where: { createdAt: { gte: fourteenDaysAgo, lt: sevenDaysAgo } } }),
         prisma.kYCRequest.count({ where: { status: 'PENDING' } }),
         prisma.transaction.aggregate({
-            where: { createdAt: { gte: twentyFourHoursAgo } },
+            where: {
+                createdAt: { gte: twentyFourHoursAgo },
+                source: { not: 'SYSTEM_REFUND' }
+            },
             _sum: { amount: true },
             _count: true,
         }),
@@ -161,6 +164,7 @@ router.get('/stats', asyncHandler(async (req: Request, res: Response) => {
                     gte: new Date(twentyFourHoursAgo.getTime() - 24 * 60 * 60 * 1000),
                     lt: twentyFourHoursAgo,
                 },
+                source: { not: 'SYSTEM_REFUND' }
             },
             _sum: { amount: true },
         }),

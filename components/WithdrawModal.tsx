@@ -3,7 +3,13 @@ import React, { useState, useEffect, useRef } from 'react';
 import { X, Building2, Wallet, Loader2, CheckCircle, User, Briefcase, ShieldCheck, ChevronDown, Search, AlertOctagon } from 'lucide-react';
 import { ExpenseCategoryType } from '../types';
 import { resolveBankAccount, initiatePayout } from '../services/baniService';
-import { NIGERIAN_BANKS, Bank } from '../utils/banks';
+import { paymentsApi } from '../services/apiClient';
+
+interface Bank {
+    name: string;
+    code: string;
+    listCode?: string;
+}
 
 interface WithdrawModalProps {
     isOpen: boolean;
@@ -21,7 +27,9 @@ const WithdrawModal: React.FC<WithdrawModalProps> = ({ isOpen, onClose, onWithdr
     const [step, setStep] = useState<'INPUT' | 'PROCESSING' | 'SUCCESS'>('INPUT');
 
     // Bank Details
+    const [banks, setBanks] = useState<Bank[]>([]);
     const [bankCode, setBankCode] = useState('');
+    const [listCode, setListCode] = useState('');
     const [bankName, setBankName] = useState(''); // For display in input
     const [accountNumber, setAccountNumber] = useState('');
     const [accountName, setAccountName] = useState('');
@@ -36,6 +44,25 @@ const WithdrawModal: React.FC<WithdrawModalProps> = ({ isOpen, onClose, onWithdr
     // Crypto Details
     const [walletAddress, setWalletAddress] = useState('');
     const [network, setNetwork] = useState('SOL');
+
+    useEffect(() => {
+        if (isOpen && currency === 'NGN') {
+            fetchBanks();
+        }
+    }, [isOpen, currency]);
+
+    const fetchBanks = async () => {
+        try {
+            const response = await paymentsApi.listBanks();
+            if (response.success && response.data) {
+                // Sort banks alphabetically
+                const sortedBanks = response.data.sort((a, b) => a.name.localeCompare(b.name));
+                setBanks(sortedBanks);
+            }
+        } catch (error) {
+            console.error("Failed to fetch banks", error);
+        }
+    };
 
     useEffect(() => {
         // Auto-verify account when 10 digits entered and bank is selected
@@ -64,7 +91,7 @@ const WithdrawModal: React.FC<WithdrawModalProps> = ({ isOpen, onClose, onWithdr
         setAccountName('');
 
         try {
-            const name = await resolveBankAccount(accountNumber, bankCode);
+            const name = await resolveBankAccount(accountNumber, bankCode, listCode);
             setAccountName(name);
         } catch (error) {
             setAccountName('');
@@ -74,12 +101,13 @@ const WithdrawModal: React.FC<WithdrawModalProps> = ({ isOpen, onClose, onWithdr
         }
     };
 
-    const filteredBanks = NIGERIAN_BANKS.filter(bank =>
+    const filteredBanks = banks.filter(bank =>
         bank.name.toLowerCase().includes(bankSearchTerm.toLowerCase())
     );
 
     const handleSelectBank = (bank: Bank) => {
         setBankCode(bank.code);
+        setListCode(bank.listCode || '');
         setBankName(bank.name);
         setIsBankListOpen(false);
         setBankSearchTerm(''); // Reset search
@@ -116,11 +144,13 @@ const WithdrawModal: React.FC<WithdrawModalProps> = ({ isOpen, onClose, onWithdr
                 destination: currency === 'NGN' ? {
                     type: 'BANK',
                     bankCode,
+                    listCode,
                     accountNumber,
                     accountName,
                 } : {
                     type: 'BANK',
                     bankCode,
+                    listCode,
                     accountNumber,
                     accountName,
                 },
@@ -146,6 +176,7 @@ const WithdrawModal: React.FC<WithdrawModalProps> = ({ isOpen, onClose, onWithdr
         setAccountName('');
         setWalletAddress('');
         setBankCode('');
+        setListCode('');
         setBankName('');
         setVerificationError('');
         onClose();
@@ -274,7 +305,7 @@ const WithdrawModal: React.FC<WithdrawModalProps> = ({ isOpen, onClose, onWithdr
                                                     value={accountNumber}
                                                     onChange={(e) => setAccountNumber(e.target.value.replace(/\D/g, ''))}
                                                     className={`w-full px-4 py-3 border rounded-xl focus:ring-2 outline-none transition-colors ${verificationError ? 'border-red-300 focus:ring-red-500' :
-                                                            accountName ? 'border-green-500 focus:ring-green-500' : 'border-slate-200 focus:ring-green-500'
+                                                        accountName ? 'border-green-500 focus:ring-green-500' : 'border-slate-200 focus:ring-green-500'
                                                         }`}
                                                     placeholder="0123456789"
                                                     required
@@ -296,10 +327,10 @@ const WithdrawModal: React.FC<WithdrawModalProps> = ({ isOpen, onClose, onWithdr
                                                     value={accountName || verificationError}
                                                     readOnly
                                                     className={`w-full px-4 py-3 border rounded-xl font-bold text-sm outline-none transition-all ${verificationError
-                                                            ? 'bg-red-50 border-red-200 text-red-600'
-                                                            : accountName
-                                                                ? 'bg-green-50 border-green-200 text-green-800'
-                                                                : 'bg-slate-50 border-slate-200 text-slate-400'
+                                                        ? 'bg-red-50 border-red-200 text-red-600'
+                                                        : accountName
+                                                            ? 'bg-green-50 border-green-200 text-green-800'
+                                                            : 'bg-slate-50 border-slate-200 text-slate-400'
                                                         }`}
                                                     placeholder="Waiting for verification..."
                                                 />
@@ -352,8 +383,8 @@ const WithdrawModal: React.FC<WithdrawModalProps> = ({ isOpen, onClose, onWithdr
                                             type="button"
                                             onClick={() => setWithdrawalType('PERSONAL')}
                                             className={`flex-1 flex items-center justify-center space-x-2 py-2 rounded-lg text-sm font-bold transition-all ${withdrawalType === 'PERSONAL'
-                                                    ? 'bg-white shadow-sm text-purple-700'
-                                                    : 'text-slate-500 hover:text-slate-700'
+                                                ? 'bg-white shadow-sm text-purple-700'
+                                                : 'text-slate-500 hover:text-slate-700'
                                                 }`}
                                         >
                                             <User size={16} /> <span>Personal</span>
@@ -362,8 +393,8 @@ const WithdrawModal: React.FC<WithdrawModalProps> = ({ isOpen, onClose, onWithdr
                                             type="button"
                                             onClick={() => setWithdrawalType('BUSINESS')}
                                             className={`flex-1 flex items-center justify-center space-x-2 py-2 rounded-lg text-sm font-bold transition-all ${withdrawalType === 'BUSINESS'
-                                                    ? 'bg-white shadow-sm text-blue-700'
-                                                    : 'text-slate-500 hover:text-slate-700'
+                                                ? 'bg-white shadow-sm text-blue-700'
+                                                : 'text-slate-500 hover:text-slate-700'
                                                 }`}
                                         >
                                             <Briefcase size={16} /> <span>Business</span>

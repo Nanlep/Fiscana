@@ -627,12 +627,12 @@ export interface PaymentCollectionResponse {
 
 export const paymentsApi = {
     listBanks: () =>
-        apiRequest<Array<{ code: string; name: string }>>('/payments/banks'),
+        apiRequest<Array<{ code: string; name: string; listCode: string }>>('/payments/banks'),
 
-    resolveAccount: (accountNumber: string, bankCode: string) =>
+    resolveAccount: (accountNumber: string, bankCode: string, listCode?: string) =>
         apiRequest<BankAccountDetails>('/payments/resolve-account', {
             method: 'POST',
-            body: JSON.stringify({ accountNumber, bankCode })
+            body: JSON.stringify({ accountNumber, bankCode, listCode })
         }),
 
     initiatePayout: (data: {
@@ -641,6 +641,7 @@ export const paymentsApi = {
         destination: {
             type: 'BANK' | 'MOBILE_MONEY';
             bankCode?: string;
+            listCode?: string;
             accountNumber?: string;
             accountName?: string;
             countryCode?: string;

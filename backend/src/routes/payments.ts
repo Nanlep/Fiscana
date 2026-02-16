@@ -71,9 +71,9 @@ router.post(
     ],
     validate,
     asyncHandler(async (req: Request, res: Response) => {
-        const { accountNumber, bankCode } = req.body;
+        const { accountNumber, bankCode, listCode } = req.body;
 
-        const accountDetails = await paymentService.resolveBankAccount(accountNumber, bankCode);
+        const accountDetails = await paymentService.resolveBankAccount(accountNumber, bankCode, listCode);
 
         res.json({
             success: true,
@@ -109,7 +109,12 @@ router.post(
         body('destination.accountNumber')
             .if(body('destination.type').equals('BANK'))
             .isLength({ min: 10, max: 10 })
+            .isLength({ min: 10, max: 10 })
             .withMessage('Account number must be 10 digits'),
+        body('destination.listCode')
+            .if(body('destination.type').equals('BANK'))
+            .optional() // Can be optional if allowed, but better to pass it
+            .isString(),
         body('narration')
             .optional()
             .trim()

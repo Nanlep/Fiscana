@@ -10,6 +10,7 @@ export interface BaniPayoutRequest {
     destination: {
         type: 'BANK' | 'MOBILE_MONEY';
         bankCode?: string;
+        listCode?: string;
         accountNumber?: string;
         accountName?: string;
         countryCode?: string;
@@ -21,8 +22,8 @@ export interface BaniPayoutRequest {
 /**
  * Resolves a bank account via the backend (Bani Lookups API).
  */
-export const resolveBankAccount = async (accountNumber: string, bankCode: string): Promise<string> => {
-    const response = await paymentsApi.resolveAccount(accountNumber, bankCode);
+export const resolveBankAccount = async (accountNumber: string, bankCode: string, listCode?: string): Promise<string> => {
+    const response = await paymentsApi.resolveAccount(accountNumber, bankCode, listCode);
     if (response.success && response.data) {
         return response.data.accountName;
     }
@@ -39,6 +40,7 @@ export const initiatePayout = async (request: BaniPayoutRequest): Promise<{ refe
         destination: {
             type: request.destination.type,
             bankCode: request.destination.bankCode,
+            listCode: request.destination.listCode,
             accountNumber: request.destination.accountNumber,
             accountName: request.destination.accountName,
             countryCode: request.destination.countryCode,

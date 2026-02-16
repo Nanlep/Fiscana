@@ -29,6 +29,7 @@ interface PayoutRequest {
     destination: {
         type: 'BANK' | 'MOBILE_MONEY';
         bankCode?: string;
+        listCode?: string;
         accountNumber?: string;
         accountName?: string;
         countryCode?: string;
@@ -160,8 +161,12 @@ class PaymentService {
 
     constructor() {
         this.accessToken = config.bani.accessToken;
-        this.privateKey = config.bani.privateKey;
+        this.privateKey = (config.bani.privateKey || '').trim();
         this.webhookKey = config.bani.webhookKey;
+
+        if (!this.privateKey) {
+            logger.warn('Bani Private Key is missing or empty');
+        }
     }
 
     /**
@@ -169,10 +174,20 @@ class PaymentService {
      * HMAC-SHA256 of the private key + JSON request body.
      */
     private generateSignature(payload: string): string {
-        return crypto
+        const signature = crypto
             .createHmac('sha256', this.privateKey)
             .update(payload)
             .digest('hex');
+
+        // Log signature details for debugging (careful not to log full private key)
+        logger.debug('Generating Bani Signature', {
+            keyLength: this.privateKey.length,
+            payloadLength: payload.length,
+            signature,
+            payloadSnippet: payload.substring(0, 50) + '...'
+        });
+
+        return signature;
     }
 
     /**
@@ -282,11 +297,41 @@ class PaymentService {
         // Debit the user's wallet FIRST (will throw if insufficient balance)
         await this.debitWallet(request.userId, request.currency, request.amount);
 
+        let transactionId: string | null = null;
+
         try {
+            // Create transaction record immediately after debit
+            try {
+                const tx = await prisma.transaction.create({
+                    data: {
+                        userId: request.userId,
+                        type: 'EXPENSE',
+                        amount: request.amount,
+                        currency: request.currency,
+                        description: `Payout [${reference}] to ${request.destination.accountNumber || request.destination.phoneNumber}`,
+                        payee: request.destination.accountName || 'Unknown',
+                        category: 'Transfer',
+                        status: 'PENDING',
+                        source: 'BANI_PAYOUT',
+                        createdBy: request.userId,
+                        date: new Date(),
+                    },
+                });
+                transactionId = tx.id;
+            } catch (dbError) {
+                logger.warn('Failed to log pending payout transaction', { reference });
+            }
+
             const payload: Record<string, string> = {
                 payout_step: 'direct',
                 receiver_currency: request.currency,
                 receiver_amount: request.amount.toString(),
+                transfer_method: 'bank',
+                transfer_receiver_type: 'personal',
+                receiver_account_num: '',
+                receiver_country_code: '',
+                receiver_sort_code: '',
+                receiver_account_name: '',
                 sender_amount: request.amount.toString(),
                 sender_currency: request.currency,
                 transfer_ext_ref: reference,
@@ -296,7 +341,10 @@ class PaymentService {
                 payload.transfer_method = 'bank';
                 payload.transfer_receiver_type = 'personal';
                 payload.receiver_account_num = request.destination.accountNumber || '';
-                payload.receiver_sort_code = request.destination.bankCode || '';
+                // Bani requires the list_code (sort code) for bank transfers
+                // Use listCode if available (e.g. NGSTAN), fallback to bankCode
+                const sortCode = request.destination.listCode || request.destination.bankCode || '';
+                payload.receiver_sort_code = sortCode;
                 payload.receiver_account_name = request.destination.accountName || '';
                 payload.receiver_country_code = request.destination.countryCode || 'NG';
             } else if (request.destination.type === 'MOBILE_MONEY') {
@@ -312,6 +360,10 @@ class PaymentService {
             }
 
             const body = JSON.stringify(payload);
+
+            // Log payload for signature debugging
+            logger.info('Initiating Bani Payout', { reference, payloadString: body });
+
             const response = await fetch(`${BANI_BASE_URL}/partner/payout/initiate_transfer/`, {
                 method: 'POST',
                 headers: this.getHeaders(body),
@@ -322,30 +374,30 @@ class PaymentService {
 
             if (!data.status) {
                 // Re-credit the wallet since Bani rejected the payout
-                await this.creditWallet(request.userId, request.currency, request.amount, `refund_${reference}`);
+                // Use SYSTEM_REFUND source to exclude from revenue metrics
+                await this.creditWallet(
+                    request.userId,
+                    request.currency,
+                    request.amount,
+                    `refund_${reference}`,
+                    'REFUND',
+                    'Refund',
+                    'SYSTEM_REFUND'
+                );
+
+                if (transactionId) {
+                    try {
+                        await prisma.transaction.update({
+                            where: { id: transactionId },
+                            data: { status: 'FAILED' }
+                        });
+                    } catch (e) { /* ignore */ }
+                }
+
                 throw new Error(data.message || 'Payout initiation failed');
             }
 
-            // Log payout in database with actual userId
-            try {
-                await prisma.transaction.create({
-                    data: {
-                        userId: request.userId,
-                        type: 'EXPENSE',
-                        amount: request.amount,
-                        currency: request.currency,
-                        description: `Payout [${reference}] to ${request.destination.accountNumber || request.destination.phoneNumber}`,
-                        payee: request.destination.accountName || 'Unknown',
-                        category: 'Transfer',
-                        status: 'PENDING',
-                        source: 'BANI_PAYOUT',
-                        createdBy: request.userId,
-                        date: new Date(),
-                    },
-                });
-            } catch (dbError) {
-                logger.warn('Failed to log payout transaction in database', { reference });
-            }
+
 
             return {
                 reference,
@@ -355,6 +407,14 @@ class PaymentService {
             };
 
         } catch (error: any) {
+            if (transactionId) {
+                try {
+                    await prisma.transaction.update({
+                        where: { id: transactionId },
+                        data: { status: 'FAILED' }
+                    });
+                } catch (e) { /* ignore */ }
+            }
             // If it's our own re-throw after re-credit, just propagate
             if (error instanceof ExternalServiceError || error instanceof ValidationError) throw error;
             logger.error('Payout failed', { error: error.message, reference });
@@ -769,7 +829,15 @@ class PaymentService {
     /**
      * Credit a user's wallet. Idempotent via transactionRef check.
      */
-    async creditWallet(userId: string, currency: string, amount: number, transactionRef: string): Promise<void> {
+    async creditWallet(
+        userId: string,
+        currency: string,
+        amount: number,
+        transactionRef: string,
+        type: 'INCOME' | 'REFUND' = 'INCOME',
+        category: string = 'Payment Received',
+        source: string = 'BANI_PAYMENT'
+    ): Promise<void> {
         // Idempotency check — skip if this transaction was already processed
         const existingTx = await prisma.transaction.findFirst({
             where: {
@@ -808,13 +876,13 @@ class PaymentService {
                 userId,
                 date: new Date(),
                 description: `Payment received [${transactionRef}]`,
-                payee: 'Bani Payment',
+                payee: source === 'SYSTEM_REFUND' ? 'System Refund' : 'Bani Payment',
                 amount,
                 currency,
-                type: 'INCOME',
-                category: 'Payment Received',
+                type: type === 'REFUND' ? 'INCOME' : type, // Transaction model might not have REFUND type, mapping to INCOME but keeping source distinct
+                category,
                 status: 'CLEARED',
-                source: 'BANI_PAYMENT',
+                source,
                 createdBy: 'system',
             },
         });
