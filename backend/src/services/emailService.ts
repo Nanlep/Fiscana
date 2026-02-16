@@ -8,19 +8,12 @@ import { logger } from '../utils/logger.js';
 const RESEND_API_URL = 'https://api.resend.com/emails';
 const RESEND_API_KEY = config.email.pass; // re_... API key
 
-// Verify API key on startup (non-blocking)
-fetch('https://api.resend.com/domains', {
-    method: 'GET',
-    headers: { 'Authorization': `Bearer ${RESEND_API_KEY}` },
-}).then(res => {
-    if (res.ok) {
-        logger.info('📧 Resend email API ready');
-    } else {
-        logger.warn(`📧 Resend API key issue (status ${res.status}) — emails may not be sent`);
-    }
-}).catch((err) => {
-    logger.warn('📧 Resend API not reachable:', err.message);
-});
+// Log email config status on startup
+if (RESEND_API_KEY) {
+    logger.info('📧 Resend email service configured');
+} else {
+    logger.warn('📧 Resend API key not set — emails will not be sent');
+}
 
 // ============================================================
 // Shared HTML Wrapper
