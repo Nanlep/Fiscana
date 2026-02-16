@@ -14,6 +14,9 @@ const transporter = nodemailer.createTransport({
         user: config.email.user,
         pass: config.email.pass,
     },
+    connectionTimeout: 10_000,  // 10 seconds to establish connection
+    greetingTimeout: 10_000,    // 10 seconds for SMTP greeting
+    socketTimeout: 15_000,      // 15 seconds for socket inactivity
 });
 
 // Verify connection on startup (non-blocking)
@@ -102,7 +105,8 @@ export async function sendVerificationCode(email: string, code: string, name: st
         <p style="margin:0 0 8px;color:#64748b;font-size:13px;">This code expires in <strong>10 minutes</strong>.</p>
         <p style="margin:0;color:#94a3b8;font-size:12px;">If you didn't request this, you can safely ignore this email.</p>
     `);
-    await sendMail(email, `${code} — Your Fiscana Verification Code`, html);
+    // Fire-and-forget: don't block signup response on email delivery
+    sendMail(email, `${code} — Your Fiscana Verification Code`, html);
 }
 
 // ============================================================

@@ -40,6 +40,9 @@ app.use(cors({
     credentials: true,
 }));
 
+// Trust proxy (required on Render/Heroku/etc. behind reverse proxy)
+app.set('trust proxy', 1);
+
 // Rate limiting
 const limiter = rateLimit({
     windowMs: config.rateLimit.windowMs,
