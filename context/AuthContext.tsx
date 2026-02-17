@@ -3,7 +3,7 @@
  * Provides authentication state and methods throughout the app
  */
 
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import { authApi, User, clearTokens, isAuthenticated as checkAuth, setTokens } from '../services/apiClient';
 
 interface AuthContextType {
@@ -46,6 +46,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
+    // Inactivity timeout refs
+    const INACTIVITY_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+    const inactivityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
     // Check authentication on mount
     useEffect(() => {
         const initAuth = async () => {
@@ -75,6 +80,53 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         window.addEventListener('auth:logout', handleLogout);
         return () => window.removeEventListener('auth:logout', handleLogout);
     }, []);
+
+    // Inactivity timeout — auto-logout after 5 minutes of no user activity
+    useEffect(() => {
+        if (!user) {
+            // Not authenticated — clear any existing timers
+            if (inactivityTimerRef.current) {
+                clearTimeout(inactivityTimerRef.current);
+                inactivityTimerRef.current = null;
+            }
+            return;
+        }
+
+        const resetInactivityTimer = () => {
+            if (inactivityTimerRef.current) {
+                clearTimeout(inactivityTimerRef.current);
+            }
+            inactivityTimerRef.current = setTimeout(() => {
+                // Auto-logout due to inactivity
+                setUser(null);
+                clearTokens();
+                window.dispatchEvent(new CustomEvent('auth:logout'));
+            }, INACTIVITY_TIMEOUT_MS);
+        };
+
+        // Debounced activity handler to avoid excessive timer resets
+        const handleActivity = () => {
+            if (debounceTimerRef.current) {
+                clearTimeout(debounceTimerRef.current);
+            }
+            debounceTimerRef.current = setTimeout(() => {
+                resetInactivityTimer();
+            }, 1000);
+        };
+
+        // Start the timer immediately
+        resetInactivityTimer();
+
+        // Track user activity
+        const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'];
+        events.forEach(event => window.addEventListener(event, handleActivity));
+
+        return () => {
+            events.forEach(event => window.removeEventListener(event, handleActivity));
+            if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
+            if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+        };
+    }, [user]);
 
     const login = useCallback(async (email: string, password: string): Promise<boolean> => {
         setIsLoading(true);

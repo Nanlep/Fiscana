@@ -276,7 +276,7 @@ export const authApi = {
         clearTokens();
     },
 
-    getProfile: () => apiRequest<User>('/auth/profile'),
+    getProfile: () => apiRequest<User>('/auth/me'),
 
     updateProfile: (data: { name?: string; type?: string; companyName?: string; tin?: string }) =>
         apiRequest<User>('/auth/profile', { method: 'PUT', body: JSON.stringify(data) }),
