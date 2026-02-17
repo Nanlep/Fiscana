@@ -333,6 +333,76 @@ router.post(
 
         logger.info('[INVOICE] Payment recorded', { id, amount: paymentAmount, userId });
 
+        // If invoice is now fully paid, send receipt emails (fire-and-forget)
+        if (newStatus === 'PAID') {
+            (async () => {
+                try {
+                    const user = req.user!;
+                    const fullInvoice = await prisma.invoice.findUnique({
+                        where: { id },
+                        include: { items: true },
+                    });
+                    if (!fullInvoice) return;
+
+                    const paidDate = new Date().toISOString();
+
+                    const pdfBuffer = await pdfService.generateReceiptPDF({
+                        id: fullInvoice.id,
+                        clientName: fullInvoice.clientName,
+                        clientEmail: fullInvoice.clientEmail,
+                        issueDate: fullInvoice.issueDate.toISOString(),
+                        dueDate: fullInvoice.dueDate.toISOString(),
+                        currency: fullInvoice.currency,
+                        items: fullInvoice.items.map((item: any) => ({
+                            description: item.description,
+                            quantity: item.quantity,
+                            unitPrice: item.unitPrice,
+                        })),
+                        subTotal: fullInvoice.subTotal,
+                        vatAmount: fullInvoice.vatAmount,
+                        whtDeduction: fullInvoice.whtDeduction,
+                        totalAmount: fullInvoice.totalAmount,
+                        amountPaid: newAmountPaid,
+                        paidDate,
+                        paymentBankName: fullInvoice.paymentBankName || undefined,
+                        paymentAccountNumber: fullInvoice.paymentAccountNumber || undefined,
+                        paymentAccountName: fullInvoice.paymentAccountName || undefined,
+                        paymentWalletAddress: fullInvoice.paymentWalletAddress || undefined,
+                        paymentWalletNetwork: fullInvoice.paymentWalletNetwork || undefined,
+                        userName: user.name,
+                        userEmail: user.email,
+                    });
+
+                    const receiptMeta = {
+                        id: fullInvoice.id,
+                        clientName: fullInvoice.clientName,
+                        totalAmount: fullInvoice.totalAmount,
+                        currency: fullInvoice.currency,
+                        paidDate: new Date().toLocaleDateString(),
+                    };
+
+                    // Send receipt confirmation to the user
+                    await emailService.sendReceiptEmail(
+                        user.email,
+                        user.name,
+                        receiptMeta,
+                        pdfBuffer
+                    );
+
+                    // Send receipt to the client
+                    await emailService.sendReceiptToClient(
+                        fullInvoice.clientEmail,
+                        fullInvoice.clientName,
+                        receiptMeta,
+                        user.name,
+                        pdfBuffer
+                    );
+                } catch (err: any) {
+                    logger.error('[INVOICE] Failed to send receipt emails:', err.message);
+                }
+            })();
+        }
+
         res.json({ success: true, message: 'Payment recorded', data: { amountPaid: newAmountPaid, status: newStatus } });
     })
 );

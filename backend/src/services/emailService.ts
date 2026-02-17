@@ -251,6 +251,82 @@ export async function sendInvoiceToClient(
 }
 
 // ============================================================
+// 4c. Receipt Email to User (Payment Confirmed)
+// ============================================================
+
+export async function sendReceiptEmail(
+    email: string,
+    userName: string,
+    receipt: {
+        id: string;
+        clientName: string;
+        totalAmount: number;
+        currency: string;
+        paidDate: string;
+    },
+    pdfBuffer: Buffer
+) {
+    const currencySymbol = receipt.currency === 'NGN' ? '₦' : receipt.currency === 'USD' ? '$' : receipt.currency;
+    const html = wrapHTML('Payment Received', `
+        <h1 style="margin:0 0 8px;font-size:24px;color:#0f172a;">Payment Received 💰</h1>
+        <p style="margin:0 0 20px;color:#64748b;font-size:15px;">Hi ${userName}, your invoice has been fully paid.</p>
+        <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border-radius:8px;margin:0 0 24px;">
+            <tr><td style="padding:10px 16px;color:#64748b;font-size:13px;">Receipt ID</td><td style="padding:10px 16px;font-weight:700;color:#0f172a;font-size:13px;">${receipt.id.slice(0, 8).toUpperCase()}</td></tr>
+            <tr><td style="padding:10px 16px;color:#64748b;font-size:13px;">Client</td><td style="padding:10px 16px;font-weight:700;color:#0f172a;">${receipt.clientName}</td></tr>
+            <tr><td style="padding:10px 16px;color:#64748b;font-size:13px;">Amount Paid</td><td style="padding:10px 16px;font-weight:700;color:#16a34a;font-size:18px;">${currencySymbol}${receipt.totalAmount.toLocaleString()}</td></tr>
+            <tr><td style="padding:10px 16px;color:#64748b;font-size:13px;">Paid Date</td><td style="padding:10px 16px;font-weight:700;color:#0f172a;">${receipt.paidDate}</td></tr>
+        </table>
+        <p style="margin:0 0 8px;color:#64748b;font-size:13px;">📎 A PDF receipt is attached to this email for your records.</p>
+        <a href="https://fiscana.pro" style="display:inline-block;background:#16a34a;color:#ffffff;font-weight:700;padding:12px 28px;border-radius:10px;text-decoration:none;font-size:14px;">View Invoices →</a>
+    `);
+    await sendMail(email, `Payment Received — ${currencySymbol}${receipt.totalAmount.toLocaleString()} from ${receipt.clientName}`, html, [
+        {
+            filename: `Fiscana_Receipt_${receipt.id.slice(0, 8).toUpperCase()}.pdf`,
+            content: pdfBuffer,
+            contentType: 'application/pdf',
+        },
+    ]);
+}
+
+// ============================================================
+// 4d. Receipt Email to Client
+// ============================================================
+
+export async function sendReceiptToClient(
+    clientEmail: string,
+    clientName: string,
+    receipt: {
+        id: string;
+        totalAmount: number;
+        currency: string;
+        paidDate: string;
+    },
+    senderName: string,
+    pdfBuffer: Buffer
+) {
+    const currencySymbol = receipt.currency === 'NGN' ? '₦' : receipt.currency === 'USD' ? '$' : receipt.currency;
+    const html = wrapHTML('Payment Receipt', `
+        <h1 style="margin:0 0 8px;font-size:24px;color:#0f172a;">Payment Receipt ✅</h1>
+        <p style="margin:0 0 20px;color:#64748b;font-size:15px;">Hi ${clientName}, this confirms your payment to <strong>${senderName}</strong> has been received.</p>
+        <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border-radius:8px;margin:0 0 24px;">
+            <tr><td style="padding:10px 16px;color:#64748b;font-size:13px;">Receipt ID</td><td style="padding:10px 16px;font-weight:700;color:#0f172a;font-size:13px;">${receipt.id.slice(0, 8).toUpperCase()}</td></tr>
+            <tr><td style="padding:10px 16px;color:#64748b;font-size:13px;">Paid To</td><td style="padding:10px 16px;font-weight:700;color:#0f172a;">${senderName}</td></tr>
+            <tr><td style="padding:10px 16px;color:#64748b;font-size:13px;">Amount Paid</td><td style="padding:10px 16px;font-weight:700;color:#16a34a;font-size:18px;">${currencySymbol}${receipt.totalAmount.toLocaleString()}</td></tr>
+            <tr><td style="padding:10px 16px;color:#64748b;font-size:13px;">Date</td><td style="padding:10px 16px;font-weight:700;color:#0f172a;">${receipt.paidDate}</td></tr>
+        </table>
+        <p style="margin:0 0 8px;color:#64748b;font-size:13px;">📎 A PDF receipt is attached to this email for your records.</p>
+        <p style="margin:0;color:#94a3b8;font-size:12px;">This receipt was generated via Fiscana. If you have any questions, please contact ${senderName} directly.</p>
+    `);
+    await sendMail(clientEmail, `Payment Receipt from ${senderName} — ${currencySymbol}${receipt.totalAmount.toLocaleString()}`, html, [
+        {
+            filename: `Fiscana_Receipt_${receipt.id.slice(0, 8).toUpperCase()}.pdf`,
+            content: pdfBuffer,
+            contentType: 'application/pdf',
+        },
+    ]);
+}
+
+// ============================================================
 // 5. Transaction Email (Add Funds / Withdraw)
 // ============================================================
 
@@ -367,6 +443,8 @@ export const emailService = {
     sendAdminNewUserAlert,
     sendInvoiceEmail,
     sendInvoiceToClient,
+    sendReceiptEmail,
+    sendReceiptToClient,
     sendTransactionEmail,
     sendKYCSubmittedEmail,
     sendKYCAdminAlert,
