@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Plus, Send, Download, CreditCard, Bitcoin, CheckCircle, Calculator, FileCheck, Loader2, PieChart, X, AlertCircle, Wallet } from 'lucide-react';
-import { Invoice, InvoiceStatus, PaymentMethod, Transaction, TransactionType, UserProfile } from '../types';
+import { Invoice, InvoiceStatus, PaymentMethod, UserProfile } from '../types';
 import { calculateInvoiceTotals } from '../utils/tax';
 import { formatCurrency } from '../utils/currency';
 
@@ -9,7 +9,6 @@ interface InvoicesProps {
     invoices: Invoice[];
     user: UserProfile | null;
     addInvoice: (inv: Invoice) => void;
-    addTransaction: (t: Transaction) => void;
     recordPayment: (id: string, amount: number, date: string, note?: string) => void;
     notify: (type: 'SUCCESS' | 'ERROR' | 'INFO', message: string) => void;
 }
@@ -20,7 +19,7 @@ declare global {
     }
 }
 
-const Invoices: React.FC<InvoicesProps> = ({ invoices, user, addInvoice, addTransaction, recordPayment, notify }) => {
+const Invoices: React.FC<InvoicesProps> = ({ invoices, user, addInvoice, recordPayment, notify }) => {
     const [isCreating, setIsCreating] = useState(false);
     const [isGenerating, setIsGenerating] = useState(false);
     const [downloadingId, setDownloadingId] = useState<string | null>(null);
@@ -117,34 +116,7 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, user, addInvoice, addTran
                 }
             };
 
-            const newTransaction: Transaction = {
-                id: `tx_${invoiceId}`,
-                date: issueDate,
-                description: `Invoice #${invoiceId} - ${description || 'Services Rendered'}`,
-                payee: clientName,
-                amount: totalReceivable,
-                grossAmount: subTotal,
-                currency: currency,
-                exchangeRateSnapshot: 1550,
-                type: TransactionType.INCOME,
-                category: 'Service Revenue',
-                taxDeductible: false,
-                taxDetails: {
-                    vatAmount: vat,
-                    whtAmount: wht,
-                    isRemitted: false
-                },
-                auditLog: {
-                    createdAt: new Date().toISOString(),
-                    createdBy: 'System (Invoice Module)',
-                    source: 'INVOICE_GENERATED'
-                },
-                tags: ['#Invoiced', '#Receivable'],
-                status: 'PENDING'
-            };
-
             addInvoice(newInvoice);
-            addTransaction(newTransaction);
 
             setIsCreating(false);
             setClientName('');

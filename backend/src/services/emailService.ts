@@ -213,6 +213,44 @@ export async function sendInvoiceEmail(
 }
 
 // ============================================================
+// 4b. Invoice Email to Client
+// ============================================================
+
+export async function sendInvoiceToClient(
+    clientEmail: string,
+    clientName: string,
+    invoice: {
+        id: string;
+        totalAmount: number;
+        currency: string;
+        dueDate: string;
+    },
+    senderName: string,
+    pdfBuffer: Buffer
+) {
+    const currencySymbol = invoice.currency === 'NGN' ? '₦' : invoice.currency === 'USD' ? '$' : invoice.currency;
+    const html = wrapHTML('You Have a New Invoice', `
+        <h1 style="margin:0 0 8px;font-size:24px;color:#0f172a;">New Invoice Received 📄</h1>
+        <p style="margin:0 0 20px;color:#64748b;font-size:15px;">Hi ${clientName}, you've received an invoice from <strong>${senderName}</strong>.</p>
+        <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border-radius:8px;margin:0 0 24px;">
+            <tr><td style="padding:10px 16px;color:#64748b;font-size:13px;">Invoice ID</td><td style="padding:10px 16px;font-weight:700;color:#0f172a;font-size:13px;">${invoice.id.slice(0, 8).toUpperCase()}</td></tr>
+            <tr><td style="padding:10px 16px;color:#64748b;font-size:13px;">From</td><td style="padding:10px 16px;font-weight:700;color:#0f172a;">${senderName}</td></tr>
+            <tr><td style="padding:10px 16px;color:#64748b;font-size:13px;">Amount Due</td><td style="padding:10px 16px;font-weight:700;color:#16a34a;font-size:18px;">${currencySymbol}${invoice.totalAmount.toLocaleString()}</td></tr>
+            <tr><td style="padding:10px 16px;color:#64748b;font-size:13px;">Due Date</td><td style="padding:10px 16px;font-weight:700;color:#0f172a;">${invoice.dueDate}</td></tr>
+        </table>
+        <p style="margin:0 0 8px;color:#64748b;font-size:13px;">📎 Please review the attached invoice PDF for full details including payment instructions.</p>
+        <p style="margin:0;color:#94a3b8;font-size:12px;">This invoice was generated via Fiscana. If you have any questions, please contact ${senderName} directly.</p>
+    `);
+    await sendMail(clientEmail, `Invoice from ${senderName} — ${currencySymbol}${invoice.totalAmount.toLocaleString()} Due`, html, [
+        {
+            filename: `Fiscana_Invoice_${invoice.id.slice(0, 8).toUpperCase()}.pdf`,
+            content: pdfBuffer,
+            contentType: 'application/pdf',
+        },
+    ]);
+}
+
+// ============================================================
 // 5. Transaction Email (Add Funds / Withdraw)
 // ============================================================
 
@@ -328,6 +366,7 @@ export const emailService = {
     sendWelcomeEmail,
     sendAdminNewUserAlert,
     sendInvoiceEmail,
+    sendInvoiceToClient,
     sendTransactionEmail,
     sendKYCSubmittedEmail,
     sendKYCAdminAlert,

@@ -552,7 +552,6 @@ function App() {
           invoices={invoices}
           user={userProfile}
           addInvoice={addInvoice}
-          addTransaction={addTransaction}
           recordPayment={recordPayment}
           notify={notify}
         />;

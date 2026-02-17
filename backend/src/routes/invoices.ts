@@ -147,7 +147,7 @@ router.post(
 
         logger.info('[INVOICE] Created invoice', { id: invoice.id, userId });
 
-        // Send invoice email with PDF attachment (fire-and-forget)
+        // Send invoice emails with PDF attachment (fire-and-forget)
         (async () => {
             try {
                 const user = req.user!;
@@ -175,20 +175,33 @@ router.post(
                     userName: user.name,
                     userEmail: user.email,
                 });
+
+                const invoiceMeta = {
+                    id: invoice.id,
+                    clientName: invoice.clientName,
+                    totalAmount: invoice.totalAmount,
+                    currency: invoice.currency,
+                    dueDate: invoice.dueDate.toLocaleDateString(),
+                };
+
+                // Send confirmation email to the user
                 await emailService.sendInvoiceEmail(
                     user.email,
                     user.name,
-                    {
-                        id: invoice.id,
-                        clientName: invoice.clientName,
-                        totalAmount: invoice.totalAmount,
-                        currency: invoice.currency,
-                        dueDate: invoice.dueDate.toLocaleDateString(),
-                    },
+                    invoiceMeta,
+                    pdfBuffer
+                );
+
+                // Send invoice notification to the client
+                await emailService.sendInvoiceToClient(
+                    invoice.clientEmail,
+                    invoice.clientName,
+                    invoiceMeta,
+                    user.name,
                     pdfBuffer
                 );
             } catch (err: any) {
-                logger.error('[INVOICE] Failed to send invoice email:', err.message);
+                logger.error('[INVOICE] Failed to send invoice emails:', err.message);
             }
         })();
 
