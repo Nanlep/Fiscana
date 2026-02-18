@@ -57,33 +57,46 @@ const Ledger: React.FC<LedgerProps> = ({ transactions, addTransaction, addTransa
     });
 
     const handleExportCSV = () => {
+        // Helper to properly escape CSV fields (handles commas, quotes, newlines, and # characters)
+        const escapeCSV = (value: string | number | boolean | undefined | null): string => {
+            if (value === null || value === undefined) return '';
+            const str = String(value);
+            // If the field contains commas, quotes, newlines, or special characters, wrap in quotes
+            if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('#')) {
+                return `"${str.replace(/"/g, '""')}"`;
+            }
+            return str;
+        };
+
         const headers = ['ID', 'Date', 'Type', 'Category Type', 'Payee', 'Description', 'Amount', 'Currency', 'Category', 'Tax Tag', 'Tags', 'Deductible'];
         const rows = filtered.map(t => [
-            t.id,
-            t.date,
-            t.type,
-            t.expenseCategory || 'N/A',
-            `"${t.payee}"`, // Quote to handle commas
-            `"${t.description}"`,
-            t.amount,
-            t.currency,
-            t.category,
-            t.taxTag || 'N/A',
-            `"${t.tags?.join(', ') || ''}"`,
-            t.taxDeductible ? 'Yes' : 'No'
+            escapeCSV(t.id),
+            escapeCSV(t.date),
+            escapeCSV(t.type),
+            escapeCSV(t.expenseCategory || 'N/A'),
+            escapeCSV(t.payee),
+            escapeCSV(t.description),
+            escapeCSV(t.amount),
+            escapeCSV(t.currency),
+            escapeCSV(t.category),
+            escapeCSV(t.taxTag || 'N/A'),
+            escapeCSV(t.tags?.join(', ') || ''),
+            escapeCSV(t.taxDeductible ? 'Yes' : 'No')
         ]);
 
-        const csvContent = "data:text/csv;charset=utf-8,"
-            + headers.join(",") + "\n"
-            + rows.map(e => e.join(",")).join("\n");
+        const csvString = headers.join(',') + '\n' + rows.map(r => r.join(',')).join('\n');
 
-        const encodedUri = encodeURI(csvContent);
-        const link = document.createElement("a");
-        link.setAttribute("href", encodedUri);
-        link.setAttribute("download", `fiscana_ledger_${new Date().toISOString().split('T')[0]}.csv`);
+        // Use Blob + URL.createObjectURL instead of data URI to avoid issues
+        // with encodeURI not encoding # and other special characters
+        const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        link.setAttribute('download', `fiscana_ledger_${filterType.toLowerCase()}_${new Date().toISOString().split('T')[0]}.csv`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+        URL.revokeObjectURL(url);
     };
 
     const openModal = (type: TransactionType) => {
@@ -397,8 +410,8 @@ const Ledger: React.FC<LedgerProps> = ({ transactions, addTransaction, addTransa
                                         type="button"
                                         onClick={() => setFormData({ ...formData, expenseCategory: 'BUSINESS', category: '' })}
                                         className={`flex-1 flex items-center justify-center space-x-2 py-2 rounded-md text-sm font-bold transition-all ${formData.expenseCategory === 'BUSINESS'
-                                                ? 'bg-white shadow-sm text-blue-700'
-                                                : 'text-slate-500 hover:text-slate-700'
+                                            ? 'bg-white shadow-sm text-blue-700'
+                                            : 'text-slate-500 hover:text-slate-700'
                                             }`}
                                     >
                                         <Briefcase size={16} /> <span>Business</span>
@@ -407,8 +420,8 @@ const Ledger: React.FC<LedgerProps> = ({ transactions, addTransaction, addTransa
                                         type="button"
                                         onClick={() => setFormData({ ...formData, expenseCategory: 'PERSONAL', category: '' })}
                                         className={`flex-1 flex items-center justify-center space-x-2 py-2 rounded-md text-sm font-bold transition-all ${formData.expenseCategory === 'PERSONAL'
-                                                ? 'bg-white shadow-sm text-purple-700'
-                                                : 'text-slate-500 hover:text-slate-700'
+                                            ? 'bg-white shadow-sm text-purple-700'
+                                            : 'text-slate-500 hover:text-slate-700'
                                             }`}
                                     >
                                         <User size={16} /> <span>Personal</span>
@@ -506,8 +519,8 @@ const Ledger: React.FC<LedgerProps> = ({ transactions, addTransaction, addTransa
                             <button
                                 type="submit"
                                 className={`w-full py-3 rounded-xl font-bold text-white shadow-lg transition-colors flex justify-center items-center space-x-2 ${newTxType === TransactionType.INCOME
-                                        ? 'bg-green-600 hover:bg-green-700 shadow-green-600/20'
-                                        : 'bg-red-600 hover:bg-red-700 shadow-red-600/20'
+                                    ? 'bg-green-600 hover:bg-green-700 shadow-green-600/20'
+                                    : 'bg-red-600 hover:bg-red-700 shadow-red-600/20'
                                     }`}
                             >
                                 <Check size={20} />
