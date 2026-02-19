@@ -70,18 +70,15 @@ function App() {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   };
 
-  // --- Load all data from API on mount ---
-  const loadAllData = useCallback(async () => {
+  // --- Phase 1: Load CRITICAL data (Dashboard needs these) ---
+  const loadCriticalData = useCallback(async () => {
     if (!isAuthenticated) return;
     setDataLoading(true);
     try {
-      const [txRes, invRes, assetRes, liabRes, budgetRes, kycRes] = await Promise.all([
+      const [txRes, invRes, walletRes] = await Promise.all([
         transactionsApi.list({ limit: 100 }),
         invoicesApi.list({ limit: 100 }),
-        assetsApi.list(),
-        liabilitiesApi.list(),
-        budgetsApi.list(),
-        kycApi.list()
+        paymentsApi.getWallet()
       ]);
 
       if (txRes.success && txRes.data) {
@@ -146,6 +143,27 @@ function App() {
         })) : []);
       }
 
+      if (walletRes.success && walletRes.data?.balances) {
+        setWalletBalances(walletRes.data.balances);
+      }
+    } catch (err) {
+      console.error('Failed to load critical data:', err);
+    } finally {
+      setDataLoading(false);
+    }
+  }, [isAuthenticated]);
+
+  // --- Phase 2: Load SECONDARY data (non-blocking, loads in background) ---
+  const loadSecondaryData = useCallback(async () => {
+    if (!isAuthenticated) return;
+    try {
+      const [assetRes, liabRes, budgetRes, kycRes] = await Promise.all([
+        assetsApi.list(),
+        liabilitiesApi.list(),
+        budgetsApi.list(),
+        kycApi.list()
+      ]);
+
       if (assetRes.success && assetRes.data) {
         setAssets(Array.isArray(assetRes.data) ? assetRes.data.map((a: any) => ({
           id: a.id, name: a.name, value: a.value, currency: a.currency, type: a.type
@@ -171,19 +189,22 @@ function App() {
         })) : []);
       }
     } catch (err) {
-      console.error('Failed to load data from API:', err);
-    } finally {
-      setDataLoading(false);
+      console.error('Failed to load secondary data:', err);
     }
   }, [isAuthenticated]);
 
   useEffect(() => {
-    loadAllData();
-  }, [loadAllData]);
+    loadCriticalData();
+  }, [loadCriticalData]);
 
+  // Load secondary data in background after critical data is ready
+  useEffect(() => {
+    if (!dataLoading && isAuthenticated) {
+      loadSecondaryData();
+    }
+  }, [dataLoading, isAuthenticated, loadSecondaryData]);
 
-  // Derived Values
-  // Wallet balances — fetch from API
+  // Wallet balance refresh (for after payments/withdrawals)
   const loadWalletBalances = useCallback(async () => {
     if (!isAuthenticated) return;
     try {
@@ -195,8 +216,6 @@ function App() {
       // Wallet not yet created — show empty
     }
   }, [isAuthenticated]);
-
-  useEffect(() => { loadWalletBalances(); }, [loadWalletBalances]);
 
   // Derive NGN/USDC for backward compatibility with WithdrawModal
   const walletBalanceNGN = walletBalances.find(b => b.currency === 'NGN')?.available || 0;
