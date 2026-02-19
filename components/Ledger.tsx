@@ -179,7 +179,7 @@ const Ledger: React.FC<LedgerProps> = ({ transactions, addTransaction, addTransa
     };
 
     return (
-        <div className="p-8 space-y-6">
+        <div className="p-4 md:p-8 space-y-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
                     <h1 className="text-3xl font-bold text-slate-900">General Ledger</h1>
@@ -245,18 +245,18 @@ const Ledger: React.FC<LedgerProps> = ({ transactions, addTransaction, addTransa
                     <table className="w-full">
                         <thead className="bg-slate-50 border-b border-slate-200">
                             <tr>
-                                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase">Date</th>
-                                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase">Payee / Description</th>
-                                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase">Category</th>
-                                <th className="px-6 py-4 text-right text-xs font-semibold text-slate-500 uppercase">Amount</th>
-                                <th className="px-6 py-4 text-center text-xs font-semibold text-slate-500 uppercase">Type</th>
+                                <th className="px-3 py-3 md:px-6 md:py-4 text-left text-xs font-semibold text-slate-500 uppercase">Date</th>
+                                <th className="px-3 py-3 md:px-6 md:py-4 text-left text-xs font-semibold text-slate-500 uppercase">Payee / Description</th>
+                                <th className="hidden md:table-cell px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase">Category</th>
+                                <th className="px-3 py-3 md:px-6 md:py-4 text-right text-xs font-semibold text-slate-500 uppercase">Amount</th>
+                                <th className="hidden md:table-cell px-6 py-4 text-center text-xs font-semibold text-slate-500 uppercase">Type</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                             {filtered.map(t => (
                                 <tr key={t.id} className="hover:bg-slate-50/80 transition-colors">
-                                    <td className="px-6 py-4 text-sm text-slate-600 font-mono whitespace-nowrap">{t.date}</td>
-                                    <td className="px-6 py-4">
+                                    <td className="px-3 py-3 md:px-6 md:py-4 text-xs md:text-sm text-slate-600 font-mono whitespace-nowrap">{t.date}</td>
+                                    <td className="px-3 py-3 md:px-6 md:py-4">
                                         <div className="flex items-center space-x-3">
                                             <div className={`p-1.5 rounded-full flex-shrink-0 ${t.type === 'INCOME' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
                                                 {t.type === 'INCOME' ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
@@ -278,7 +278,7 @@ const Ledger: React.FC<LedgerProps> = ({ transactions, addTransaction, addTransa
                                             </div>
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4">
+                                    <td className="hidden md:table-cell px-6 py-4">
                                         <div className="flex flex-col space-y-1 items-start">
                                             <div className="flex items-center">
                                                 <span className="inline-flex w-fit items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
@@ -297,10 +297,10 @@ const Ledger: React.FC<LedgerProps> = ({ transactions, addTransaction, addTransa
                                             )}
                                         </div>
                                     </td>
-                                    <td className={`px-6 py-4 text-right font-mono font-bold whitespace-nowrap ${t.type === 'INCOME' ? 'text-green-600' : 'text-slate-800'}`}>
+                                    <td className={`px-3 py-3 md:px-6 md:py-4 text-right font-mono font-bold whitespace-nowrap text-xs md:text-sm ${t.type === 'INCOME' ? 'text-green-600' : 'text-slate-800'}`}>
                                         {t.type === 'INCOME' ? '+' : '-'} {t.currency === 'NGN' ? '₦' : '$'}{t.amount.toLocaleString()}
                                     </td>
-                                    <td className="px-6 py-4 text-center">
+                                    <td className="hidden md:table-cell px-6 py-4 text-center">
                                         {t.expenseCategory === 'BUSINESS' && (
                                             <span className="text-blue-600 text-[10px] font-bold bg-blue-50 px-2 py-1 rounded border border-blue-100 uppercase flex items-center justify-center gap-1">
                                                 <Briefcase size={10} /> Business

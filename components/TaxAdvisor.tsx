@@ -112,10 +112,10 @@ const TaxAdvisor: React.FC<TaxAdvisorProps> = ({ transactions }) => {
     };
 
     return (
-        <div className="p-8 h-full flex flex-col space-y-6">
-            <div className="flex justify-between items-center">
+        <div className="p-4 md:p-8 h-full flex flex-col space-y-6">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2">
                 <div>
-                    <h1 className="text-3xl font-bold text-slate-900">AI Financial Advisor</h1>
+                    <h1 className="text-2xl md:text-3xl font-bold text-slate-900">AI Financial Advisor</h1>
                     <p className="text-slate-500">Deep insights into your financial behavior & tax compliance</p>
                 </div>
                 <div className="flex items-center space-x-2">
@@ -126,9 +126,9 @@ const TaxAdvisor: React.FC<TaxAdvisorProps> = ({ transactions }) => {
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-12rem)]">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-auto lg:h-[calc(100vh-12rem)]">
                 {/* Left Column: Tax Liability & Financial Insights */}
-                <div className="lg:col-span-1 space-y-6 overflow-y-auto pr-2 custom-scrollbar">
+                <div className="lg:col-span-1 space-y-6 overflow-y-auto pr-0 lg:pr-2 custom-scrollbar max-h-[50vh] lg:max-h-none">
                     {loading ? (
                         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-center h-64">
                             <Loader2 className="animate-spin text-green-600" size={32} />
@@ -247,7 +247,7 @@ const TaxAdvisor: React.FC<TaxAdvisorProps> = ({ transactions }) => {
                 </div>
 
                 {/* Right Column: Chat Interface */}
-                <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-100 flex flex-col overflow-hidden">
+                <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-100 flex flex-col overflow-hidden h-[60vh] lg:h-auto">
                     <div className="p-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
                         <div>
                             <h3 className="font-bold text-slate-700 flex items-center">
@@ -272,10 +272,10 @@ const TaxAdvisor: React.FC<TaxAdvisorProps> = ({ transactions }) => {
                                         <Bot size={16} className="text-green-600" />
                                     </div>
                                 )}
-                                <div className={`flex flex-col max-w-[85%] ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+                                <div className={`flex flex-col max-w-[95%] md:max-w-[85%] ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
                                     <div className={`rounded-2xl p-4 shadow-sm ${msg.role === 'user'
-                                            ? 'bg-green-600 text-white rounded-br-none'
-                                            : 'bg-white text-slate-800 rounded-bl-none border border-slate-100'
+                                        ? 'bg-green-600 text-white rounded-br-none'
+                                        : 'bg-white text-slate-800 rounded-bl-none border border-slate-100'
                                         }`}>
                                         {msg.role === 'model' && msg.text === '' ? (
                                             <div className="flex space-x-1 h-5 items-center">
@@ -300,7 +300,7 @@ const TaxAdvisor: React.FC<TaxAdvisorProps> = ({ transactions }) => {
 
                     {/* Suggested Prompts */}
                     {chatHistory.length < 3 && (
-                        <div className="px-4 pt-2 flex space-x-2 overflow-x-auto pb-2 scrollbar-hide">
+                        <div className="px-4 pt-2 flex flex-wrap md:flex-nowrap gap-2 md:space-x-2 overflow-x-auto pb-2 scrollbar-hide">
                             {SUGGESTED_PROMPTS.map((prompt, i) => (
                                 <button
                                     key={i}

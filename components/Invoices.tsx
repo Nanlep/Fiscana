@@ -361,8 +361,8 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, user, addInvoice, recordP
     };
 
     return (
-        <div className="p-8 space-y-6">
-            <div className="flex justify-between items-center">
+        <div className="p-4 md:p-8 space-y-6">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
                 <div>
                     <h1 className="text-3xl font-bold text-slate-900">Invoices</h1>
                     <p className="text-slate-500">VAT & WHT Compliant Invoicing</p>
@@ -547,98 +547,102 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, user, addInvoice, recordP
             )}
 
             {/* Invoice List */}
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden overflow-x-auto">
-                <table className="w-full">
-                    <thead className="bg-slate-50 border-b border-slate-200">
-                        <tr>
-                            <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase">Client / ID</th>
-                            <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase">Total</th>
-                            <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase">Progress</th>
-                            <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase">Balance</th>
-                            <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase">Status</th>
-                            <th className="px-6 py-4 text-right text-xs font-semibold text-slate-500 uppercase">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                        {invoices.map((inv) => {
-                            const paid = inv.amountPaid || 0;
-                            const total = inv.totalAmount;
-                            const balance = total - paid;
-                            const percent = Math.min((paid / total) * 100, 100);
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                <div className="overflow-x-auto">
+                    <table className="w-full">
+                        <thead className="bg-slate-50 border-b border-slate-200">
+                            <tr>
+                                <th className="px-3 py-3 md:px-6 md:py-4 text-left text-xs font-semibold text-slate-500 uppercase">Client / ID</th>
+                                <th className="px-3 py-3 md:px-6 md:py-4 text-left text-xs font-semibold text-slate-500 uppercase">Total</th>
+                                <th className="hidden md:table-cell px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase">Progress</th>
+                                <th className="hidden md:table-cell px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase">Balance</th>
+                                <th className="px-3 py-3 md:px-6 md:py-4 text-left text-xs font-semibold text-slate-500 uppercase">Status</th>
+                                <th className="px-2 py-3 md:px-6 md:py-4 text-right text-xs font-semibold text-slate-500 uppercase">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                            {invoices.map((inv) => {
+                                const paid = inv.amountPaid || 0;
+                                const total = inv.totalAmount;
+                                const balance = total - paid;
+                                const percent = Math.min((paid / total) * 100, 100);
 
-                            return (
-                                <tr key={inv.id} className="hover:bg-slate-50/80 transition-colors">
-                                    <td className="px-6 py-4">
-                                        <p className="font-medium text-slate-900">{inv.clientName}</p>
-                                        <p className="text-xs text-slate-500">{inv.id}</p>
-                                    </td>
-                                    <td className="px-6 py-4 font-mono text-slate-900 font-bold text-sm">
-                                        {inv.currency === 'NGN' ? '₦' : '$'}{total.toLocaleString()}
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <div className="w-24 bg-slate-100 rounded-full h-1.5 overflow-hidden">
-                                            <div
-                                                className={`h-1.5 rounded-full ${percent >= 100 ? 'bg-green-500' : 'bg-blue-500'}`}
-                                                style={{ width: `${percent}%` }}
-                                            ></div>
-                                        </div>
-                                        <p className="text-[10px] text-slate-400 mt-1">{percent.toFixed(0)}% Paid</p>
-                                    </td>
-                                    <td className="px-6 py-4 font-mono text-sm font-medium text-slate-600">
-                                        {balance > 0 ? (
-                                            <span>{inv.currency === 'NGN' ? '₦' : '$'}{balance.toLocaleString()}</span>
-                                        ) : (
-                                            <span className="text-green-600 text-xs">Settled</span>
-                                        )}
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                                return (
+                                    <tr key={inv.id} className="hover:bg-slate-50/80 transition-colors">
+                                        <td className="px-3 py-3 md:px-6 md:py-4 max-w-[120px] md:max-w-none">
+                                            <p className="font-medium text-slate-900 text-xs md:text-sm truncate">{inv.clientName}</p>
+                                            <p className="text-[10px] md:text-xs text-slate-500 truncate">{inv.id}</p>
+                                        </td>
+                                        <td className="px-3 py-3 md:px-6 md:py-4 font-mono text-slate-900 font-bold text-xs md:text-sm">
+                                            {inv.currency === 'NGN' ? '₦' : '$'}{total.toLocaleString()}
+                                        </td>
+                                        <td className="hidden md:table-cell px-6 py-4">
+                                            <div className="w-24 bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                                                <div
+                                                    className={`h-1.5 rounded-full ${percent >= 100 ? 'bg-green-500' : 'bg-blue-500'}`}
+                                                    style={{ width: `${percent}%` }}
+                                                ></div>
+                                            </div>
+                                            <p className="text-[10px] text-slate-400 mt-1">{percent.toFixed(0)}% Paid</p>
+                                        </td>
+                                        <td className="hidden md:table-cell px-6 py-4 font-mono text-sm font-medium text-slate-600">
+                                            {balance > 0 ? (
+                                                <span>{inv.currency === 'NGN' ? '₦' : '$'}{balance.toLocaleString()}</span>
+                                            ) : (
+                                                <span className="text-green-600 text-xs">Settled</span>
+                                            )}
+                                        </td>
+                                        <td className="px-3 py-3 md:px-6 md:py-4">
+                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
                         ${inv.status === InvoiceStatus.PAID ? 'bg-green-100 text-green-800' :
-                                                inv.status === InvoiceStatus.PARTIALLY_PAID ? 'bg-amber-100 text-amber-800' :
-                                                    inv.status === InvoiceStatus.SENT ? 'bg-blue-100 text-blue-800' :
-                                                        'bg-slate-100 text-slate-800'}`}>
-                                            {inv.status.replace('_', ' ')}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4 text-right flex justify-end space-x-2">
-                                        {/* Receipt Button */}
-                                        {paid > 0 && (
-                                            <button
-                                                onClick={() => handleGenerateReceipt(inv)}
-                                                disabled={!!downloadingId}
-                                                className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors disabled:opacity-50"
-                                                title="Download Receipt PDF"
-                                            >
-                                                {downloadingId && downloadingId.includes(inv.id) && downloadingId.includes('Receipt') ? <Loader2 size={18} className="animate-spin" /> : <FileCheck size={18} />}
-                                            </button>
-                                        )}
+                                                    inv.status === InvoiceStatus.PARTIALLY_PAID ? 'bg-amber-100 text-amber-800' :
+                                                        inv.status === InvoiceStatus.SENT ? 'bg-blue-100 text-blue-800' :
+                                                            'bg-slate-100 text-slate-800'}`}>
+                                                {inv.status.replace('_', ' ')}
+                                            </span>
+                                        </td>
+                                        <td className="px-2 py-3 md:px-6 md:py-4 text-right">
+                                            <div className="flex justify-end space-x-1 md:space-x-2">
+                                                {/* Receipt Button */}
+                                                {paid > 0 && (
+                                                    <button
+                                                        onClick={() => handleGenerateReceipt(inv)}
+                                                        disabled={!!downloadingId}
+                                                        className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors disabled:opacity-50"
+                                                        title="Download Receipt PDF"
+                                                    >
+                                                        {downloadingId && downloadingId.includes(inv.id) && downloadingId.includes('Receipt') ? <Loader2 size={18} className="animate-spin" /> : <FileCheck size={18} />}
+                                                    </button>
+                                                )}
 
-                                        {/* Record Payment Button */}
-                                        {balance > 0 && (
-                                            <button
-                                                onClick={() => openPaymentModal(inv)}
-                                                className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                                title="Record Payment"
-                                            >
-                                                <CreditCard size={18} />
-                                            </button>
-                                        )}
+                                                {/* Record Payment Button */}
+                                                {balance > 0 && (
+                                                    <button
+                                                        onClick={() => openPaymentModal(inv)}
+                                                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                                        title="Record Payment"
+                                                    >
+                                                        <CreditCard size={18} />
+                                                    </button>
+                                                )}
 
-                                        {/* Invoice Download */}
-                                        <button
-                                            onClick={() => handleDownloadInvoice(inv)}
-                                            disabled={!!downloadingId}
-                                            className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50"
-                                            title="Download Invoice PDF"
-                                        >
-                                            {downloadingId && downloadingId.includes(inv.id) && downloadingId.includes('Invoice') ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />}
-                                        </button>
-                                    </td>
-                                </tr>
-                            );
-                        })}
-                    </tbody>
-                </table>
+                                                {/* Invoice Download */}
+                                                <button
+                                                    onClick={() => handleDownloadInvoice(inv)}
+                                                    disabled={!!downloadingId}
+                                                    className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50"
+                                                    title="Download Invoice PDF"
+                                                >
+                                                    {downloadingId && downloadingId.includes(inv.id) && downloadingId.includes('Invoice') ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />}
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
             {/* Record Payment Modal */}
