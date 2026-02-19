@@ -523,13 +523,13 @@ function App() {
     }
   };
 
-  // Loading state
-  if (authLoading || (isAuthenticated && dataLoading)) {
+  // Loading state — only block on auth check, not data loading
+  if (authLoading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-12 h-12 text-green-600 animate-spin mx-auto mb-4" />
-          <p className="text-slate-600">{authLoading ? 'Loading...' : 'Loading your data...'}</p>
+          <p className="text-slate-600">Loading...</p>
         </div>
       </div>
     );
@@ -565,7 +565,7 @@ function App() {
   const renderUserContent = () => {
     switch (currentView) {
       case 'DASHBOARD':
-        return <Dashboard transactions={transactions} invoices={invoices} user={userProfile} exchangeRate={exchangeRate} />;
+        return <Dashboard transactions={transactions} invoices={invoices} user={userProfile} exchangeRate={exchangeRate} dataLoading={dataLoading} />;
       case 'INVOICES':
         return <Invoices
           invoices={invoices}
@@ -599,7 +599,7 @@ function App() {
       case 'KYC':
         return <KYCVerification user={userProfile!} onSubmit={handleKYCSubmit} />;
       default:
-        return <Dashboard transactions={transactions} invoices={invoices} user={userProfile} exchangeRate={exchangeRate} />;
+        return <Dashboard transactions={transactions} invoices={invoices} user={userProfile} exchangeRate={exchangeRate} dataLoading={dataLoading} />;
     }
   };
 
