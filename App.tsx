@@ -632,7 +632,7 @@ function App() {
         onClose={() => setIsMobileMenuOpen(false)}
       />
 
-      <main className="flex-1 md:ml-64 pt-16 md:pt-0">
+      <main className="flex-1 md:ml-0 pt-16 md:pt-0 min-w-0 overflow-x-hidden">
         {renderUserContent()}
       </main>
 

@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
-import { Plus, Send, Download, CreditCard, Bitcoin, CheckCircle, Calculator, FileCheck, Loader2, PieChart, X, AlertCircle, Wallet } from 'lucide-react';
-import { Invoice, InvoiceStatus, PaymentMethod, UserProfile } from '../types';
+import { Plus, Send, Download, CreditCard, Bitcoin, CheckCircle, Calculator, FileCheck, Loader2, PieChart, X, AlertCircle, Wallet, Trash2 } from 'lucide-react';
+import { Invoice, InvoiceItem, InvoiceStatus, PaymentMethod, UserProfile } from '../types';
 import { calculateInvoiceTotals } from '../utils/tax';
 import { formatCurrency } from '../utils/currency';
 
@@ -33,8 +33,9 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, user, addInvoice, recordP
     // Create Form State
     const [clientName, setClientName] = useState('');
     const [clientEmail, setClientEmail] = useState('');
-    const [amount, setAmount] = useState('');
-    const [description, setDescription] = useState('');
+    const [items, setItems] = useState<InvoiceItem[]>([
+        { id: '1', description: '', quantity: 1, unitPrice: 0 }
+    ]);
     const [currency, setCurrency] = useState<'NGN' | 'USD'>('NGN');
     const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([PaymentMethod.FIAT_NGN]);
     const [addVat, setAddVat] = useState(true);
@@ -54,13 +55,40 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, user, addInvoice, recordP
         }
     };
 
+    // Item management helpers
+    const addItem = () => {
+        setItems([...items, { id: Date.now().toString(), description: '', quantity: 1, unitPrice: 0 }]);
+    };
+
+    const removeItem = (id: string) => {
+        if (items.length <= 1) return;
+        setItems(items.filter(item => item.id !== id));
+    };
+
+    const updateItem = (id: string, field: keyof InvoiceItem, value: string | number) => {
+        setItems(items.map(item =>
+            item.id === id ? { ...item, [field]: value } : item
+        ));
+    };
+
     // Calculations
-    const subTotal = parseFloat(amount) || 0;
+    const subTotal = items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
     const { vat, wht, totalReceivable } = calculateInvoiceTotals(subTotal, addVat, expectWht, 'INDIVIDUAL');
 
     const handleCreate = async () => {
-        if (!clientName || !amount) {
-            notify('ERROR', 'Please fill in Client Name and Amount');
+        if (!clientName) {
+            notify('ERROR', 'Please fill in Client Name');
+            return;
+        }
+
+        const invalidItems = items.filter(item => !item.description || item.unitPrice <= 0);
+        if (invalidItems.length > 0) {
+            notify('ERROR', 'Please fill in description and unit price for all line items');
+            return;
+        }
+
+        if (subTotal <= 0) {
+            notify('ERROR', 'Invoice total must be greater than zero');
             return;
         }
 
@@ -84,12 +112,12 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, user, addInvoice, recordP
         setIsGenerating(true);
 
         try {
-            const items = [{
-                id: '1',
-                description,
-                quantity: 1,
-                unitPrice: subTotal
-            }];
+            const invoiceItems = items.map((item, idx) => ({
+                id: (idx + 1).toString(),
+                description: item.description,
+                quantity: item.quantity,
+                unitPrice: item.unitPrice
+            }));
 
             const invoiceId = Math.random().toString(36).substr(2, 9).toUpperCase();
             const issueDate = new Date().toISOString().split('T')[0];
@@ -100,7 +128,7 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, user, addInvoice, recordP
                 clientEmail: clientEmail || 'client@example.com',
                 issueDate: issueDate,
                 dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-                items: items,
+                items: invoiceItems,
                 currency,
                 subTotal: subTotal,
                 vatAmount: vat,
@@ -121,8 +149,7 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, user, addInvoice, recordP
             setIsCreating(false);
             setClientName('');
             setClientEmail('');
-            setAmount('');
-            setDescription('');
+            setItems([{ id: '1', description: '', quantity: 1, unitPrice: 0 }]);
             setBankName('');
             setAccountNumber('');
             setAccountName('');
@@ -361,7 +388,7 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, user, addInvoice, recordP
     };
 
     return (
-        <div className="p-4 md:p-8 space-y-6">
+        <div className="p-4 md:px-5 md:py-6 space-y-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
                 <div>
                     <h1 className="text-3xl font-bold text-slate-900">Invoices</h1>
@@ -404,15 +431,93 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, user, addInvoice, recordP
                                     placeholder="billing@client.com"
                                 />
                             </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Service Description</label>
-                                <input
-                                    type="text"
-                                    value={description}
-                                    onChange={(e) => setDescription(e.target.value)}
-                                    className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
-                                    placeholder="Project consultation fee"
-                                />
+                            {/* Line Items Section */}
+                            <div className="md:col-span-2">
+                                <label className="block text-sm font-bold text-slate-700 mb-3 flex items-center space-x-2">
+                                    <Calculator size={16} />
+                                    <span>Items / Services</span>
+                                </label>
+                                <div className="bg-slate-50 rounded-xl border border-slate-200 overflow-hidden">
+                                    {/* Header Row */}
+                                    <div className="grid grid-cols-12 gap-2 px-4 py-2.5 bg-slate-100 border-b border-slate-200">
+                                        <div className="col-span-5 text-xs font-semibold text-slate-500 uppercase">Description</div>
+                                        <div className="col-span-2 text-xs font-semibold text-slate-500 uppercase text-center">Qty</div>
+                                        <div className="col-span-2 text-xs font-semibold text-slate-500 uppercase text-right">Unit Price</div>
+                                        <div className="col-span-2 text-xs font-semibold text-slate-500 uppercase text-right">Total</div>
+                                        <div className="col-span-1"></div>
+                                    </div>
+
+                                    {/* Item Rows */}
+                                    <div className="divide-y divide-slate-100">
+                                        {items.map((item, idx) => (
+                                            <div key={item.id} className="grid grid-cols-12 gap-2 px-4 py-3 items-center hover:bg-white transition-colors">
+                                                <div className="col-span-5">
+                                                    <input
+                                                        type="text"
+                                                        value={item.description}
+                                                        onChange={(e) => updateItem(item.id, 'description', e.target.value)}
+                                                        className="w-full px-3 py-1.5 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
+                                                        placeholder={`Item ${idx + 1} description`}
+                                                    />
+                                                </div>
+                                                <div className="col-span-2">
+                                                    <input
+                                                        type="number"
+                                                        min={1}
+                                                        value={item.quantity}
+                                                        onChange={(e) => updateItem(item.id, 'quantity', Math.max(1, parseInt(e.target.value) || 1))}
+                                                        className="w-full px-3 py-1.5 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-green-500 outline-none text-center"
+                                                    />
+                                                </div>
+                                                <div className="col-span-2">
+                                                    <input
+                                                        type="number"
+                                                        min={0}
+                                                        step="0.01"
+                                                        value={item.unitPrice || ''}
+                                                        onChange={(e) => updateItem(item.id, 'unitPrice', parseFloat(e.target.value) || 0)}
+                                                        className="w-full px-3 py-1.5 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-green-500 outline-none text-right font-mono"
+                                                        placeholder="0.00"
+                                                    />
+                                                </div>
+                                                <div className="col-span-2 text-right">
+                                                    <span className="text-sm font-bold font-mono text-slate-700">
+                                                        {currency === 'NGN' ? '₦' : '$'}{(item.quantity * item.unitPrice).toLocaleString()}
+                                                    </span>
+                                                </div>
+                                                <div className="col-span-1 flex justify-center">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => removeItem(item.id)}
+                                                        disabled={items.length <= 1}
+                                                        className="p-1 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                                                        title="Remove item"
+                                                    >
+                                                        <Trash2 size={14} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {/* Add Item + Subtotal Footer */}
+                                    <div className="px-4 py-3 bg-white border-t border-slate-200 flex items-center justify-between">
+                                        <button
+                                            type="button"
+                                            onClick={addItem}
+                                            className="flex items-center space-x-1.5 text-sm font-medium text-green-600 hover:text-green-700 hover:bg-green-50 px-3 py-1.5 rounded-lg transition-colors"
+                                        >
+                                            <Plus size={16} />
+                                            <span>Add Item</span>
+                                        </button>
+                                        <div className="text-right">
+                                            <span className="text-xs text-slate-500 uppercase font-semibold mr-3">Subtotal</span>
+                                            <span className="text-lg font-bold font-mono text-slate-900">
+                                                {currency === 'NGN' ? '₦' : '$'}{subTotal.toLocaleString()}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-2">Payment Channels</label>
@@ -479,18 +584,8 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, user, addInvoice, recordP
                         </div>
 
                         <div className="space-y-4">
-                            <div className="flex space-x-4">
-                                <div className="flex-1">
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Subtotal (Excl. Tax)</label>
-                                    <input
-                                        type="number"
-                                        value={amount}
-                                        onChange={(e) => setAmount(e.target.value)}
-                                        className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-green-500 outline-none font-bold"
-                                        placeholder="0.00"
-                                    />
-                                </div>
-                                <div className="w-24">
+                            <div className="flex justify-end">
+                                <div className="w-28">
                                     <label className="block text-sm font-medium text-slate-700 mb-1">Currency</label>
                                     <select
                                         value={currency}
