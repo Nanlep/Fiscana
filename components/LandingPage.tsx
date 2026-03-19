@@ -152,7 +152,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginSuccess }) => {
                         The Financial OS for <span className="text-green-600">SMEs</span> in Nigeria's Digital Economy.
                     </h1>
                     <p className="text-lg text-slate-500 mb-8 max-w-lg">
-                        Manage invoices, multi-currency wallets, and tax compliance in one platform. Built for SMEs, freelancers, remote workers, and modern businesses to win in the digital economy with AI-powered financial intelligence and data-driven decisions.
+                        Generate & manage invoices, receipts,ledger, financial reports and more, all while being tax compliant in one platform. Built for SMEs, freelancers, remote workers, and modern businesses to win in the digital economy with AI-powered financial intelligence and data-driven decisions.
                     </p>
 
                     <div className="flex space-x-4 mb-12">
