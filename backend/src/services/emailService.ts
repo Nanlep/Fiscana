@@ -130,8 +130,8 @@ export async function sendWelcomeEmail(email: string, name: string) {
         <p style="margin:0 0 20px;color:#64748b;font-size:15px;">We're thrilled to have you on board. Here's what you can do with Fiscana:</p>
         <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px;">
             <tr><td style="padding:12px 16px;background:#f0fdf4;border-radius:8px;margin-bottom:8px;">
-                <strong style="color:#16a34a;">💰 Multi-Currency Wallet</strong>
-                <p style="margin:4px 0 0;color:#64748b;font-size:13px;">Hold and transact in NGN, USD, GBP, crypto, and more.</p>
+                <strong style="color:#16a34a;">💰SME Financing</strong>
+                <p style="margin:4px 0 0;color:#64748b;font-size:13px;">Access flexible financing options to scale your business with ease.</p>
             </td></tr>
             <tr><td style="height:8px;"></td></tr>
             <tr><td style="padding:12px 16px;background:#eff6ff;border-radius:8px;">
