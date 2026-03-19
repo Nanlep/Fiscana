@@ -28,13 +28,14 @@ model User {
   updatedAt       DateTime @updatedAt
 
   // Relationships
-  transactions Transaction[]
-  invoices     Invoice[]
-  assets       Asset[]
-  liabilities  Liability[]
-  budgets      Budget[]
-  kycRequests  KYCRequest[]
-  wallet       Wallet?
+  transactions    Transaction[]
+  invoices        Invoice[]
+  assets          Asset[]
+  liabilities     Liability[]
+  budgets         Budget[]
+  kycRequests     KYCRequest[]
+  wallet          Wallet?
+  smeApplications SMEApplication[]
 
   @@index([email])
   @@index([status])
@@ -257,4 +258,37 @@ model EmailVerification {
   createdAt   DateTime @default(now())
 
   @@index([email, code])
+}
+
+model SMEApplication {
+  id                     String    @id @default(uuid())
+  userId                 String
+  businessName           String
+  businessType           String
+  rcNumber               String?
+  businessAddress        String
+  annualRevenue          Float
+  loanAmount             Float
+  loanPurpose            String
+  repaymentPeriod        Int       // months
+  collateralDescription  String?
+  bankStatementUrl       String?
+  taxClearanceUrl        String?
+  cacDocumentUrl         String?
+  guarantorName          String
+  guarantorPhone         String
+  guarantorEmail         String
+  guarantorRelationship  String
+  status                 String    @default("PENDING") // PENDING, APPROVED, DECLINED
+  adminNote              String?
+  reviewedAt             DateTime?
+  reviewedBy             String?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  // Relationships
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@index([status])
 }

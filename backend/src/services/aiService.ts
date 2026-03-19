@@ -365,6 +365,157 @@ Return ONLY valid JSON:
             };
         }
     }
+    /**
+     * Generate a credit score based on user's full financial data
+     */
+    async generateCreditScore(userId: string): Promise<{
+        score: number;
+        rating: string;
+        factors: string[];
+        recommendations: string[];
+    }> {
+        // Fetch comprehensive financial data
+        const [user, transactions, invoices, assets, liabilities, budgets, wallet] = await Promise.all([
+            prisma.user.findUnique({ where: { id: userId } }),
+            prisma.transaction.findMany({
+                where: { userId },
+                orderBy: { date: 'desc' },
+                take: 500
+            }),
+            prisma.invoice.findMany({
+                where: { userId },
+                orderBy: { dueDate: 'desc' },
+                take: 100
+            }),
+            prisma.asset.findMany({ where: { userId } }),
+            prisma.liability.findMany({ where: { userId } }),
+            prisma.budget.findMany({ where: { userId } }),
+            prisma.wallet.findUnique({
+                where: { userId },
+                include: { balances: true }
+            })
+        ]);
+
+        if (!user || user.kycStatus !== 'VERIFIED') {
+            return {
+                score: 0,
+                rating: 'N/A',
+                factors: ['KYC verification required for credit scoring'],
+                recommendations: ['Complete your KYC verification to get your credit score']
+            };
+        }
+
+        const totalIncome = transactions
+            .filter(t => t.type === 'INCOME')
+            .reduce((sum, t) => sum + t.amount, 0);
+        const totalExpenses = transactions
+            .filter(t => t.type === 'EXPENSE')
+            .reduce((sum, t) => sum + t.amount, 0);
+        const totalAssets = assets.reduce((sum, a) => sum + a.value, 0);
+        const totalLiabilities = liabilities.reduce((sum, l) => sum + l.amount, 0);
+        const paidInvoices = invoices.filter(i => i.status === 'PAID').length;
+        const overdueInvoices = invoices.filter(i =>
+            i.status === 'OVERDUE' || (i.status !== 'PAID' && new Date(i.dueDate) < new Date())
+        ).length;
+        const walletBalances = wallet?.balances || [];
+        const totalWalletValue = walletBalances.reduce((sum, b) => sum + Number(b.available), 0);
+
+        const prompt = `
+${SYSTEM_INSTRUCTION}
+
+You are now acting as a Credit Rating engine. Analyze this user's financial data and compute a credit score.
+
+USER FINANCIAL PROFILE:
+- Account Type: ${user.type}
+- Company: ${user.companyName || 'N/A'}
+- Total Transactions: ${transactions.length}
+- Total Income (recent): ₦${totalIncome.toLocaleString()}
+- Total Expenses (recent): ₦${totalExpenses.toLocaleString()}
+- Net Position: ₦${(totalIncome - totalExpenses).toLocaleString()}
+- Total Assets: ₦${totalAssets.toLocaleString()} (${assets.length} items)
+- Total Liabilities: ₦${totalLiabilities.toLocaleString()} (${liabilities.length} items)
+- Debt-to-Asset Ratio: ${totalAssets > 0 ? ((totalLiabilities / totalAssets) * 100).toFixed(1) : 'N/A'}%
+- Total Invoices: ${invoices.length}
+- Paid Invoices: ${paidInvoices}
+- Overdue Invoices: ${overdueInvoices}
+- Invoice Payment Rate: ${invoices.length > 0 ? ((paidInvoices / invoices.length) * 100).toFixed(0) : 'N/A'}%
+- Active Budgets: ${budgets.length}
+- Wallet Balance: ₦${totalWalletValue.toLocaleString()}
+
+SCORING CRITERIA (similar to banks):
+1. Payment History (35%): Invoice payment patterns, transaction regularity
+2. Amounts Owed (30%): Debt-to-asset ratio, liability levels
+3. Length of History (15%): Transaction history depth
+4. Financial Mix (10%): Diversity of assets, income sources
+5. New Activity (10%): Recent transaction patterns, budget adherence
+
+Return ONLY valid JSON:
+{
+  "score": number (300-850),
+  "rating": "Poor" | "Fair" | "Good" | "Very Good" | "Excellent",
+  "factors": ["factor1", "factor2", "factor3"],
+  "recommendations": ["recommendation1", "recommendation2"]
+}
+
+Score ranges: 300-549 Poor, 550-649 Fair, 650-699 Good, 700-749 Very Good, 750-850 Excellent.
+`;
+
+        try {
+            const result = await gemini.generateContent(prompt);
+            const text = result.response.text();
+            if (!text) throw new Error('No response from AI');
+
+            const jsonMatch = text.match(/```json\s*([\s\S]*?)\s*```/) ||
+                text.match(/```\s*([\s\S]*?)\s*```/) ||
+                [null, text];
+            const jsonText = jsonMatch[1] || text;
+
+            logger.info(`Credit score generated for user ${userId}`);
+            return JSON.parse(jsonText.trim());
+
+        } catch (error) {
+            logger.error('Credit score generation failed:', error);
+
+            // Compute a basic fallback score
+            let score = 500;
+            const factors: string[] = [];
+            const recommendations: string[] = [];
+
+            // Payment history factor
+            if (invoices.length > 0) {
+                const paymentRate = paidInvoices / invoices.length;
+                score += Math.round(paymentRate * 100);
+                factors.push(`Invoice payment rate: ${(paymentRate * 100).toFixed(0)}%`);
+            }
+
+            // Debt ratio factor
+            if (totalAssets > 0) {
+                const debtRatio = totalLiabilities / totalAssets;
+                if (debtRatio < 0.3) score += 50;
+                else if (debtRatio > 0.7) score -= 50;
+                factors.push(`Debt-to-asset ratio: ${(debtRatio * 100).toFixed(0)}%`);
+            }
+
+            // Activity factor
+            if (transactions.length > 50) score += 30;
+            else if (transactions.length < 10) score -= 30;
+            factors.push(`${transactions.length} transactions on record`);
+
+            score = Math.min(850, Math.max(300, score));
+
+            let rating: string;
+            if (score >= 750) rating = 'Excellent';
+            else if (score >= 700) rating = 'Very Good';
+            else if (score >= 650) rating = 'Good';
+            else if (score >= 550) rating = 'Fair';
+            else rating = 'Poor';
+
+            recommendations.push('Continue maintaining good financial records to improve your score.');
+            if (overdueInvoices > 0) recommendations.push('Clear overdue invoices to boost your credit rating.');
+
+            return { score, rating, factors, recommendations };
+        }
+    }
 }
 
 // Export singleton instance

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { LayoutDashboard, Receipt, BookOpen, Landmark, BrainCircuit, Wallet, LogOut, User, Building2, X, FileBarChart, ShieldCheck, PiggyBank, Plus } from 'lucide-react';
+import { LayoutDashboard, Receipt, BookOpen, Landmark, BrainCircuit, Wallet, LogOut, User, Building2, X, FileBarChart, ShieldCheck, PiggyBank, Plus, Banknote } from 'lucide-react';
 import { ViewState, UserProfile, WalletBalance } from '../types';
 
 interface SidebarProps {
@@ -33,8 +33,9 @@ const Sidebar: React.FC<SidebarProps> = ({
         { id: 'BUDGETS', label: 'Budgets', icon: PiggyBank },
         { id: 'REPORTS', label: 'Financial Reports', icon: FileBarChart },
         { id: 'ASSETS', label: 'Assets & Liabilities', icon: Landmark },
-        { id: 'TAX_AI', label: 'Tax Advisor AI', icon: BrainCircuit },
+        { id: 'TAX_AI', label: 'Advisor AI', icon: BrainCircuit },
         { id: 'KYC', label: 'Verification', icon: ShieldCheck },
+        { id: 'SME_FINANCE', label: 'SME Finance', icon: Banknote },
     ];
 
     const handleSignOut = () => {

@@ -8,6 +8,7 @@ import Reports from './components/Reports';
 import Assets from './components/Assets';
 import TaxAdvisor from './components/TaxAdvisor';
 import BudgetModule from './components/Budget';
+import SMEFinance from './components/SMEFinance';
 import LandingPage from './components/LandingPage';
 import AdminDashboard from './components/AdminDashboard';
 import WithdrawModal from './components/WithdrawModal';
@@ -595,9 +596,11 @@ function App() {
       case 'ASSETS':
         return <Assets assets={assets} liabilities={liabilities} addAsset={addAsset} addLiability={addLiability} exchangeRate={exchangeRate} />;
       case 'TAX_AI':
-        return <TaxAdvisor transactions={transactions} />;
+        return <TaxAdvisor transactions={transactions} userProfile={userProfile} invoices={invoices} assets={assets} liabilities={liabilities} budgets={budgets} walletBalances={walletBalances} />;
       case 'KYC':
         return <KYCVerification user={userProfile!} onSubmit={handleKYCSubmit} />;
+      case 'SME_FINANCE':
+        return <SMEFinance userProfile={userProfile} notify={notify} />;
       default:
         return <Dashboard transactions={transactions} invoices={invoices} user={userProfile} exchangeRate={exchangeRate} dataLoading={dataLoading} />;
     }

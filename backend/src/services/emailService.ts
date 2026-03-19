@@ -419,6 +419,45 @@ export async function sendKYCRejectedEmail(email: string, name: string) {
 }
 
 // ============================================================
+// 8. SME Finance Emails
+// ============================================================
+
+export async function sendSMEApplicationEmail(userName: string, userEmail: string, businessName: string, loanAmount: number) {
+    const html = wrapHTML('New SME Finance Application', `
+        <h1 style="margin:0 0 8px;font-size:24px;color:#0f172a;">New SME Finance Application 📋</h1>
+        <p style="margin:0 0 20px;color:#64748b;font-size:15px;">A user has submitted an SME Finance application for review.</p>
+        <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border-radius:8px;margin:0 0 20px;">
+            <tr><td style="padding:10px 16px;color:#64748b;font-size:13px;">Applicant</td><td style="padding:10px 16px;font-weight:700;color:#0f172a;">${userName}</td></tr>
+            <tr><td style="padding:10px 16px;color:#64748b;font-size:13px;">Email</td><td style="padding:10px 16px;font-weight:700;color:#0f172a;">${userEmail}</td></tr>
+            <tr><td style="padding:10px 16px;color:#64748b;font-size:13px;">Business</td><td style="padding:10px 16px;font-weight:700;color:#0f172a;">${businessName}</td></tr>
+            <tr><td style="padding:10px 16px;color:#64748b;font-size:13px;">Loan Amount</td><td style="padding:10px 16px;font-weight:700;color:#16a34a;font-size:18px;">₦${Number(loanAmount).toLocaleString()}</td></tr>
+            <tr><td style="padding:10px 16px;color:#64748b;font-size:13px;">Date</td><td style="padding:10px 16px;color:#0f172a;">${new Date().toLocaleString()}</td></tr>
+        </table>
+        <a href="https://fiscana.pro" style="display:inline-block;background:#0f172a;color:#ffffff;font-weight:700;padding:12px 28px;border-radius:10px;text-decoration:none;font-size:14px;">Review in Dashboard →</a>
+    `);
+    await sendMail(config.adminEmail, `New SME Finance Application: ${businessName} — ₦${Number(loanAmount).toLocaleString()}`, html);
+}
+
+export async function sendSMEStatusUpdateEmail(email: string, name: string, businessName: string, status: string) {
+    const isApproved = status === 'APPROVED';
+    const bgColor = isApproved ? '#f0fdf4' : '#fef2f2';
+    const borderColor = isApproved ? '#16a34a' : '#dc2626';
+    const textColor = isApproved ? '#166534' : '#991b1b';
+    const statusText = isApproved ? 'Approved ✅' : status === 'DECLINED' ? 'Declined ❌' : 'Updated';
+
+    const html = wrapHTML('SME Finance Update', `
+        <h1 style="margin:0 0 8px;font-size:24px;color:#0f172a;">SME Finance Application Update</h1>
+        <p style="margin:0 0 20px;color:#64748b;font-size:15px;">Hi ${name}, there's an update on your SME Finance application for <strong>${businessName}</strong>.</p>
+        <div style="background:${bgColor};border-left:4px solid ${borderColor};padding:16px 20px;border-radius:0 8px 8px 0;margin:0 0 20px;">
+            <p style="margin:0;color:${textColor};font-size:16px;font-weight:700;">Status: ${statusText}</p>
+        </div>
+        <a href="https://fiscana.pro" style="display:inline-block;background:#16a34a;color:#ffffff;font-weight:700;padding:12px 28px;border-radius:10px;text-decoration:none;font-size:14px;">View Application →</a>
+        <p style="margin:24px 0 0;color:#94a3b8;font-size:12px;">If you have questions about this decision, please contact our support team.</p>
+    `);
+    await sendMail(email, `SME Finance Application ${statusText} — ${businessName}`, html);
+}
+
+// ============================================================
 // 7. Password Reset Email
 // ============================================================
 
@@ -451,4 +490,6 @@ export const emailService = {
     sendKYCApprovedEmail,
     sendKYCRejectedEmail,
     sendPasswordResetEmail,
+    sendSMEApplicationEmail,
+    sendSMEStatusUpdateEmail,
 };

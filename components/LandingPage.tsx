@@ -146,36 +146,36 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginSuccess }) => {
                 <div className="lg:w-1/2 px-8 lg:px-20 py-20 flex flex-col justify-center">
                     <div className="inline-flex items-center space-x-2 bg-green-50 text-green-700 px-3 py-1 rounded-full text-xs font-bold mb-6 w-fit">
                         <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                        <span>Ready for Your Tax Reforms</span>
+                        <span>Ready for Your Smart AI-Assisted Financial Management</span>
                     </div>
                     <h1 className="text-5xl lg:text-6xl font-extrabold tracking-tight text-slate-900 leading-[1.1] mb-6">
-                        The Financial OS for <span className="text-green-600">Global Players</span> in Nigeria.
+                        The Financial OS for <span className="text-green-600">SMEs</span> in Nigeria's Digital Economy.
                     </h1>
                     <p className="text-lg text-slate-500 mb-8 max-w-lg">
-                        Manage invoices, multi-currency wallets, and tax compliance in one platform. Built for freelancers, remote workers, and modern businesses.
+                        Manage invoices, multi-currency wallets, and tax compliance in one platform. Built for SMEs, freelancers, remote workers, and modern businesses to win in the digital economy with AI-powered financial intelligence and data-driven decisions.
                     </p>
 
                     <div className="flex space-x-4 mb-12">
                         <div className="flex items-center space-x-2">
                             <CheckCircle className="text-green-500" size={20} />
-                            <span className="font-medium text-slate-700">Multi-currency Invoicing</span>
+                            <span className="font-medium text-slate-700">AI-Assisted Financial Reports</span>
                         </div>
                         <div className="flex items-center space-x-2">
                             <CheckCircle className="text-green-500" size={20} />
-                            <span className="font-medium text-slate-700">Crypto & Fiat Rails</span>
+                            <span className="font-medium text-slate-700">Access SME Finance[Simplified] </span>
                         </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
                         <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
                             <Shield className="text-blue-600 mb-2" />
-                            <h3 className="font-bold">Tax Compliant</h3>
+                            <h3 className="font-bold">Tax Compliant & Smart Bookkeeping</h3>
                             <p className="text-sm text-slate-500">Auto-calculate VAT & Income Tax based on 2026 reforms.</p>
                         </div>
                         <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
                             <Globe className="text-purple-600 mb-2" />
-                            <h3 className="font-bold">Play Globally</h3>
-                            <p className="text-sm text-slate-500">Receive USD, GBP, USDC and settle in NGN instantly.</p>
+                            <h3 className="font-bold">SME Finance Origination</h3>
+                            <p className="text-sm text-slate-500">Access working capital financing easily</p>
                         </div>
                     </div>
                 </div>

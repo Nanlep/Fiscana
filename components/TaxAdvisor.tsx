@@ -1,13 +1,20 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { analyzeTaxLiability, streamChatWithTaxAdvisor } from '../services/geminiService';
-import { Transaction, TaxReport } from '../types';
-import { Calculator, ShieldCheck, AlertTriangle, Send, Loader2, Bot, TrendingUp, Briefcase, User, Lightbulb, Trash2, Clock, Sparkles } from 'lucide-react';
+import { Transaction, TaxReport, UserProfile, Invoice, Asset, Liability, Budget, WalletBalance, CreditScore } from '../types';
+import { Calculator, ShieldCheck, AlertTriangle, Send, Loader2, Bot, TrendingUp, Briefcase, User, Lightbulb, Trash2, Sparkles, Lock, Star, BarChart3 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { formatCurrency } from '../utils/currency';
+import { aiApi } from '../services/apiClient';
 
 interface TaxAdvisorProps {
     transactions: Transaction[];
+    userProfile: UserProfile | null;
+    invoices: Invoice[];
+    assets: Asset[];
+    liabilities: Liability[];
+    budgets: Budget[];
+    walletBalances: WalletBalance[];
 }
 
 interface ChatMessage {
@@ -19,20 +26,52 @@ interface ChatMessage {
 const SUGGESTED_PROMPTS = [
     "How can I reduce my tax liability?",
     "Analyze my top business expenses.",
-    "Am I spending too much on utilities?",
+    "What is my financial health outlook?",
     "Explain VAT requirements for 2026."
 ];
 
-const TaxAdvisor: React.FC<TaxAdvisorProps> = ({ transactions }) => {
+const getCreditRating = (score: number): CreditScore['rating'] => {
+    if (score >= 750) return 'Excellent';
+    if (score >= 700) return 'Very Good';
+    if (score >= 650) return 'Good';
+    if (score >= 550) return 'Fair';
+    return 'Poor';
+};
+
+const getCreditColor = (rating: CreditScore['rating']): string => {
+    switch (rating) {
+        case 'Excellent': return 'text-green-600';
+        case 'Very Good': return 'text-emerald-600';
+        case 'Good': return 'text-blue-600';
+        case 'Fair': return 'text-amber-600';
+        case 'Poor': return 'text-red-600';
+    }
+};
+
+const getCreditBgColor = (rating: CreditScore['rating']): string => {
+    switch (rating) {
+        case 'Excellent': return 'bg-green-50 border-green-100';
+        case 'Very Good': return 'bg-emerald-50 border-emerald-100';
+        case 'Good': return 'bg-blue-50 border-blue-100';
+        case 'Fair': return 'bg-amber-50 border-amber-100';
+        case 'Poor': return 'bg-red-50 border-red-100';
+    }
+};
+
+const TaxAdvisor: React.FC<TaxAdvisorProps> = ({ transactions, userProfile, invoices, assets, liabilities, budgets, walletBalances }) => {
     const [report, setReport] = useState<TaxReport | null>(null);
+    const [creditScore, setCreditScore] = useState<CreditScore | null>(null);
     const [loading, setLoading] = useState(false);
+    const [creditLoading, setCreditLoading] = useState(false);
     const chatEndRef = useRef<HTMLDivElement>(null);
+
+    const isKYCVerified = userProfile?.kycStatus === 'VERIFIED';
 
     // Chat State
     const [chatHistory, setChatHistory] = useState<ChatMessage[]>([
         {
             role: 'model',
-            text: 'Hello! I am your 2026 Financial & Tax Intelligence assistant. I have analyzed your ledger. Ask me about your spending patterns, tax liabilities, or strategic financial moves.',
+            text: 'Hello! I am your Financial Advisor AI. I can analyze your financial data, assess your creditworthiness, and provide personalized tax and spending advice. Ask me anything!',
             timestamp: new Date()
         }
     ]);
@@ -40,6 +79,7 @@ const TaxAdvisor: React.FC<TaxAdvisorProps> = ({ transactions }) => {
     const [chatLoading, setChatLoading] = useState(false);
 
     useEffect(() => {
+        if (!isKYCVerified) return;
         const fetchReport = async () => {
             setLoading(true);
             const totalIncome = transactions.filter(t => t.type === 'INCOME').reduce((sum, t) => sum + t.amount, 0);
@@ -48,7 +88,28 @@ const TaxAdvisor: React.FC<TaxAdvisorProps> = ({ transactions }) => {
             setLoading(false);
         };
         fetchReport();
-    }, [transactions]);
+    }, [transactions, isKYCVerified]);
+
+    // Fetch credit score
+    useEffect(() => {
+        if (!isKYCVerified) return;
+        const fetchCreditScore = async () => {
+            setCreditLoading(true);
+            try {
+                const res = await aiApi.getCreditScore();
+                if (res.success && res.data) {
+                    setCreditScore({
+                        ...res.data,
+                        rating: res.data.rating as CreditScore['rating']
+                    });
+                }
+            } catch (err) {
+                console.error('Credit score fetch failed:', err);
+            }
+            setCreditLoading(false);
+        };
+        fetchCreditScore();
+    }, [isKYCVerified]);
 
     useEffect(() => {
         chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -111,11 +172,63 @@ const TaxAdvisor: React.FC<TaxAdvisorProps> = ({ transactions }) => {
         return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     };
 
+    // KYC Gate: Show locked state if not verified
+    if (!isKYCVerified) {
+        return (
+            <div className="p-4 md:p-8 h-full flex flex-col items-center justify-center space-y-6">
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-8 md:p-12 text-center max-w-lg mx-auto">
+                    <div className="w-20 h-20 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <Lock size={40} className="text-amber-500" />
+                    </div>
+                    <h1 className="text-2xl md:text-3xl font-bold text-slate-900 mb-3">Advisor AI Locked</h1>
+                    <p className="text-slate-500 mb-6 leading-relaxed">
+                        To access personalized financial insights, credit scoring, and AI-powered tax advice based on your real financial data, you need to <strong>complete your KYC verification</strong> first.
+                    </p>
+                    <div className="bg-slate-50 rounded-xl p-4 mb-6 text-left space-y-3">
+                        <div className="flex items-start space-x-3">
+                            <BarChart3 size={18} className="text-green-600 mt-0.5 flex-shrink-0" />
+                            <div>
+                                <p className="text-sm font-semibold text-slate-700">Financial Health Score</p>
+                                <p className="text-xs text-slate-500">AI-computed score based on your real transaction data</p>
+                            </div>
+                        </div>
+                        <div className="flex items-start space-x-3">
+                            <Star size={18} className="text-blue-600 mt-0.5 flex-shrink-0" />
+                            <div>
+                                <p className="text-sm font-semibold text-slate-700">Credit Rating</p>
+                                <p className="text-xs text-slate-500">Bank-grade credit score computed from your financials</p>
+                            </div>
+                        </div>
+                        <div className="flex items-start space-x-3">
+                            <Bot size={18} className="text-purple-600 mt-0.5 flex-shrink-0" />
+                            <div>
+                                <p className="text-sm font-semibold text-slate-700">Personalized AI Chat</p>
+                                <p className="text-xs text-slate-500">Context-aware advice using your ledger, invoices, and assets</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="flex items-center justify-center space-x-2 text-sm text-slate-400">
+                        <ShieldCheck size={16} />
+                        <span>
+                            KYC Status: <strong className={
+                                userProfile?.kycStatus === 'PENDING' ? 'text-amber-600' :
+                                userProfile?.kycStatus === 'REJECTED' ? 'text-red-600' :
+                                'text-slate-600'
+                            }>
+                                {userProfile?.kycStatus || 'UNVERIFIED'}
+                            </strong>
+                        </span>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="p-4 md:p-8 h-full flex flex-col space-y-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2">
                 <div>
-                    <h1 className="text-2xl md:text-3xl font-bold text-slate-900">AI Financial Advisor</h1>
+                    <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Advisor AI</h1>
                     <p className="text-slate-500">Deep insights into your financial behavior & tax compliance</p>
                 </div>
                 <div className="flex items-center space-x-2">
@@ -127,7 +240,7 @@ const TaxAdvisor: React.FC<TaxAdvisorProps> = ({ transactions }) => {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-auto lg:h-[calc(100vh-12rem)]">
-                {/* Left Column: Tax Liability & Financial Insights */}
+                {/* Left Column: Financial Insights + Credit Score */}
                 <div className="lg:col-span-1 space-y-6 overflow-y-auto pr-0 lg:pr-2 custom-scrollbar max-h-[50vh] lg:max-h-none">
                     {loading ? (
                         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-center h-64">
@@ -135,7 +248,7 @@ const TaxAdvisor: React.FC<TaxAdvisorProps> = ({ transactions }) => {
                         </div>
                     ) : report ? (
                         <>
-                            {/* Score Card */}
+                            {/* Financial Health Score Card */}
                             <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 relative overflow-hidden group hover:shadow-md transition-all">
                                 <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                                     <ShieldCheck size={100} />
@@ -150,6 +263,50 @@ const TaxAdvisor: React.FC<TaxAdvisorProps> = ({ transactions }) => {
                                 <p className="text-sm text-slate-500 mt-2">
                                     {report.complianceScore > 80 ? 'Excellent financial record keeping and compliance.' : 'Attention needed for record keeping optimization.'}
                                 </p>
+                            </div>
+
+                            {/* Credit Score Card */}
+                            <div className={`p-6 rounded-2xl shadow-sm border relative overflow-hidden group hover:shadow-md transition-all ${
+                                creditScore ? getCreditBgColor(creditScore.rating) : 'bg-white border-slate-100'
+                            }`}>
+                                <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                                    <Star size={100} />
+                                </div>
+                                <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center">
+                                    <Star size={20} className="mr-2 text-blue-600" /> Credit Rating
+                                </h3>
+                                {creditLoading ? (
+                                    <div className="flex items-center justify-center h-20">
+                                        <Loader2 className="animate-spin text-blue-600" size={24} />
+                                    </div>
+                                ) : creditScore ? (
+                                    <>
+                                        <div className="flex items-end space-x-2">
+                                            <span className={`text-5xl font-bold ${getCreditColor(creditScore.rating)}`}>
+                                                {creditScore.score}
+                                            </span>
+                                            <span className="text-xl text-slate-400 mb-2">/ 850</span>
+                                        </div>
+                                        <div className="mt-2 flex items-center space-x-2">
+                                            <span className={`text-sm font-bold px-2 py-0.5 rounded-full ${getCreditColor(creditScore.rating)} bg-white/60`}>
+                                                {creditScore.rating}
+                                            </span>
+                                        </div>
+                                        {creditScore.factors.length > 0 && (
+                                            <div className="mt-4 space-y-1.5">
+                                                <p className="text-xs font-bold text-slate-600 uppercase tracking-wide">Key Factors</p>
+                                                {creditScore.factors.slice(0, 3).map((f, i) => (
+                                                    <p key={i} className="text-xs text-slate-600 flex items-start">
+                                                        <span className="mr-1.5 mt-0.5 w-1.5 h-1.5 bg-slate-400 rounded-full flex-shrink-0 block"></span>
+                                                        {f}
+                                                    </p>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </>
+                                ) : (
+                                    <p className="text-sm text-slate-500">Unable to compute credit score. Try again later.</p>
+                                )}
                             </div>
 
                             {/* Key Financial Decisions */}

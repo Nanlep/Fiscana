@@ -154,4 +154,24 @@ router.get(
     })
 );
 
+/**
+ * @route   GET /api/ai/credit-score
+ * @desc    Generate credit score based on user's financial data
+ * @access  Private
+ */
+router.get(
+    '/credit-score',
+    authenticate,
+    asyncHandler(async (req: Request, res: Response) => {
+        const userId = req.user!.id;
+
+        const creditScore = await aiService.generateCreditScore(userId);
+
+        res.json({
+            success: true,
+            data: creditScore
+        });
+    })
+);
+
 export default router;

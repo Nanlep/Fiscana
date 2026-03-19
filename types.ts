@@ -195,7 +195,45 @@ export interface TaxReport {
   keyFinancialDecisions: string[];
 }
 
-export type ViewState = 'DASHBOARD' | 'INVOICES' | 'LEDGER' | 'REPORTS' | 'ASSETS' | 'BUDGETS' | 'TAX_AI' | 'KYC';
+export type ViewState = 'DASHBOARD' | 'INVOICES' | 'LEDGER' | 'REPORTS' | 'ASSETS' | 'BUDGETS' | 'TAX_AI' | 'KYC' | 'SME_FINANCE';
+
+// ==================== Credit Score Types ====================
+
+export interface CreditScore {
+  score: number; // 300-850 scale
+  rating: 'Poor' | 'Fair' | 'Good' | 'Very Good' | 'Excellent';
+  factors: string[];
+  recommendations: string[];
+}
+
+// ==================== SME Finance Types ====================
+
+export type SMEApplicationStatus = 'PENDING' | 'APPROVED' | 'DECLINED';
+
+export interface SMEApplication {
+  id: string;
+  userId: string;
+  businessName: string;
+  businessType: string;
+  rcNumber?: string;
+  businessAddress: string;
+  annualRevenue: number;
+  loanAmount: number;
+  loanPurpose: string;
+  repaymentPeriod: number; // in months
+  collateralDescription?: string;
+  bankStatementUrl?: string;
+  taxClearanceUrl?: string;
+  cacDocumentUrl?: string;
+  guarantorName: string;
+  guarantorPhone: string;
+  guarantorEmail: string;
+  guarantorRelationship: string;
+  status: SMEApplicationStatus;
+  adminNote?: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
 // ==================== Wallet & Payment Types ====================
 

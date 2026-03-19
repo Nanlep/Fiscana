@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Users, Activity, Server, AlertTriangle, LogOut, Search, Building2, User, Trash2, Ban, CheckCircle, RefreshCw, Terminal, DollarSign, ShieldCheck, TrendingUp, Save, Loader2 } from 'lucide-react';
-import { UserProfile, KYCRequest } from '../types';
-import { adminApi, AdminUser, PlatformStats, HealthStatus } from '../services/apiClient';
+import { Users, Activity, Server, AlertTriangle, LogOut, Search, Building2, User, Trash2, Ban, CheckCircle, RefreshCw, Terminal, DollarSign, ShieldCheck, TrendingUp, Save, Loader2, Banknote, Clock, ChevronDown } from 'lucide-react';
+import { UserProfile, KYCRequest, SMEApplicationStatus } from '../types';
+import { adminApi, AdminUser, PlatformStats, HealthStatus, smeFinanceApi } from '../services/apiClient';
 
 interface AdminDashboardProps {
     onLogout: () => void;
@@ -12,7 +12,7 @@ interface AdminDashboardProps {
     onUpdateExchangeRate: (rate: number) => void;
 }
 
-type AdminView = 'OVERVIEW' | 'USERS' | 'HEALTH' | 'KYC';
+type AdminView = 'OVERVIEW' | 'USERS' | 'HEALTH' | 'KYC' | 'SME';
 
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, adminProfile, kycRequests, onReviewKYC, exchangeRate, onUpdateExchangeRate }) => {
     const [currentView, setCurrentView] = useState<AdminView>('OVERVIEW');
@@ -38,6 +38,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, adminProfile,
     // Health State — fetched from API
     const [health, setHealth] = useState<HealthStatus | null>(null);
     const [healthLoading, setHealthLoading] = useState(false);
+
+    // SME State
+    const [smeApplications, setSmeApplications] = useState<any[]>([]);
+    const [smeLoading, setSmeLoading] = useState(false);
+    const [smeStats, setSmeStats] = useState<{ total: number; pending: number; approved: number; declined: number } | null>(null);
 
     const logsEndRef = useRef<HTMLDivElement>(null);
 
@@ -84,12 +89,35 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, adminProfile,
         finally { setHealthLoading(false); }
     }, []);
 
+    const fetchSmeApplications = useCallback(async () => {
+        setSmeLoading(true);
+        try {
+            const [appsRes, statsRes] = await Promise.all([
+                smeFinanceApi.listAll({ limit: 100 }),
+                smeFinanceApi.listAll({ status: 'PENDING' }),
+            ]);
+            if (appsRes.success && appsRes.data) {
+                setSmeApplications(appsRes.data.applications);
+                // Compute stats from the full list
+                const apps = appsRes.data.applications;
+                setSmeStats({
+                    total: appsRes.data.total,
+                    pending: apps.filter((a: any) => a.status === 'PENDING').length,
+                    approved: apps.filter((a: any) => a.status === 'APPROVED').length,
+                    declined: apps.filter((a: any) => a.status === 'DECLINED').length,
+                });
+            }
+        } catch (err) { console.error('Failed to fetch SME apps', err); }
+        finally { setSmeLoading(false); }
+    }, []);
+
     // Initial data load
     useEffect(() => {
         fetchStats();
         fetchConfig();
         fetchUsers();
-    }, [fetchStats, fetchConfig, fetchUsers]);
+        fetchSmeApplications();
+    }, [fetchStats, fetchConfig, fetchUsers, fetchSmeApplications]);
 
     // Auto-refresh stats every 30 seconds
     useEffect(() => {
@@ -105,6 +133,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, adminProfile,
             return () => clearInterval(interval);
         }
     }, [currentView, fetchHealth]);
+
+    // Fetch SME when SME tab is active
+    useEffect(() => {
+        if (currentView === 'SME') {
+            fetchSmeApplications();
+        }
+    }, [currentView, fetchSmeApplications]);
 
     // Sync exchange rate prop
     useEffect(() => {
@@ -163,6 +198,18 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, adminProfile,
                 fetchStats(); // Refresh stats
             }
         } catch (err) { console.error('Failed to delete user', err); }
+    };
+
+    const handleSmeStatusChange = async (id: string, newStatus: SMEApplicationStatus, adminNote?: string) => {
+        try {
+            const res = await smeFinanceApi.updateStatus(id, newStatus, adminNote);
+            if (res.success) {
+                setSmeApplications(prev => prev.map(a => a.id === id ? { ...a, status: newStatus, adminNote: adminNote || a.adminNote } : a));
+                if (smeStats) {
+                    setSmeStats(prev => prev ? { ...prev, pending: prev.pending + (newStatus === 'PENDING' ? 1 : -1) } : prev);
+                }
+            }
+        } catch (err) { console.error('Failed to update SME status', err); }
     };
 
     const pendingKYC = kycRequests.filter(req => req.status === 'PENDING');
@@ -242,6 +289,18 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, adminProfile,
                     <p className="text-slate-500 text-sm font-medium">Total Transactions</p>
                     <h3 className="text-2xl font-bold text-slate-900">
                         {statsLoading ? <Loader2 size={20} className="animate-spin" /> : (stats?.totalTransactions ?? 0).toLocaleString()}
+                    </h3>
+                </div>
+                <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm cursor-pointer hover:bg-slate-50 transition-colors" onClick={() => setCurrentView('SME')}>
+                    <div className="flex justify-between items-start mb-4">
+                        <div className="p-2 bg-purple-50 text-purple-600 rounded-lg">
+                            <Banknote size={20} />
+                        </div>
+                        {(smeStats?.pending ?? 0) > 0 && <span className="text-xs font-bold text-white bg-purple-500 px-2 py-1 rounded-full">{smeStats!.pending} New</span>}
+                    </div>
+                    <p className="text-slate-500 text-sm font-medium">SME Applications</p>
+                    <h3 className="text-2xl font-bold text-slate-900">
+                        {statsLoading ? <Loader2 size={20} className="animate-spin" /> : (smeStats?.total ?? 0)}
                     </h3>
                 </div>
             </div>
@@ -673,6 +732,123 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, adminProfile,
         </div>
     );
 
+    const renderSME = () => (
+        <div className="space-y-6 animate-fade-in">
+            {/* SME Stats Row */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+                    <p className="text-sm text-slate-500 font-medium">Total Applications</p>
+                    <h3 className="text-2xl font-bold text-slate-900">{smeStats?.total ?? 0}</h3>
+                </div>
+                <div className="bg-amber-50 p-5 rounded-2xl border border-amber-100 shadow-sm">
+                    <p className="text-sm text-amber-700 font-medium">Pending Review</p>
+                    <h3 className="text-2xl font-bold text-amber-800">{smeStats?.pending ?? 0}</h3>
+                </div>
+                <div className="bg-green-50 p-5 rounded-2xl border border-green-100 shadow-sm">
+                    <p className="text-sm text-green-700 font-medium">Approved</p>
+                    <h3 className="text-2xl font-bold text-green-800">{smeStats?.approved ?? 0}</h3>
+                </div>
+                <div className="bg-red-50 p-5 rounded-2xl border border-red-100 shadow-sm">
+                    <p className="text-sm text-red-700 font-medium">Declined</p>
+                    <h3 className="text-2xl font-bold text-red-800">{smeStats?.declined ?? 0}</h3>
+                </div>
+            </div>
+
+            {/* Applications Table */}
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                <div className="p-5 border-b border-slate-100 flex justify-between items-center">
+                    <h3 className="font-bold text-slate-900">All Applications</h3>
+                    <button onClick={() => fetchSmeApplications()} className="text-sm text-blue-600 hover:underline flex items-center space-x-1">
+                        <RefreshCw size={14} /> <span>Refresh</span>
+                    </button>
+                </div>
+
+                {smeLoading ? (
+                    <div className="p-12 text-center">
+                        <Loader2 className="w-8 h-8 text-purple-600 animate-spin mx-auto mb-2" />
+                        <p className="text-sm text-slate-500">Loading applications...</p>
+                    </div>
+                ) : smeApplications.length === 0 ? (
+                    <div className="p-12 text-center">
+                        <Banknote className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                        <p className="text-sm text-slate-500">No SME Finance applications yet.</p>
+                    </div>
+                ) : (
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                            <thead>
+                                <tr className="bg-slate-50">
+                                    <th className="text-left px-5 py-3 font-semibold text-slate-600">Applicant</th>
+                                    <th className="text-left px-5 py-3 font-semibold text-slate-600">Business</th>
+                                    <th className="text-left px-5 py-3 font-semibold text-slate-600">Loan Amount</th>
+                                    <th className="text-left px-5 py-3 font-semibold text-slate-600">Purpose</th>
+                                    <th className="text-left px-5 py-3 font-semibold text-slate-600">Period</th>
+                                    <th className="text-left px-5 py-3 font-semibold text-slate-600">Date</th>
+                                    <th className="text-left px-5 py-3 font-semibold text-slate-600">Status</th>
+                                    <th className="text-left px-5 py-3 font-semibold text-slate-600">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {smeApplications.map((app: any) => (
+                                    <tr key={app.id} className="hover:bg-slate-50 transition-colors">
+                                        <td className="px-5 py-4">
+                                            <div>
+                                                <p className="font-medium text-slate-900">{app.user?.name || 'N/A'}</p>
+                                                <p className="text-xs text-slate-500">{app.user?.email || ''}</p>
+                                            </div>
+                                        </td>
+                                        <td className="px-5 py-4">
+                                            <p className="font-medium text-slate-800">{app.businessName}</p>
+                                            <p className="text-xs text-slate-500">{app.businessType}</p>
+                                        </td>
+                                        <td className="px-5 py-4 font-mono font-bold text-slate-900">
+                                            ₦{Number(app.loanAmount).toLocaleString()}
+                                        </td>
+                                        <td className="px-5 py-4 text-slate-700">{app.loanPurpose}</td>
+                                        <td className="px-5 py-4 text-slate-700">{app.repaymentPeriod}m</td>
+                                        <td className="px-5 py-4 text-slate-500 text-xs">{new Date(app.createdAt).toLocaleDateString()}</td>
+                                        <td className="px-5 py-4">
+                                            <span className={`inline-flex items-center space-x-1 text-xs font-bold px-2.5 py-1 rounded-full ${
+                                                app.status === 'APPROVED' ? 'bg-green-100 text-green-800' :
+                                                app.status === 'DECLINED' ? 'bg-red-100 text-red-800' :
+                                                'bg-amber-100 text-amber-800'
+                                            }`}>
+                                                {app.status === 'APPROVED' ? <CheckCircle size={12} /> :
+                                                    app.status === 'DECLINED' ? <Ban size={12} /> :
+                                                    <Clock size={12} />}
+                                                <span>{app.status}</span>
+                                            </span>
+                                        </td>
+                                        <td className="px-5 py-4">
+                                            <div className="flex items-center space-x-2">
+                                                {app.status !== 'APPROVED' && (
+                                                    <button
+                                                        onClick={() => handleSmeStatusChange(app.id, 'APPROVED')}
+                                                        className="px-3 py-1.5 bg-green-600 text-white text-xs font-bold rounded-lg hover:bg-green-700 transition-colors"
+                                                    >
+                                                        Approve
+                                                    </button>
+                                                )}
+                                                {app.status !== 'DECLINED' && (
+                                                    <button
+                                                        onClick={() => handleSmeStatusChange(app.id, 'DECLINED')}
+                                                        className="px-3 py-1.5 bg-red-600 text-white text-xs font-bold rounded-lg hover:bg-red-700 transition-colors"
+                                                    >
+                                                        Decline
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+
     return (
         <div className="min-h-screen bg-slate-50 flex">
             {/* Admin Sidebar */}
@@ -710,6 +886,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, adminProfile,
                         </div>
                     </button>
                     <button
+                        onClick={() => setCurrentView('SME')}
+                        className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-colors ${currentView === 'SME' ? 'bg-slate-800 text-white border-l-4 border-red-600' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
+                    >
+                        <Banknote size={20} />
+                        <div className="flex justify-between w-full items-center">
+                            <span className="font-medium">SME Finance</span>
+                            {(smeStats?.pending ?? 0) > 0 && <span className="bg-purple-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">{smeStats!.pending}</span>}
+                        </div>
+                    </button>
+                    <button
                         onClick={() => setCurrentView('HEALTH')}
                         className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-colors ${currentView === 'HEALTH' ? 'bg-slate-800 text-white border-l-4 border-red-600' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
                     >
@@ -740,12 +926,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, adminProfile,
                         <h1 className="text-3xl font-bold text-slate-900">
                             {currentView === 'OVERVIEW' ? 'System Overview' :
                                 currentView === 'USERS' ? 'User Administration' :
-                                    currentView === 'KYC' ? 'Verification Queue' : 'System Health'}
+                                    currentView === 'KYC' ? 'Verification Queue' :
+                                        currentView === 'SME' ? 'SME Finance Applications' : 'System Health'}
                         </h1>
                         <p className="text-slate-500">
                             {currentView === 'OVERVIEW' ? 'Real-time platform monitoring' :
                                 currentView === 'USERS' ? 'Manage global user access' :
-                                    currentView === 'KYC' ? 'Review identity documents' : 'Infrastructure and logs'}
+                                    currentView === 'KYC' ? 'Review identity documents' :
+                                        currentView === 'SME' ? 'Review and manage loan applications' : 'Infrastructure and logs'}
                         </p>
                     </div>
                     <div className="flex items-center space-x-2 bg-white border border-slate-200 rounded-lg px-3 py-1.5">
@@ -759,6 +947,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, adminProfile,
                 {currentView === 'OVERVIEW' && renderOverview()}
                 {currentView === 'USERS' && renderUsers()}
                 {currentView === 'KYC' && renderKYC()}
+                {currentView === 'SME' && renderSME()}
                 {currentView === 'HEALTH' && renderHealth()}
 
             </main>

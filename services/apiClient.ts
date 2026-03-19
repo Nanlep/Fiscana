@@ -380,7 +380,37 @@ export const aiApi = {
         }),
 
     getInsights: () =>
-        apiRequest<{ summary: string; insights: string[]; warnings: string[] }>('/ai/insights')
+        apiRequest<{ summary: string; insights: string[]; warnings: string[] }>('/ai/insights'),
+
+    getCreditScore: () =>
+        apiRequest<{ score: number; rating: string; factors: string[]; recommendations: string[] }>('/ai/credit-score'),
+};
+
+// ==================== SME FINANCE API ====================
+export const smeFinanceApi = {
+    apply: (data: any) =>
+        apiRequest<any>('/sme-finance/apply', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        }),
+
+    myApplications: () =>
+        apiRequest<any[]>('/sme-finance/my-applications'),
+
+    // Admin endpoints
+    listAll: (params?: { status?: string; limit?: number; offset?: number }) => {
+        const q = new URLSearchParams();
+        if (params?.status) q.append('status', params.status);
+        if (params?.limit) q.append('limit', params.limit.toString());
+        if (params?.offset) q.append('offset', params.offset.toString());
+        return apiRequest<{ applications: any[]; total: number }>(`/sme-finance/applications?${q.toString()}`);
+    },
+
+    updateStatus: (id: string, status: string, adminNote?: string) =>
+        apiRequest<any>(`/sme-finance/applications/${id}/status`, {
+            method: 'PUT',
+            body: JSON.stringify({ status, adminNote })
+        }),
 };
 
 // ==================== TRANSACTIONS API ====================
