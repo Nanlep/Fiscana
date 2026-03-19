@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Users, Activity, Server, AlertTriangle, LogOut, Search, Building2, User, Trash2, Ban, CheckCircle, RefreshCw, Terminal, DollarSign, ShieldCheck, TrendingUp, Save, Loader2, Banknote, Clock, ChevronDown } from 'lucide-react';
+import { Users, Activity, Server, AlertTriangle, LogOut, Search, Building2, User, Trash2, Ban, CheckCircle, RefreshCw, Terminal, DollarSign, ShieldCheck, TrendingUp, Save, Loader2, Banknote, Clock, ChevronDown, ChevronUp, MessageSquare, Send, HelpCircle } from 'lucide-react';
 import { UserProfile, KYCRequest, SMEApplicationStatus } from '../types';
-import { adminApi, AdminUser, PlatformStats, HealthStatus, smeFinanceApi } from '../services/apiClient';
+import { adminApi, AdminUser, PlatformStats, HealthStatus, smeFinanceApi, supportApi, SupportTicket, TicketMessageType } from '../services/apiClient';
 
 interface AdminDashboardProps {
     onLogout: () => void;
@@ -12,7 +12,7 @@ interface AdminDashboardProps {
     onUpdateExchangeRate: (rate: number) => void;
 }
 
-type AdminView = 'OVERVIEW' | 'USERS' | 'HEALTH' | 'KYC' | 'SME';
+type AdminView = 'OVERVIEW' | 'USERS' | 'HEALTH' | 'KYC' | 'SME' | 'SUPPORT';
 
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, adminProfile, kycRequests, onReviewKYC, exchangeRate, onUpdateExchangeRate }) => {
     const [currentView, setCurrentView] = useState<AdminView>('OVERVIEW');
@@ -43,6 +43,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, adminProfile,
     const [smeApplications, setSmeApplications] = useState<any[]>([]);
     const [smeLoading, setSmeLoading] = useState(false);
     const [smeStats, setSmeStats] = useState<{ total: number; pending: number; approved: number; declined: number } | null>(null);
+
+    // Support Tickets State
+    const [supportTickets, setSupportTickets] = useState<SupportTicket[]>([]);
+    const [supportLoading, setSupportLoading] = useState(false);
+    const [supportTotal, setSupportTotal] = useState(0);
+    const [expandedAdminTicket, setExpandedAdminTicket] = useState<string | null>(null);
+    const [adminReplyText, setAdminReplyText] = useState<Record<string, string>>({});
+    const [adminReplying, setAdminReplying] = useState<string | null>(null);
 
     const logsEndRef = useRef<HTMLDivElement>(null);
 
@@ -111,13 +119,26 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, adminProfile,
         finally { setSmeLoading(false); }
     }, []);
 
+    const fetchSupportTickets = useCallback(async () => {
+        setSupportLoading(true);
+        try {
+            const res = await supportApi.adminListTickets({ limit: 100 });
+            if (res.success && res.data) {
+                setSupportTickets(res.data.tickets);
+                setSupportTotal(res.data.total);
+            }
+        } catch (err) { console.error('Failed to fetch support tickets', err); }
+        finally { setSupportLoading(false); }
+    }, []);
+
     // Initial data load
     useEffect(() => {
         fetchStats();
         fetchConfig();
         fetchUsers();
         fetchSmeApplications();
-    }, [fetchStats, fetchConfig, fetchUsers, fetchSmeApplications]);
+        fetchSupportTickets();
+    }, [fetchStats, fetchConfig, fetchUsers, fetchSmeApplications, fetchSupportTickets]);
 
     // Auto-refresh stats every 30 seconds
     useEffect(() => {
@@ -140,6 +161,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, adminProfile,
             fetchSmeApplications();
         }
     }, [currentView, fetchSmeApplications]);
+
+    // Fetch support tickets when support tab is active
+    useEffect(() => {
+        if (currentView === 'SUPPORT') {
+            fetchSupportTickets();
+        }
+    }, [currentView, fetchSupportTickets]);
 
     // Sync exchange rate prop
     useEffect(() => {
@@ -226,7 +254,37 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, adminProfile,
         } catch (err) { console.error('Failed to update SME status', err); }
     };
 
+    const handleAdminReply = async (ticketId: string) => {
+        const text = adminReplyText[ticketId]?.trim();
+        if (!text) return;
+        setAdminReplying(ticketId);
+        try {
+            const res = await supportApi.addMessage(ticketId, text);
+            if (res.success && res.data) {
+                setSupportTickets(prev => prev.map(t =>
+                    t.id === ticketId
+                        ? { ...t, messages: [...(t.messages || []), res.data!] }
+                        : t
+                ));
+                setAdminReplyText(prev => ({ ...prev, [ticketId]: '' }));
+            }
+        } catch (err) { console.error('Failed to reply', err); }
+        setAdminReplying(null);
+    };
+
+    const handleTicketStatusChange = async (ticketId: string, status: string) => {
+        try {
+            const res = await supportApi.adminUpdateStatus(ticketId, status);
+            if (res.success) {
+                setSupportTickets(prev => prev.map(t =>
+                    t.id === ticketId ? { ...t, status: status as SupportTicket['status'] } : t
+                ));
+            }
+        } catch (err) { console.error('Failed to update ticket status', err); }
+    };
+
     const pendingKYC = kycRequests.filter(req => req.status === 'PENDING');
+    const openTickets = supportTickets.filter(t => t.status === 'OPEN' || t.status === 'IN_PROGRESS');
 
     const formatCurrency = (amount: number): string => {
         if (amount >= 1_000_000_000) return `₦ ${(amount / 1_000_000_000).toFixed(1)}B`;
@@ -885,6 +943,155 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, adminProfile,
         </div>
     );
 
+    const renderSupport = () => (
+        <div className="space-y-6 animate-fade-in">
+            {/* Stats Row */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+                    <p className="text-sm text-slate-500 font-medium">Total Tickets</p>
+                    <h3 className="text-2xl font-bold text-slate-900">{supportTotal}</h3>
+                </div>
+                <div className="bg-blue-50 p-5 rounded-2xl border border-blue-100 shadow-sm">
+                    <p className="text-sm text-blue-700 font-medium">Open</p>
+                    <h3 className="text-2xl font-bold text-blue-800">{supportTickets.filter(t => t.status === 'OPEN').length}</h3>
+                </div>
+                <div className="bg-amber-50 p-5 rounded-2xl border border-amber-100 shadow-sm">
+                    <p className="text-sm text-amber-700 font-medium">In Progress</p>
+                    <h3 className="text-2xl font-bold text-amber-800">{supportTickets.filter(t => t.status === 'IN_PROGRESS').length}</h3>
+                </div>
+                <div className="bg-green-50 p-5 rounded-2xl border border-green-100 shadow-sm">
+                    <p className="text-sm text-green-700 font-medium">Resolved</p>
+                    <h3 className="text-2xl font-bold text-green-800">{supportTickets.filter(t => t.status === 'RESOLVED' || t.status === 'CLOSED').length}</h3>
+                </div>
+            </div>
+
+            {/* Tickets List */}
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                <div className="p-5 border-b border-slate-100 flex justify-between items-center">
+                    <h3 className="font-bold text-slate-900">All Tickets</h3>
+                    <button onClick={() => fetchSupportTickets()} className="text-sm text-blue-600 hover:underline flex items-center space-x-1">
+                        <RefreshCw size={14} /> <span>Refresh</span>
+                    </button>
+                </div>
+
+                {supportLoading ? (
+                    <div className="p-12 text-center">
+                        <Loader2 className="w-8 h-8 text-slate-400 animate-spin mx-auto mb-2" />
+                        <p className="text-slate-500 text-sm">Loading tickets...</p>
+                    </div>
+                ) : supportTickets.length === 0 ? (
+                    <div className="p-12 text-center">
+                        <MessageSquare className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                        <p className="text-slate-500 text-sm">No support tickets yet</p>
+                    </div>
+                ) : (
+                    <div className="divide-y divide-slate-100">
+                        {supportTickets.map(ticket => (
+                            <div key={ticket.id}>
+                                <button
+                                    onClick={() => setExpandedAdminTicket(expandedAdminTicket === ticket.id ? null : ticket.id)}
+                                    className="w-full px-6 py-4 flex items-center justify-between hover:bg-slate-50 transition-colors text-left"
+                                >
+                                    <div className="flex items-center space-x-4 min-w-0">
+                                        <div className="flex-shrink-0">
+                                            {ticket.status === 'OPEN' ? <AlertTriangle size={14} className="text-blue-500" /> :
+                                             ticket.status === 'IN_PROGRESS' ? <Clock size={14} className="text-amber-500" /> :
+                                             ticket.status === 'RESOLVED' ? <CheckCircle size={14} className="text-green-500" /> :
+                                             <Ban size={14} className="text-slate-400" />}
+                                        </div>
+                                        <div className="min-w-0">
+                                            <p className="text-sm font-semibold text-slate-900 truncate">{ticket.subject}</p>
+                                            <p className="text-xs text-slate-400 mt-0.5">
+                                                {ticket.user?.name || 'Unknown'} ({ticket.user?.email || ''}) • {new Date(ticket.createdAt).toLocaleDateString()} • {ticket.messages?.length || 0} msgs
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center space-x-3 flex-shrink-0">
+                                        <span className={`px-2.5 py-1 rounded-full text-xs font-bold border ${
+                                            ticket.status === 'OPEN' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                                            ticket.status === 'IN_PROGRESS' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                                            ticket.status === 'RESOLVED' ? 'bg-green-50 text-green-700 border-green-200' :
+                                            'bg-slate-50 text-slate-500 border-slate-200'
+                                        }`}>
+                                            {ticket.status.replace('_', ' ')}
+                                        </span>
+                                        {expandedAdminTicket === ticket.id ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
+                                    </div>
+                                </button>
+
+                                {expandedAdminTicket === ticket.id && (
+                                    <div className="px-6 pb-6">
+                                        {/* Status Controls */}
+                                        <div className="flex items-center space-x-2 mb-4">
+                                            <span className="text-xs text-slate-500 font-medium">Set status:</span>
+                                            {['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'].map(s => (
+                                                <button
+                                                    key={s}
+                                                    onClick={() => handleTicketStatusChange(ticket.id, s)}
+                                                    disabled={ticket.status === s}
+                                                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors ${
+                                                        ticket.status === s
+                                                            ? 'bg-slate-200 text-slate-500 cursor-default'
+                                                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                                    }`}
+                                                >
+                                                    {s.replace('_', ' ')}
+                                                </button>
+                                            ))}
+                                        </div>
+
+                                        {/* Messages */}
+                                        <div className="bg-slate-50 rounded-xl p-4 space-y-3 max-h-80 overflow-y-auto">
+                                            {(ticket.messages || []).map((msg: TicketMessageType) => (
+                                                <div key={msg.id} className={`flex ${msg.senderRole === 'USER' ? 'justify-start' : 'justify-end'}`}>
+                                                    <div className={`max-w-[80%] rounded-2xl px-4 py-3 ${
+                                                        msg.senderRole === 'USER'
+                                                            ? 'bg-white text-slate-800 border border-slate-200'
+                                                            : 'bg-red-600 text-white'
+                                                    }`}>
+                                                        <div className="flex items-center space-x-2 mb-1">
+                                                            <span className={`text-xs font-semibold ${msg.senderRole === 'USER' ? 'text-slate-500' : 'text-red-100'}`}>
+                                                                {msg.senderName} {msg.senderRole === 'ADMIN' && '(Admin)'}
+                                                            </span>
+                                                        </div>
+                                                        <p className="text-sm whitespace-pre-wrap">{msg.message}</p>
+                                                        <p className={`text-xs mt-1 ${msg.senderRole === 'USER' ? 'text-slate-400' : 'text-red-200'}`}>
+                                                            {new Date(msg.createdAt).toLocaleString()}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+
+                                        {/* Admin Reply */}
+                                        {ticket.status !== 'CLOSED' && (
+                                            <div className="flex items-center space-x-2 mt-3">
+                                                <input
+                                                    type="text"
+                                                    placeholder="Type a reply as admin..."
+                                                    value={adminReplyText[ticket.id] || ''}
+                                                    onChange={e => setAdminReplyText(prev => ({ ...prev, [ticket.id]: e.target.value }))}
+                                                    onKeyDown={e => { if (e.key === 'Enter') handleAdminReply(ticket.id); }}
+                                                    className="flex-1 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                                                />
+                                                <button
+                                                    onClick={() => handleAdminReply(ticket.id)}
+                                                    disabled={adminReplying === ticket.id || !adminReplyText[ticket.id]?.trim()}
+                                                    className="p-2.5 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors disabled:opacity-50"
+                                                >
+                                                    {adminReplying === ticket.id ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
     return (
         <div className="min-h-screen bg-slate-50 flex">
             {/* Admin Sidebar */}
@@ -932,6 +1139,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, adminProfile,
                         </div>
                     </button>
                     <button
+                        onClick={() => setCurrentView('SUPPORT')}
+                        className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-colors ${currentView === 'SUPPORT' ? 'bg-slate-800 text-white border-l-4 border-red-600' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
+                    >
+                        <HelpCircle size={20} />
+                        <div className="flex justify-between w-full items-center">
+                            <span className="font-medium">Support</span>
+                            {openTickets.length > 0 && <span className="bg-orange-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">{openTickets.length}</span>}
+                        </div>
+                    </button>
+                    <button
                         onClick={() => setCurrentView('HEALTH')}
                         className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-colors ${currentView === 'HEALTH' ? 'bg-slate-800 text-white border-l-4 border-red-600' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
                     >
@@ -963,13 +1180,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, adminProfile,
                             {currentView === 'OVERVIEW' ? 'System Overview' :
                                 currentView === 'USERS' ? 'User Administration' :
                                     currentView === 'KYC' ? 'Verification Queue' :
-                                        currentView === 'SME' ? 'SME Finance Applications' : 'System Health'}
+                                        currentView === 'SME' ? 'SME Finance Applications' :
+                                            currentView === 'SUPPORT' ? 'Support Tickets' : 'System Health'}
                         </h1>
                         <p className="text-slate-500">
                             {currentView === 'OVERVIEW' ? 'Real-time platform monitoring' :
                                 currentView === 'USERS' ? 'Manage global user access' :
                                     currentView === 'KYC' ? 'Review identity documents' :
-                                        currentView === 'SME' ? 'Review and manage loan applications' : 'Infrastructure and logs'}
+                                        currentView === 'SME' ? 'Review and manage loan applications' :
+                                            currentView === 'SUPPORT' ? 'View and respond to user support requests' : 'Infrastructure and logs'}
                         </p>
                     </div>
                     <div className="flex items-center space-x-2 bg-white border border-slate-200 rounded-lg px-3 py-1.5">
@@ -984,6 +1203,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, adminProfile,
                 {currentView === 'USERS' && renderUsers()}
                 {currentView === 'KYC' && renderKYC()}
                 {currentView === 'SME' && renderSME()}
+                {currentView === 'SUPPORT' && renderSupport()}
                 {currentView === 'HEALTH' && renderHealth()}
 
             </main>

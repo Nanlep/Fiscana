@@ -95,6 +95,7 @@ import kycRoutes from './routes/kyc.js';
 import adminRoutes from './routes/admin.js';
 import smeFinanceRoutes from './routes/smeFinance.js';
 import billingRoutes from './routes/billing.js';
+import supportRoutes from './routes/support.js';
 
 app.use('/api/auth', authRoutes);
 app.use('/api/ai', aiRoutes);
@@ -109,6 +110,7 @@ app.use('/api/kyc', kycRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/sme-finance', smeFinanceRoutes);
 app.use('/api/billing', billingRoutes);
+app.use('/api/support', supportRoutes);
 
 // 404 handler
 app.use((req, res) => {

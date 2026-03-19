@@ -201,7 +201,7 @@ export interface TaxReport {
   keyFinancialDecisions: string[];
 }
 
-export type ViewState = 'DASHBOARD' | 'INVOICES' | 'LEDGER' | 'REPORTS' | 'ASSETS' | 'BUDGETS' | 'TAX_AI' | 'KYC' | 'SME_FINANCE' | 'BILLING';
+export type ViewState = 'DASHBOARD' | 'INVOICES' | 'LEDGER' | 'REPORTS' | 'ASSETS' | 'BUDGETS' | 'TAX_AI' | 'KYC' | 'SME_FINANCE' | 'BILLING' | 'SETTINGS';
 
 // ==================== Credit Score Types ====================
 

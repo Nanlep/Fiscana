@@ -74,9 +74,13 @@ const Sidebar: React.FC<SidebarProps> = ({
 
                 <div className="px-6 py-4 bg-slate-800/50">
                     <div className="flex items-center space-x-3">
-                        <div className="p-2 bg-slate-700 rounded-full">
+                        <button
+                            onClick={() => setView('SETTINGS' as ViewState)}
+                            title="Go to Settings"
+                            className="p-2 bg-slate-700 rounded-full hover:ring-2 hover:ring-green-500 transition-all cursor-pointer"
+                        >
                             {user.type === 'CORPORATE' ? <Building2 size={16} /> : <User size={16} />}
-                        </div>
+                        </button>
                         <div className="overflow-hidden">
                             <div className="flex items-center space-x-1">
                                 <p className="text-sm font-semibold truncate">{user.name}</p>

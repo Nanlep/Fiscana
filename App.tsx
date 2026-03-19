@@ -11,6 +11,7 @@ import BudgetModule from './components/Budget';
 import SMEFinance from './components/SMEFinance';
 import SubscriptionGate from './components/SubscriptionGate';
 import BillingPage from './components/BillingPage';
+import SettingsPage from './components/SettingsPage';
 import LandingPage from './components/LandingPage';
 import AdminDashboard from './components/AdminDashboard';
 import WithdrawModal from './components/WithdrawModal';
@@ -607,6 +608,8 @@ function App() {
         return <SMEFinance userProfile={userProfile} notify={notify} onNavigateBilling={() => setView('BILLING')} />;
       case 'BILLING':
         return <BillingPage onBack={() => setView('DASHBOARD')} />;
+      case 'SETTINGS':
+        return <SettingsPage onBack={() => setView('DASHBOARD')} onNavigateBilling={() => setView('BILLING')} notify={notify} />;
       default:
         return <Dashboard transactions={transactions} invoices={invoices} user={userProfile} exchangeRate={exchangeRate} dataLoading={dataLoading} />;
     }

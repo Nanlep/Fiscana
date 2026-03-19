@@ -847,11 +847,71 @@ export const billingApi = {
         }>(`/billing/verify/${txRef}`),
 };
 
+// ==================== Support API ====================
+
+export interface SupportTicket {
+    id: string;
+    userId: string;
+    subject: string;
+    status: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
+    createdAt: string;
+    updatedAt: string;
+    messages: TicketMessageType[];
+    user?: { id: string; name: string; email: string };
+}
+
+export interface TicketMessageType {
+    id: string;
+    ticketId: string;
+    senderId: string;
+    senderRole: 'USER' | 'ADMIN';
+    senderName: string;
+    message: string;
+    createdAt: string;
+}
+
+export const supportApi = {
+    createTicket: (data: { subject: string; message: string }) =>
+        apiRequest<SupportTicket>('/support/tickets', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        }),
+
+    listTickets: () =>
+        apiRequest<SupportTicket[]>('/support/tickets'),
+
+    getTicket: (id: string) =>
+        apiRequest<SupportTicket>(`/support/tickets/${id}`),
+
+    addMessage: (ticketId: string, message: string) =>
+        apiRequest<TicketMessageType>(`/support/tickets/${ticketId}/messages`, {
+            method: 'POST',
+            body: JSON.stringify({ message }),
+        }),
+
+    // Admin endpoints
+    adminListTickets: (params?: { status?: string; limit?: number; offset?: number }) => {
+        const q = new URLSearchParams();
+        if (params?.status) q.append('status', params.status);
+        if (params?.limit) q.append('limit', params.limit.toString());
+        if (params?.offset) q.append('offset', params.offset.toString());
+        return apiRequest<{ tickets: SupportTicket[]; total: number }>(`/support/admin/tickets?${q.toString()}`);
+    },
+
+    adminUpdateStatus: (ticketId: string, status: string) =>
+        apiRequest<SupportTicket>(`/support/admin/tickets/${ticketId}/status`, {
+            method: 'PUT',
+            body: JSON.stringify({ status }),
+        }),
+};
+
 // Export default API object
 export default {
     auth: authApi,
     ai: aiApi,
     payments: paymentsApi,
     banking: bankingApi,
-    billing: billingApi
+    billing: billingApi,
+    support: supportApi
 };
+
