@@ -76,7 +76,11 @@ router.post(
                     type: result.user.type,
                     role: result.user.role,
                     kycStatus: result.user.kycStatus,
-                    tier: result.user.tier
+                    tier: result.user.tier,
+                    subscriptionTier: result.user.subscriptionTier,
+                    subscriptionStatus: result.user.subscriptionStatus,
+                    trialEndsAt: result.user.trialEndsAt,
+                    subscriptionEndsAt: result.user.subscriptionEndsAt,
                 },
                 accessToken: result.accessToken,
                 refreshToken: result.refreshToken
@@ -130,7 +134,11 @@ router.post(
                     type: result.user.type,
                     role: result.user.role,
                     kycStatus: result.user.kycStatus,
-                    tier: result.user.tier
+                    tier: result.user.tier,
+                    subscriptionTier: result.user.subscriptionTier,
+                    subscriptionStatus: result.user.subscriptionStatus,
+                    trialEndsAt: result.user.trialEndsAt,
+                    subscriptionEndsAt: result.user.subscriptionEndsAt,
                 },
                 accessToken: result.accessToken,
                 refreshToken: result.refreshToken
@@ -168,7 +176,11 @@ router.post(
                     companyName: result.user.companyName,
                     role: result.user.role,
                     kycStatus: result.user.kycStatus,
-                    tier: result.user.tier
+                    tier: result.user.tier,
+                    subscriptionTier: result.user.subscriptionTier,
+                    subscriptionStatus: result.user.subscriptionStatus,
+                    trialEndsAt: result.user.trialEndsAt,
+                    subscriptionEndsAt: result.user.subscriptionEndsAt,
                 },
                 accessToken: result.accessToken,
                 refreshToken: result.refreshToken
@@ -221,7 +233,11 @@ router.get(
                 kycStatus: user.kycStatus,
                 tier: user.tier,
                 tin: user.tin,
-                createdAt: user.createdAt
+                createdAt: user.createdAt,
+                subscriptionTier: user.subscriptionTier,
+                subscriptionStatus: user.subscriptionStatus,
+                trialEndsAt: user.trialEndsAt,
+                subscriptionEndsAt: user.subscriptionEndsAt,
             }
         });
     })
@@ -265,7 +281,11 @@ router.put(
                 role: updatedUser.role,
                 kycStatus: updatedUser.kycStatus,
                 tier: updatedUser.tier,
-                tin: updatedUser.tin
+                tin: updatedUser.tin,
+                subscriptionTier: updatedUser.subscriptionTier,
+                subscriptionStatus: updatedUser.subscriptionStatus,
+                trialEndsAt: updatedUser.trialEndsAt,
+                subscriptionEndsAt: updatedUser.subscriptionEndsAt,
             }
         });
     })

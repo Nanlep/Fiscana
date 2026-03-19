@@ -473,6 +473,49 @@ export async function sendPasswordResetEmail(email: string, name: string, resetL
 }
 
 // ============================================================
+// 8. Subscription Emails
+// ============================================================
+
+export async function sendSubscriptionConfirmationEmail(email: string, name: string, plan: string, expiresAt: Date) {
+    const planLabel = plan === 'ANNUAL' ? 'Annual (₦24,900/year)' : 'Monthly (₦2,500/month)';
+    const html = wrapHTML('Subscription Confirmed', `
+        <h1 style="margin:0 0 8px;font-size:24px;color:#0f172a;">Subscription Confirmed ✅</h1>
+        <p style="margin:0 0 20px;color:#64748b;font-size:15px;">Hi ${name}, your Fiscana subscription has been activated!</p>
+        <table style="width:100%;border-collapse:collapse;margin:0 0 24px;background:#f8fafc;border-radius:8px;">
+            <tr><td style="padding:10px 16px;color:#64748b;font-size:13px;">Plan</td><td style="padding:10px 16px;font-weight:700;color:#0f172a;">${planLabel}</td></tr>
+            <tr><td style="padding:10px 16px;color:#64748b;font-size:13px;">Active Until</td><td style="padding:10px 16px;font-weight:700;color:#16a34a;">${expiresAt.toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' })}</td></tr>
+        </table>
+        <a href="https://fiscana.pro" style="display:inline-block;background:#16a34a;color:#ffffff;font-weight:700;padding:12px 28px;border-radius:10px;text-decoration:none;font-size:14px;">Go to Dashboard →</a>
+    `);
+    await sendMail(email, `Subscription Confirmed — Fiscana ${plan}`, html);
+}
+
+export async function sendSubscriptionExpiredEmail(email: string, name: string) {
+    const html = wrapHTML('Subscription Expired', `
+        <h1 style="margin:0 0 8px;font-size:24px;color:#0f172a;">Your Subscription Has Expired</h1>
+        <p style="margin:0 0 20px;color:#64748b;font-size:15px;">Hi ${name}, your Fiscana subscription has expired. Renew now to continue using all features.</p>
+        <div style="background:#fff7ed;border-left:4px solid #f97316;padding:16px 20px;border-radius:0 8px 8px 0;margin:0 0 20px;">
+            <p style="margin:0;color:#9a3412;font-size:14px;">Your data is safe — renew anytime to regain access.</p>
+        </div>
+        <a href="https://fiscana.pro" style="display:inline-block;background:#f97316;color:#ffffff;font-weight:700;padding:12px 28px;border-radius:10px;text-decoration:none;font-size:14px;">Renew Subscription →</a>
+    `);
+    await sendMail(email, 'Your Fiscana Subscription Has Expired', html);
+}
+
+export async function sendTrialExpiringEmail(email: string, name: string, daysLeft: number) {
+    const html = wrapHTML('Trial Ending Soon', `
+        <h1 style="margin:0 0 8px;font-size:24px;color:#0f172a;">Your Free Trial Ends in ${daysLeft} Day${daysLeft === 1 ? '' : 's'}</h1>
+        <p style="margin:0 0 20px;color:#64748b;font-size:15px;">Hi ${name}, your Fiscana free trial is almost over. Subscribe now to keep using all features.</p>
+        <table style="width:100%;border-collapse:collapse;margin:0 0 24px;background:#f8fafc;border-radius:8px;">
+            <tr><td style="padding:10px 16px;color:#64748b;font-size:13px;">Monthly</td><td style="padding:10px 16px;font-weight:700;color:#0f172a;">₦2,500/month</td></tr>
+            <tr><td style="padding:10px 16px;color:#64748b;font-size:13px;">Annual</td><td style="padding:10px 16px;font-weight:700;color:#16a34a;">₦24,900/year (Save 17%)</td></tr>
+        </table>
+        <a href="https://fiscana.pro" style="display:inline-block;background:#0f172a;color:#ffffff;font-weight:700;padding:12px 28px;border-radius:10px;text-decoration:none;font-size:14px;">Subscribe Now →</a>
+    `);
+    await sendMail(email, `Your Fiscana Trial Ends in ${daysLeft} Day${daysLeft === 1 ? '' : 's'}`, html);
+}
+
+// ============================================================
 // Export all functions as a service object
 // ============================================================
 
@@ -492,4 +535,7 @@ export const emailService = {
     sendPasswordResetEmail,
     sendSMEApplicationEmail,
     sendSMEStatusUpdateEmail,
+    sendSubscriptionConfirmationEmail,
+    sendSubscriptionExpiredEmail,
+    sendTrialExpiringEmail,
 };

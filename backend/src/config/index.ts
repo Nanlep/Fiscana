@@ -55,6 +55,21 @@ export const config = {
     // Admin
     adminEmail: process.env.ADMIN_EMAIL || 'contactmike@fiscana.pro',
 
+    // Flutterwave
+    flutterwave: {
+        secretKey: process.env.FLW_SECRET_KEY || '',
+        publicKey: process.env.FLW_PUBLIC_KEY || '',
+        webhookHash: process.env.FLW_WEBHOOK_HASH || '',
+    },
+
+    // Subscription
+    subscription: {
+        trialDays: 14,
+        monthlyPrice: 2500,   // ₦2,500
+        annualPrice: 24900,   // ₦24,900
+        currency: 'NGN',
+    },
+
     // Rate limiting
     rateLimit: {
         windowMs: 15 * 60 * 1000, // 15 minutes

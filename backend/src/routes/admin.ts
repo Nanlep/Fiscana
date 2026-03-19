@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { body, param, query } from 'express-validator';
 import { prisma } from '../config/database.js';
+import { supabaseAdmin } from '../config/supabase.js';
 import { authenticate } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
@@ -58,6 +59,7 @@ router.get('/users', [
                 companyName: true,
                 kycStatus: true,
                 tier: true,
+                subscriptionTier: true,
                 createdAt: true,
             },
             orderBy: { createdAt: 'desc' },
@@ -99,7 +101,36 @@ router.put('/users/:id/status', [
     res.json({ success: true, data: updated });
 }));
 
-/** DELETE /api/admin/users/:id — Delete a user account */
+/** PUT /api/admin/users/:id/subscription — Toggle sandbox mode for a user */
+router.put('/users/:id/subscription', [
+    param('id').isUUID(),
+    body('subscriptionTier').isIn(['SANDBOX', 'TRIAL']).withMessage('Tier must be SANDBOX or TRIAL'),
+], validate, asyncHandler(async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const { subscriptionTier } = req.body;
+
+    const user = await prisma.user.findUnique({ where: { id } });
+    if (!user) throw new NotFoundError('User not found');
+
+    const trialEndsAt = subscriptionTier === 'TRIAL'
+        ? new Date(Date.now() + 14 * 24 * 60 * 60 * 1000) // Reset trial to 14 days
+        : null;
+
+    const updated = await prisma.user.update({
+        where: { id },
+        data: {
+            subscriptionTier,
+            subscriptionStatus: 'ACTIVE',
+            trialEndsAt,
+            subscriptionEndsAt: subscriptionTier === 'SANDBOX' ? null : undefined,
+        },
+    });
+
+    logger.info('[ADMIN] User subscription changed', { userId: id, subscriptionTier, adminId: req.user!.id });
+    res.json({ success: true, data: { id: updated.id, subscriptionTier: updated.subscriptionTier } });
+}));
+
+/** DELETE /api/admin/users/:id — Delete a user account and ALL related data */
 router.delete('/users/:id', [
     param('id').isUUID(),
 ], validate, asyncHandler(async (req: Request, res: Response) => {
@@ -116,11 +147,23 @@ router.delete('/users/:id', [
         return res.status(400).json({ success: false, error: 'Cannot delete admin accounts' });
     }
 
-    // Cascade delete handled by Prisma schema
+    // 1. Delete from Supabase Auth (prevents re-login)
+    try {
+        const { error: supaError } = await supabaseAdmin.auth.admin.deleteUser(id);
+        if (supaError) {
+            logger.warn('[ADMIN] Failed to delete Supabase auth user, continuing with DB cleanup', { userId: id, error: supaError.message });
+        }
+    } catch (err: any) {
+        logger.warn('[ADMIN] Supabase auth delete threw, continuing with DB cleanup', { userId: id, error: err?.message });
+    }
+
+    // 2. Delete from database — Prisma cascade handles all related records:
+    //    Transactions, Invoices (+ LineItems + Payments), Assets, Liabilities,
+    //    Budgets, KYC docs, Wallets (+ WalletBalances), SME Applications, etc.
     await prisma.user.delete({ where: { id } });
 
-    logger.info('[ADMIN] User deleted', { userId: id, adminId: req.user!.id });
-    res.json({ success: true, message: 'User deleted successfully' });
+    logger.info('[ADMIN] User and all related data deleted', { userId: id, userEmail: user.email, adminId: req.user!.id });
+    res.json({ success: true, message: `User ${user.name} (${user.email}) and all related data deleted successfully` });
 }));
 
 // ==================== STATS ====================

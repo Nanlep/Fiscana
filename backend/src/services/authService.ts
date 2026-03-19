@@ -181,6 +181,9 @@ export class AuthService {
                 role: 'USER',
                 kycStatus: 'UNVERIFIED',
                 tier: 'TIER_1',
+                subscriptionTier: 'TRIAL',
+                subscriptionStatus: 'ACTIVE',
+                trialEndsAt: new Date(Date.now() + config.subscription.trialDays * 24 * 60 * 60 * 1000),
                 updatedAt: new Date()
             }
         });
@@ -242,6 +245,9 @@ export class AuthService {
                 role: 'USER',
                 kycStatus: 'UNVERIFIED',
                 tier: 'TIER_1',
+                subscriptionTier: 'TRIAL',
+                subscriptionStatus: 'ACTIVE',
+                trialEndsAt: new Date(Date.now() + config.subscription.trialDays * 24 * 60 * 60 * 1000),
                 updatedAt: new Date()
             }
         });
@@ -301,6 +307,9 @@ export class AuthService {
                     role: 'USER',
                     kycStatus: 'UNVERIFIED',
                     tier: 'TIER_1',
+                    subscriptionTier: 'TRIAL',
+                    subscriptionStatus: 'ACTIVE',
+                    trialEndsAt: new Date(Date.now() + config.subscription.trialDays * 24 * 60 * 60 * 1000),
                     updatedAt: new Date()
                 }
             });

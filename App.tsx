@@ -9,6 +9,8 @@ import Assets from './components/Assets';
 import TaxAdvisor from './components/TaxAdvisor';
 import BudgetModule from './components/Budget';
 import SMEFinance from './components/SMEFinance';
+import SubscriptionGate from './components/SubscriptionGate';
+import BillingPage from './components/BillingPage';
 import LandingPage from './components/LandingPage';
 import AdminDashboard from './components/AdminDashboard';
 import WithdrawModal from './components/WithdrawModal';
@@ -32,7 +34,11 @@ function App() {
     type: user.type,
     companyName: user.companyName || undefined,
     kycStatus: user.kycStatus,
-    tier: user.tier
+    tier: user.tier,
+    subscriptionTier: user.subscriptionTier,
+    subscriptionStatus: user.subscriptionStatus,
+    trialEndsAt: user.trialEndsAt,
+    subscriptionEndsAt: user.subscriptionEndsAt,
   } : null;
 
   // --- Exchange Rate State (still localStorage — not user-specific data) ---
@@ -601,12 +607,15 @@ function App() {
         return <KYCVerification user={userProfile!} onSubmit={handleKYCSubmit} />;
       case 'SME_FINANCE':
         return <SMEFinance userProfile={userProfile} notify={notify} />;
+      case 'BILLING':
+        return <BillingPage onBack={() => setView('DASHBOARD')} />;
       default:
         return <Dashboard transactions={transactions} invoices={invoices} user={userProfile} exchangeRate={exchangeRate} dataLoading={dataLoading} />;
     }
   };
 
   return (
+    <SubscriptionGate onNavigateBilling={() => setView('BILLING')}>
     <div className="flex min-h-screen bg-slate-50 relative">
       <Toast toasts={toasts} removeToast={removeToast} />
 
@@ -656,6 +665,7 @@ function App() {
         userName={user.name}
       />
     </div>
+    </SubscriptionGate>
   );
 }
 

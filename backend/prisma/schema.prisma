@@ -24,6 +24,14 @@ model User {
   tin             String? // Tax Identification Number
   phone           String? // Phone number in E.164 format
   baniCustomerRef String? // Bani customer reference (e.g. MC-xxxxx)
+  
+  // Subscription
+  subscriptionTier    String    @default("TRIAL")   // TRIAL, MONTHLY, ANNUAL, SANDBOX, EXPIRED
+  subscriptionStatus  String    @default("ACTIVE")  // ACTIVE, PAST_DUE, CANCELLED, EXPIRED
+  trialEndsAt         DateTime?                     // Set to now+14d on signup
+  subscriptionEndsAt  DateTime?                     // Set after payment
+  paymentReference    String?                       // Flutterwave transaction/subscription ID
+  
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 

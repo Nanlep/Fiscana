@@ -34,6 +34,10 @@ export interface User {
     tin: string | null;
     createdAt: string;
     updatedAt: string;
+    subscriptionTier: 'TRIAL' | 'MONTHLY' | 'ANNUAL' | 'SANDBOX' | 'EXPIRED';
+    subscriptionStatus: 'ACTIVE' | 'PAST_DUE' | 'CANCELLED' | 'EXPIRED';
+    trialEndsAt: string | null;
+    subscriptionEndsAt: string | null;
 }
 
 // Token management
@@ -570,6 +574,7 @@ export interface AdminUser {
     companyName: string | null;
     kycStatus: string;
     tier: string;
+    subscriptionTier?: string;
     createdAt: string;
 }
 
@@ -635,6 +640,12 @@ export const adminApi = {
 
     cleanup: () =>
         apiRequest<{ deletedUsers: number }>('/admin/cleanup', { method: 'POST' }),
+
+    toggleSandbox: (id: string, subscriptionTier: 'SANDBOX' | 'TRIAL') =>
+        apiRequest(`/admin/users/${id}/subscription`, {
+            method: 'PUT',
+            body: JSON.stringify({ subscriptionTier }),
+        }),
 };
 
 // ==================== PAYMENTS API ====================
@@ -803,10 +814,44 @@ export const bankingApi = {
         apiRequest(`/banking/accounts/${accountId}`, { method: 'DELETE' })
 };
 
+// ==================== Billing API ====================
+
+export const billingApi = {
+    getStatus: () =>
+        apiRequest<{
+            tier: string;
+            status: string;
+            active: boolean;
+            reason?: string;
+            trialEndsAt: string | null;
+            subscriptionEndsAt: string | null;
+            daysRemaining: number | null;
+            plans: {
+                monthly: { price: number; currency: string };
+                annual: { price: number; currency: string };
+            };
+        }>('/billing/status'),
+
+    initialize: (plan: 'MONTHLY' | 'ANNUAL') =>
+        apiRequest<{ paymentUrl: string; txRef: string }>('/billing/initialize', {
+            method: 'POST',
+            body: JSON.stringify({ plan }),
+        }),
+
+    verify: (txRef: string) =>
+        apiRequest<{
+            subscriptionTier: string;
+            subscriptionStatus: string;
+            subscriptionEndsAt: string;
+            active: boolean;
+        }>(`/billing/verify/${txRef}`),
+};
+
 // Export default API object
 export default {
     auth: authApi,
     ai: aiApi,
     payments: paymentsApi,
-    banking: bankingApi
+    banking: bankingApi,
+    billing: billingApi
 };

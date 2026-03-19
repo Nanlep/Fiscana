@@ -32,6 +32,8 @@ export type UserRole = 'USER' | 'ADMIN';
 export type UserType = 'INDIVIDUAL' | 'CORPORATE';
 export type KYCStatus = 'UNVERIFIED' | 'PENDING' | 'VERIFIED' | 'REJECTED';
 export type AccountTier = 'TIER_1' | 'TIER_2' | 'TIER_3';
+export type SubscriptionTier = 'TRIAL' | 'MONTHLY' | 'ANNUAL' | 'SANDBOX' | 'EXPIRED';
+export type SubscriptionStatus = 'ACTIVE' | 'PAST_DUE' | 'CANCELLED' | 'EXPIRED';
 
 export interface UserProfile {
   name: string;
@@ -41,7 +43,11 @@ export interface UserProfile {
   companyName?: string;
   kycStatus: KYCStatus;
   tier: AccountTier;
-  tin?: string; // Tax Identification Number
+  tin?: string;
+  subscriptionTier?: SubscriptionTier;
+  subscriptionStatus?: SubscriptionStatus;
+  trialEndsAt?: string | null;
+  subscriptionEndsAt?: string | null;
 }
 
 export interface KYCRequest {
@@ -195,7 +201,7 @@ export interface TaxReport {
   keyFinancialDecisions: string[];
 }
 
-export type ViewState = 'DASHBOARD' | 'INVOICES' | 'LEDGER' | 'REPORTS' | 'ASSETS' | 'BUDGETS' | 'TAX_AI' | 'KYC' | 'SME_FINANCE';
+export type ViewState = 'DASHBOARD' | 'INVOICES' | 'LEDGER' | 'REPORTS' | 'ASSETS' | 'BUDGETS' | 'TAX_AI' | 'KYC' | 'SME_FINANCE' | 'BILLING';
 
 // ==================== Credit Score Types ====================
 

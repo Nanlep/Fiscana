@@ -189,7 +189,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, adminProfile,
     };
 
     const handleDeleteUser = async (id: string) => {
-        if (!confirm('Are you sure you want to delete this user? This action cannot be undone.')) return;
+        const targetUser = users.find(u => u.id === id);
+        const displayName = targetUser ? `${targetUser.name} (${targetUser.email})` : 'this user';
+        if (!confirm(`Are you sure you want to permanently delete ${displayName}?\n\nThis will remove the user's account and ALL their data including:\n• Transactions & Ledger entries\n• Invoices & Payments\n• Assets & Liabilities\n• Budgets\n• KYC documents\n• Wallet & Balances\n• SME Finance applications\n\nThis action CANNOT be undone.`)) return;
         try {
             const res = await adminApi.deleteUser(id);
             if (res.success) {
@@ -198,6 +200,18 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, adminProfile,
                 fetchStats(); // Refresh stats
             }
         } catch (err) { console.error('Failed to delete user', err); }
+    };
+
+    const handleSandboxToggle = async (id: string, currentTier?: string) => {
+        const newTier = currentTier === 'SANDBOX' ? 'TRIAL' : 'SANDBOX';
+        const action = newTier === 'SANDBOX' ? 'grant sandbox access to' : 'remove sandbox access from';
+        if (!confirm(`Are you sure you want to ${action} this user?`)) return;
+        try {
+            const res = await adminApi.toggleSandbox(id, newTier as 'SANDBOX' | 'TRIAL');
+            if (res.success) {
+                setUsers(prev => prev.map(u => u.id === id ? { ...u, subscriptionTier: newTier } : u));
+            }
+        } catch (err) { console.error('Failed to toggle sandbox', err); }
     };
 
     const handleSmeStatusChange = async (id: string, newStatus: SMEApplicationStatus, adminNote?: string) => {
@@ -445,6 +459,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, adminProfile,
                             <tr>
                                 <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase">User</th>
                                 <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase">Type</th>
+                                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase">Subscription</th>
                                 <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase">Status</th>
                                 <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase">Joined</th>
                                 <th className="px-6 py-4 text-right text-xs font-semibold text-slate-500 uppercase">Action</th>
@@ -467,6 +482,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, adminProfile,
                                     <td className="px-6 py-4">
                                         <span className={`text-xs font-bold px-2 py-1 rounded-full ${u.type === 'CORPORATE' ? 'bg-purple-50 text-purple-700' : 'bg-blue-50 text-blue-700'}`}>
                                             {u.type}
+                                        </span>
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        <span className={`text-xs font-bold px-2 py-1 rounded-full ${
+                                            u.subscriptionTier === 'SANDBOX' ? 'bg-amber-50 text-amber-700' :
+                                            u.subscriptionTier === 'MONTHLY' || u.subscriptionTier === 'ANNUAL' ? 'bg-green-50 text-green-700' :
+                                            u.subscriptionTier === 'TRIAL' ? 'bg-blue-50 text-blue-700' :
+                                            'bg-slate-100 text-slate-600'
+                                        }`}>
+                                            {u.subscriptionTier || 'TRIAL'}
                                         </span>
                                     </td>
                                     <td className="px-6 py-4">
@@ -502,6 +527,17 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, adminProfile,
                                                     title="Delete User"
                                                 >
                                                     <Trash2 size={18} />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleSandboxToggle(u.id, u.subscriptionTier)}
+                                                    className={`px-2 py-1 rounded-lg text-xs font-bold transition-colors ${
+                                                        u.subscriptionTier === 'SANDBOX'
+                                                            ? 'bg-amber-100 text-amber-700 hover:bg-amber-200'
+                                                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                                    }`}
+                                                    title={u.subscriptionTier === 'SANDBOX' ? 'Remove Sandbox' : 'Set as Sandbox'}
+                                                >
+                                                    {u.subscriptionTier === 'SANDBOX' ? '✦ Sandbox' : '☆ Sandbox'}
                                                 </button>
                                             </div>
                                         )}
