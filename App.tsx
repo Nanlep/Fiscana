@@ -224,9 +224,7 @@ function App() {
     }
   }, [isAuthenticated]);
 
-  // Derive NGN/USDC for backward compatibility with WithdrawModal
   const walletBalanceNGN = walletBalances.find(b => b.currency === 'NGN')?.available || 0;
-  const walletBalanceUSDC = walletBalances.find(b => b.currency === 'USDT')?.available || walletBalances.find(b => b.currency === 'USD')?.available || 0;
 
   // Handlers
   const handleLogout = async () => {
@@ -295,8 +293,8 @@ function App() {
     });
   };
 
-  const handleWithdraw = (amount: number, currency: 'NGN' | 'USDC', narration: string, category: ExpenseCategoryType) => {
-    const targetAssetName = currency === 'NGN' ? 'Wallet Balance' : 'USDC Balance';
+  const handleWithdraw = (amount: number, narration: string, category: ExpenseCategoryType) => {
+    const targetAssetName = 'Wallet Balance';
     setAssets(assets.map(asset => {
       if (asset.name === targetAssetName) {
         return { ...asset, value: asset.value - amount };
@@ -307,10 +305,10 @@ function App() {
     const newTx: Transaction = {
       id: `wd_${Date.now()}`,
       date: new Date().toISOString().split('T')[0],
-      description: narration ? `Withdrawal: ${narration}` : `Withdrawal to ${currency === 'NGN' ? 'Bank' : 'External Wallet'}`,
+      description: narration ? `Withdrawal: ${narration}` : `Withdrawal to Bank`,
       payee: 'Self',
       amount: amount,
-      currency: currency === 'NGN' ? 'NGN' : 'USD',
+      currency: 'NGN',
       type: TransactionType.EXPENSE,
       category: 'Transfer',
       expenseCategory: category,
@@ -319,7 +317,7 @@ function App() {
     };
     setTransactions([newTx, ...transactions]);
     loadWalletBalances(); // Refresh wallet balances from server
-    notify('SUCCESS', `Withdrawal of ${currency === 'NGN' ? '₦' : '$'}${amount} successful`);
+    notify('SUCCESS', `Withdrawal of ₦${amount} successful`);
   };
 
   const addInvoice = async (inv: Invoice) => {
@@ -606,7 +604,7 @@ function App() {
       case 'KYC':
         return <KYCVerification user={userProfile!} onSubmit={handleKYCSubmit} />;
       case 'SME_FINANCE':
-        return <SMEFinance userProfile={userProfile} notify={notify} />;
+        return <SMEFinance userProfile={userProfile} notify={notify} onNavigateBilling={() => setView('BILLING')} />;
       case 'BILLING':
         return <BillingPage onBack={() => setView('DASHBOARD')} />;
       default:
@@ -653,7 +651,6 @@ function App() {
         onClose={() => setIsWithdrawModalOpen(false)}
         onWithdraw={handleWithdraw}
         balanceNGN={walletBalanceNGN}
-        balanceUSDC={walletBalanceUSDC}
       />
 
       <AddFundsModal

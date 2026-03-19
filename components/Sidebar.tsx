@@ -25,7 +25,6 @@ const Sidebar: React.FC<SidebarProps> = ({
     isOpen = false,
     onClose
 }) => {
-    const [showAllBalances, setShowAllBalances] = useState(false);
     const menuItems = [
         { id: 'DASHBOARD', label: 'Dashboard', icon: LayoutDashboard },
         { id: 'INVOICES', label: 'Invoices', icon: Receipt },
@@ -116,44 +115,17 @@ const Sidebar: React.FC<SidebarProps> = ({
                         </div>
                         {/* Currency balances */}
                         {(() => {
-                            const currencySymbols: Record<string, string> = {
-                                NGN: '₦', USD: '$', GBP: '£', EUR: '€', KES: 'KSh', GHS: 'GH₵', ZAR: 'R',
-                            };
-                            // Define the order we always display
-                            const allCurrencies = ['NGN', 'USD', 'GBP', 'KES', 'GHS', 'ZAR', 'USDT', 'BTC', 'ETH'];
-                            const primaryCount = 3; // Always show first 3
-
-                            // Build display list from walletBalances, filling in zeros for missing ones
-                            const balanceMap = new Map(walletBalances.map(b => [b.currency, b]));
-                            const fullList = allCurrencies.map(c => balanceMap.get(c) || { currency: c, available: 0, pending: 0 });
-
-                            const displayList = showAllBalances ? fullList : fullList.slice(0, primaryCount);
-                            const hasMore = fullList.length > primaryCount;
-
+                            const ngnBalance = walletBalances.find(b => b.currency === 'NGN') || { currency: 'NGN', available: 0, pending: 0 };
+                            
                             return (
-                                <>
-                                    <div className={`space-y-1 ${showAllBalances ? 'max-h-48 overflow-y-auto pr-1' : ''}`}>
-                                        {displayList.map(b => (
-                                            <div key={b.currency} className={`flex justify-between items-center py-0.5 ${b.available === 0 ? 'opacity-50' : ''}`}>
-                                                <span className="text-xs text-slate-400">{b.currency}</span>
-                                                <span className={`text-sm font-bold ${b.available > 0 ? 'text-white' : 'text-slate-500'}`}>
-                                                    {currencySymbols[b.currency]
-                                                        ? `${currencySymbols[b.currency]} ${b.available.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                                                        : `${b.available.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 8 })} ${b.currency}`
-                                                    }
-                                                </span>
-                                            </div>
-                                        ))}
+                                <div className="space-y-1">
+                                    <div className="flex justify-between items-center py-0.5">
+                                        <span className="text-xs text-slate-400">NGN</span>
+                                        <span className={`text-sm font-bold ${ngnBalance.available > 0 ? 'text-white' : 'text-slate-500'}`}>
+                                            ₦ {ngnBalance.available.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                        </span>
                                     </div>
-                                    {hasMore && (
-                                        <button
-                                            onClick={() => setShowAllBalances(!showAllBalances)}
-                                            className="text-xs text-green-400 hover:text-green-300 text-center w-full mt-1 transition-colors"
-                                        >
-                                            {showAllBalances ? '▲ Show less' : `▼ +${fullList.length - primaryCount} more currencies`}
-                                        </button>
-                                    )}
-                                </>
+                                </div>
                             );
                         })()}
                         <div className="grid grid-cols-2 gap-2 mt-3">

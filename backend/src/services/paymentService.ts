@@ -794,14 +794,6 @@ class PaymentService {
                         createMany: {
                             data: [
                                 { currency: 'NGN' },
-                                { currency: 'USD' },
-                                { currency: 'GBP' },
-                                { currency: 'KES' },
-                                { currency: 'GHS' },
-                                { currency: 'ZAR' },
-                                { currency: 'USDT' },
-                                { currency: 'BTC' },
-                                { currency: 'ETH' },
                             ],
                         },
                     },

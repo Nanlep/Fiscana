@@ -10,6 +10,7 @@ import {
 interface SMEFinanceProps {
     userProfile: UserProfile | null;
     notify: (type: 'SUCCESS' | 'ERROR' | 'INFO' | 'WARNING', message: string) => void;
+    onNavigateBilling?: () => void;
 }
 
 interface FormData {
@@ -69,7 +70,7 @@ const getStatusIcon = (status: SMEApplicationStatus) => {
     }
 };
 
-const SMEFinance: React.FC<SMEFinanceProps> = ({ userProfile, notify }) => {
+const SMEFinance: React.FC<SMEFinanceProps> = ({ userProfile, notify, onNavigateBilling }) => {
     const [applications, setApplications] = useState<SMEApplication[]>([]);
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
@@ -98,6 +99,7 @@ const SMEFinance: React.FC<SMEFinanceProps> = ({ userProfile, notify }) => {
     });
 
     const isKYCVerified = userProfile?.kycStatus === 'VERIFIED';
+    const hasAnnualPlan = userProfile?.subscriptionTier === 'ANNUAL' || userProfile?.subscriptionTier === 'SANDBOX';
 
     const fetchApplications = useCallback(async () => {
         setLoading(true);
@@ -198,6 +200,44 @@ const SMEFinance: React.FC<SMEFinanceProps> = ({ userProfile, notify }) => {
         }
         setSubmitting(false);
     };
+
+    // Annual Plan Gate — checked BEFORE KYC gate
+    if (!hasAnnualPlan) {
+        return (
+            <div className="p-4 md:p-8 h-full flex flex-col items-center justify-center space-y-6">
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-8 md:p-12 text-center max-w-lg mx-auto">
+                    <div className="w-20 h-20 bg-purple-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <Banknote size={40} className="text-purple-500" />
+                    </div>
+                    <h1 className="text-2xl md:text-3xl font-bold text-slate-900 mb-3">Annual Plan Required</h1>
+                    <p className="text-slate-500 mb-6 leading-relaxed">
+                        SME Finance is an <strong>exclusive feature</strong> available only to users on the <strong>Annual Plan (₦24,900/year)</strong>. 
+                        Upgrade your subscription to access business loans and financing options.
+                    </p>
+                    <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-4 mb-6">
+                        <p className="text-sm font-semibold text-green-800 mb-1">🎯 Annual Plan Benefits</p>
+                        <ul className="text-xs text-green-700 space-y-1 text-left">
+                            <li>✓ Access to SME Finance & Loan Applications</li>
+                            <li>✓ Save ₦5,100 vs monthly billing</li>
+                            <li>✓ All premium features included</li>
+                        </ul>
+                    </div>
+                    {onNavigateBilling && (
+                        <button
+                            onClick={onNavigateBilling}
+                            className="px-6 py-3 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 transition-colors shadow-lg shadow-green-600/20 flex items-center space-x-2 mx-auto"
+                        >
+                            <ArrowRight size={18} />
+                            <span>Upgrade to Annual Plan</span>
+                        </button>
+                    )}
+                    <p className="text-xs text-slate-400 mt-4">
+                        Current Plan: <strong className="text-slate-600">{userProfile?.subscriptionTier || 'TRIAL'}</strong>
+                    </p>
+                </div>
+            </div>
+        );
+    }
 
     // KYC Gate
     if (!isKYCVerified) {
