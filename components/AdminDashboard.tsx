@@ -49,6 +49,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, adminProfile,
     const [supportLoading, setSupportLoading] = useState(false);
     const [supportTotal, setSupportTotal] = useState(0);
     const [expandedAdminTicket, setExpandedAdminTicket] = useState<string | null>(null);
+    const [expandedApp, setExpandedApp] = useState<string | null>(null);
     const [adminReplyText, setAdminReplyText] = useState<Record<string, string>>({});
     const [adminReplying, setAdminReplying] = useState<string | null>(null);
 
@@ -868,75 +869,120 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, adminProfile,
                         <p className="text-sm text-slate-500">No SME Finance applications yet.</p>
                     </div>
                 ) : (
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                            <thead>
-                                <tr className="bg-slate-50">
-                                    <th className="text-left px-5 py-3 font-semibold text-slate-600">Applicant</th>
-                                    <th className="text-left px-5 py-3 font-semibold text-slate-600">Business</th>
-                                    <th className="text-left px-5 py-3 font-semibold text-slate-600">Loan Amount</th>
-                                    <th className="text-left px-5 py-3 font-semibold text-slate-600">Purpose</th>
-                                    <th className="text-left px-5 py-3 font-semibold text-slate-600">Period</th>
-                                    <th className="text-left px-5 py-3 font-semibold text-slate-600">Date</th>
-                                    <th className="text-left px-5 py-3 font-semibold text-slate-600">Status</th>
-                                    <th className="text-left px-5 py-3 font-semibold text-slate-600">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
-                                {smeApplications.map((app: any) => (
-                                    <tr key={app.id} className="hover:bg-slate-50 transition-colors">
-                                        <td className="px-5 py-4">
-                                            <div>
-                                                <p className="font-medium text-slate-900">{app.user?.name || 'N/A'}</p>
-                                                <p className="text-xs text-slate-500">{app.user?.email || ''}</p>
-                                            </div>
-                                        </td>
-                                        <td className="px-5 py-4">
-                                            <p className="font-medium text-slate-800">{app.businessName}</p>
-                                            <p className="text-xs text-slate-500">{app.businessType}</p>
-                                        </td>
-                                        <td className="px-5 py-4 font-mono font-bold text-slate-900">
-                                            ₦{Number(app.loanAmount).toLocaleString()}
-                                        </td>
-                                        <td className="px-5 py-4 text-slate-700">{app.loanPurpose}</td>
-                                        <td className="px-5 py-4 text-slate-700">{app.repaymentPeriod}m</td>
-                                        <td className="px-5 py-4 text-slate-500 text-xs">{new Date(app.createdAt).toLocaleDateString()}</td>
-                                        <td className="px-5 py-4">
-                                            <span className={`inline-flex items-center space-x-1 text-xs font-bold px-2.5 py-1 rounded-full ${
-                                                app.status === 'APPROVED' ? 'bg-green-100 text-green-800' :
-                                                app.status === 'DECLINED' ? 'bg-red-100 text-red-800' :
-                                                'bg-amber-100 text-amber-800'
+                    <div className="divide-y divide-slate-100">
+                        {smeApplications.map((app: any) => (
+                            <div key={app.id}>
+                                {/* Summary Row */}
+                                <div className="px-5 py-4 flex items-center justify-between hover:bg-slate-50 transition-colors cursor-pointer"
+                                    onClick={() => setExpandedApp(expandedApp === app.id ? null : app.id)}>
+                                    <div className="flex items-center space-x-4 min-w-0 flex-1">
+                                        <div>
+                                            <p className="font-medium text-slate-900">{app.user?.name || 'N/A'} <span className="text-xs text-slate-400">({app.user?.email || ''})</span></p>
+                                            <p className="text-sm font-semibold text-slate-700">{app.businessName} <span className="text-xs text-slate-400">• {app.businessType}</span></p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center space-x-3 flex-shrink-0">
+                                        <span className="font-mono font-bold text-slate-900 text-sm">₦{Number(app.loanAmount).toLocaleString()}</span>
+                                        {/* Pre-Qual Score Badge */}
+                                        {app.preQualOutcome && (
+                                            <span className={`text-xs font-bold px-2 py-1 rounded-full ${
+                                                app.preQualOutcome === 'Qualified' ? 'bg-green-100 text-green-800' :
+                                                app.preQualOutcome === 'Conditionally Qualified' ? 'bg-amber-100 text-amber-800' :
+                                                'bg-red-100 text-red-800'
                                             }`}>
-                                                {app.status === 'APPROVED' ? <CheckCircle size={12} /> :
-                                                    app.status === 'DECLINED' ? <Ban size={12} /> :
-                                                    <Clock size={12} />}
-                                                <span>{app.status}</span>
+                                                {app.preQualOutcome} ({app.preQualScore}/9)
                                             </span>
-                                        </td>
-                                        <td className="px-5 py-4">
-                                            <div className="flex items-center space-x-2">
-                                                {app.status !== 'APPROVED' && (
-                                                    <button
-                                                        onClick={() => handleSmeStatusChange(app.id, 'APPROVED')}
-                                                        className="px-3 py-1.5 bg-green-600 text-white text-xs font-bold rounded-lg hover:bg-green-700 transition-colors"
-                                                    >
-                                                        Approve
-                                                    </button>
-                                                )}
-                                                {app.status !== 'DECLINED' && (
-                                                    <button
-                                                        onClick={() => handleSmeStatusChange(app.id, 'DECLINED')}
-                                                        className="px-3 py-1.5 bg-red-600 text-white text-xs font-bold rounded-lg hover:bg-red-700 transition-colors"
-                                                    >
-                                                        Decline
-                                                    </button>
-                                                )}
+                                        )}
+                                        <span className={`inline-flex items-center space-x-1 text-xs font-bold px-2.5 py-1 rounded-full ${
+                                            app.status === 'APPROVED' ? 'bg-green-100 text-green-800' :
+                                            app.status === 'DECLINED' ? 'bg-red-100 text-red-800' :
+                                            'bg-amber-100 text-amber-800'
+                                        }`}>
+                                            {app.status === 'APPROVED' ? <CheckCircle size={12} /> :
+                                                app.status === 'DECLINED' ? <Ban size={12} /> :
+                                                <Clock size={12} />}
+                                            <span>{app.status}</span>
+                                        </span>
+                                        <span className="text-xs text-slate-400">{new Date(app.createdAt).toLocaleDateString()}</span>
+                                        {expandedApp === app.id ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
+                                    </div>
+                                </div>
+
+                                {/* Expanded Detail */}
+                                {expandedApp === app.id && (
+                                    <div className="px-5 pb-5 space-y-4">
+                                        {/* Scoring Panel */}
+                                        {app.preQualScore !== null && app.preQualScore !== undefined && (
+                                            <div className="bg-gradient-to-r from-slate-50 to-blue-50 rounded-xl p-4 border border-slate-200">
+                                                <h4 className="text-xs font-bold text-slate-800 uppercase mb-3">Pre-Qualification Scoring (Internal)</h4>
+                                                <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+                                                    <div className="text-center">
+                                                        <p className="text-xs text-slate-500">Score</p>
+                                                        <p className="text-lg font-bold text-slate-900">{app.preQualScore}/9</p>
+                                                    </div>
+                                                    <div className="text-center">
+                                                        <p className="text-xs text-slate-500">Revenue</p>
+                                                        <p className={`text-sm font-bold ${app.revenueStrength === 'High' ? 'text-green-700' : app.revenueStrength === 'Medium' ? 'text-amber-700' : 'text-red-700'}`}>{app.revenueStrength || 'N/A'}</p>
+                                                    </div>
+                                                    <div className="text-center">
+                                                        <p className="text-xs text-slate-500">Repayment</p>
+                                                        <p className={`text-sm font-bold ${app.repaymentCapacity === 'High' ? 'text-green-700' : app.repaymentCapacity === 'Medium' ? 'text-amber-700' : 'text-red-700'}`}>{app.repaymentCapacity || 'N/A'}</p>
+                                                    </div>
+                                                    <div className="text-center">
+                                                        <p className="text-xs text-slate-500">Credit</p>
+                                                        <p className={`text-sm font-bold ${app.creditHistory === 'Good' ? 'text-green-700' : app.creditHistory === 'Fair' ? 'text-amber-700' : 'text-red-700'}`}>{app.creditHistory || 'N/A'}</p>
+                                                    </div>
+                                                    <div className="text-center">
+                                                        <p className="text-xs text-slate-500">Docs</p>
+                                                        <p className={`text-sm font-bold ${app.documentationLevel === 'High' ? 'text-green-700' : app.documentationLevel === 'Medium' ? 'text-amber-700' : 'text-red-700'}`}>{app.documentationLevel || 'N/A'}</p>
+                                                    </div>
+                                                    <div className="text-center">
+                                                        <p className="text-xs text-slate-500">Outcome</p>
+                                                        <p className={`text-sm font-bold ${app.preQualOutcome === 'Qualified' ? 'text-green-700' : app.preQualOutcome === 'Conditionally Qualified' ? 'text-amber-700' : 'text-red-700'}`}>{app.preQualOutcome || 'N/A'}</p>
+                                                    </div>
+                                                </div>
                                             </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                        )}
+
+                                        {/* Application Details Grid */}
+                                        <div className="bg-slate-50 rounded-xl p-4 grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                                            <div><span className="text-slate-500 text-xs">RC Number</span><p className="font-medium text-slate-900">{app.rcNumber || 'N/A'}</p></div>
+                                            <div><span className="text-slate-500 text-xs">CAC Registered</span><p className="font-medium text-slate-900">{app.registeredWithCAC ? 'Yes' : 'No'}</p></div>
+                                            <div><span className="text-slate-500 text-xs">Industry</span><p className="font-medium text-slate-900">{app.industrySector || 'N/A'}</p></div>
+                                            <div><span className="text-slate-500 text-xs">State</span><p className="font-medium text-slate-900">{app.state || 'N/A'}</p></div>
+                                            <div><span className="text-slate-500 text-xs">Year Est.</span><p className="font-medium text-slate-900">{app.yearEstablished || 'N/A'}</p></div>
+                                            <div><span className="text-slate-500 text-xs">Employees</span><p className="font-medium text-slate-900">{app.numberOfEmployees || 'N/A'}</p></div>
+                                            <div><span className="text-slate-500 text-xs">Owner</span><p className="font-medium text-slate-900">{app.ownerFullName || 'N/A'}</p></div>
+                                            <div><span className="text-slate-500 text-xs">BVN</span><p className="font-medium text-slate-900">{app.ownerBVN ? '•••' + app.ownerBVN.slice(-4) : 'N/A'}</p></div>
+                                            <div><span className="text-slate-500 text-xs">Monthly Revenue</span><p className="font-medium text-slate-900">{app.monthlySalesRevenue ? `₦${Number(app.monthlySalesRevenue).toLocaleString()}` : 'N/A'}</p></div>
+                                            <div><span className="text-slate-500 text-xs">Monthly Expenses</span><p className="font-medium text-slate-900">{app.monthlyExpenses ? `₦${Number(app.monthlyExpenses).toLocaleString()}` : 'N/A'}</p></div>
+                                            <div><span className="text-slate-500 text-xs">Monthly Profit</span><p className="font-medium text-slate-900">{app.monthlyProfitEstimate ? `₦${Number(app.monthlyProfitEstimate).toLocaleString()}` : 'N/A'}</p></div>
+                                            <div><span className="text-slate-500 text-xs">Loan Tenor</span><p className="font-medium text-slate-900">{app.loanTenorMonths || app.repaymentPeriod || 'N/A'} months</p></div>
+                                            <div><span className="text-slate-500 text-xs">Previous Loan</span><p className="font-medium text-slate-900">{app.hasPreviousLoan ? `Yes — ${app.previousLoanStatus || 'N/A'}` : 'No'}</p></div>
+                                            <div><span className="text-slate-500 text-xs">Keeps Records</span><p className="font-medium text-slate-900">{app.keepsFinancialRecords ? 'Yes' : 'No'}</p></div>
+                                            <div><span className="text-slate-500 text-xs">Bank</span><p className="font-medium text-slate-900">{app.primaryBankName || 'N/A'}</p></div>
+                                            <div><span className="text-slate-500 text-xs">Collateral</span><p className="font-medium text-slate-900">{app.hasCollateral ? (app.collateralType || 'Yes') : 'None'}</p></div>
+                                        </div>
+
+                                        {/* Admin Actions */}
+                                        <div className="flex items-center space-x-2">
+                                            {app.status !== 'APPROVED' && (
+                                                <button
+                                                    onClick={() => handleSmeStatusChange(app.id, 'APPROVED')}
+                                                    className="px-3 py-1.5 bg-green-600 text-white text-xs font-bold rounded-lg hover:bg-green-700 transition-colors"
+                                                >Approve</button>
+                                            )}
+                                            {app.status !== 'DECLINED' && (
+                                                <button
+                                                    onClick={() => handleSmeStatusChange(app.id, 'DECLINED')}
+                                                    className="px-3 py-1.5 bg-red-600 text-white text-xs font-bold rounded-lg hover:bg-red-700 transition-colors"
+                                                >Decline</button>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        ))}
                     </div>
                 )}
             </div>

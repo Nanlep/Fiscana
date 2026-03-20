@@ -219,22 +219,96 @@ export type SMEApplicationStatus = 'PENDING' | 'APPROVED' | 'DECLINED';
 export interface SMEApplication {
   id: string;
   userId: string;
+
+  // Section 1: Business Information
   businessName: string;
-  businessType: string;
   rcNumber?: string;
+  registeredWithCAC: boolean;
+  businessType: string;
+  industrySector?: string;
   businessAddress: string;
-  annualRevenue: number;
+  state?: string;
+  yearEstablished?: string;
+  numberOfEmployees?: string;
+  contactPersonName?: string;
+  contactPhone?: string;
+  contactEmail?: string;
+
+  // Section 2: Owner/Director Details
+  ownerFullName?: string;
+  ownerDOB?: string;
+  ownerGender?: string;
+  ownerBVN?: string;
+  ownerNationalId?: string;
+  ownerResidentialAddress?: string;
+  ownerPercentageOwnership?: string;
+  ownerPhone?: string;
+  ownerEmail?: string;
+
+  // Section 3: Business Operations
+  businessActivities?: string;
+  productsServices?: string;
+  majorCustomers?: string;
+  hasExistingContracts: boolean;
+  monthlySalesRevenue?: number;
+  monthlyExpenses?: number;
+  monthlyProfitEstimate?: number;
+
+  // Section 4: Loan Request Details
   loanAmount: number;
   loanPurpose: string;
-  repaymentPeriod: number; // in months
+  loanTenorMonths?: number;
+  expectedMonthlyRepayment?: number;
+  hasPreviousLoan: boolean;
+  previousLoanSource?: string;
+  previousLoanStatus?: string;
+  repaymentPeriod: number;
+
+  // Section 5: Financial Records
+  keepsFinancialRecords: boolean;
+  hasBankStatements: boolean;
+  hasFinancialStatements: boolean;
+  hasTIN: boolean;
+  primaryBankName?: string;
+  bankAccountNumber?: string;
+
+  // Section 6: Collateral / Guarantee
+  hasCollateral: boolean;
+  collateralType?: string;
+  collateralEstimatedValue?: string;
+  willingToProvideGuarantor: boolean;
+
+  // Legacy fields
+  annualRevenue: number;
   collateralDescription?: string;
-  bankStatementUrl?: string;
-  taxClearanceUrl?: string;
-  cacDocumentUrl?: string;
   guarantorName: string;
   guarantorPhone: string;
   guarantorEmail: string;
   guarantorRelationship: string;
+
+  // Documents
+  cacDocumentUrl?: string;
+  validIdUrl?: string;
+  bankStatementUrl?: string;
+  utilityBillUrl?: string;
+  passportPhotoUrl?: string;
+  tinDocumentUrl?: string;
+  collateralDocumentUrl?: string;
+  taxClearanceUrl?: string;
+
+  // Declaration
+  applicantDeclarationName?: string;
+  declarationDate?: string;
+
+  // Scoring (admin-only)
+  preQualScore?: number;
+  revenueStrength?: string;
+  repaymentCapacity?: string;
+  creditHistory?: string;
+  documentationLevel?: string;
+  preQualOutcome?: string;
+
+  // Status
   status: SMEApplicationStatus;
   adminNote?: string;
   createdAt: string;

@@ -270,30 +270,106 @@ model EmailVerification {
 }
 
 model SMEApplication {
-  id                     String    @id @default(uuid())
-  userId                 String
-  businessName           String
-  businessType           String
-  rcNumber               String?
-  businessAddress        String
-  annualRevenue          Float
-  loanAmount             Float
-  loanPurpose            String
-  repaymentPeriod        Int       // months
+  id     String @id @default(uuid())
+  userId String
+
+  // ===== SECTION 1: BUSINESS INFORMATION =====
+  businessName       String
+  rcNumber           String?
+  registeredWithCAC  Boolean  @default(false)
+  businessType       String   // Sole Proprietorship / Partnership / Limited Company
+  industrySector     String?
+  businessAddress    String
+  state              String?
+  yearEstablished    String?
+  numberOfEmployees  String?
+  contactPersonName  String?
+  contactPhone       String?
+  contactEmail       String?
+
+  // ===== SECTION 2: OWNER / DIRECTOR DETAILS =====
+  ownerFullName            String?
+  ownerDOB                 String?
+  ownerGender              String?
+  ownerBVN                 String?
+  ownerNationalId          String?
+  ownerResidentialAddress   String?
+  ownerPercentageOwnership String?
+  ownerPhone               String?
+  ownerEmail               String?
+
+  // ===== SECTION 3: BUSINESS OPERATIONS =====
+  businessActivities    String?
+  productsServices      String?
+  majorCustomers        String?  // Retail / Corporate / Government / Export
+  hasExistingContracts  Boolean  @default(false)
+  monthlySalesRevenue   Float?
+  monthlyExpenses       Float?
+  monthlyProfitEstimate Float?
+
+  // ===== SECTION 4: LOAN REQUEST DETAILS =====
+  loanAmount               Float
+  loanPurpose              String   // Working Capital / Asset Purchase / Expansion / Inventory / Invoice / Others
+  loanTenorMonths          Int?     // months
+  expectedMonthlyRepayment Float?
+  hasPreviousLoan          Boolean  @default(false)
+  previousLoanSource       String?
+  previousLoanStatus       String?  // Active / Repaid / Defaulted
+
+  // Legacy field kept for backward compat
+  repaymentPeriod          Int      @default(12)
+
+  // ===== SECTION 5: FINANCIAL RECORDS =====
+  keepsFinancialRecords  Boolean  @default(false)
+  hasBankStatements      Boolean  @default(false)
+  hasFinancialStatements Boolean  @default(false)
+  hasTIN                 Boolean  @default(false)
+  primaryBankName        String?
+  bankAccountNumber      String?
+
+  // ===== SECTION 6: COLLATERAL / GUARANTEE =====
+  hasCollateral            Boolean  @default(false)
+  collateralType           String?  // Land/Property, Equipment, Inventory, None
+  collateralEstimatedValue String?
+  willingToProvideGuarantor Boolean @default(false)
+
+  // Legacy fields kept for backward compat
   collateralDescription  String?
-  bankStatementUrl       String?
-  taxClearanceUrl        String?
+  guarantorName          String   @default("")
+  guarantorPhone         String   @default("")
+  guarantorEmail         String   @default("")
+  guarantorRelationship  String   @default("")
+  annualRevenue          Float    @default(0)
+
+  // ===== SECTION 7: DOCUMENT UPLOADS =====
   cacDocumentUrl         String?
-  guarantorName          String
-  guarantorPhone         String
-  guarantorEmail         String
-  guarantorRelationship  String
-  status                 String    @default("PENDING") // PENDING, APPROVED, DECLINED
-  adminNote              String?
-  reviewedAt             DateTime?
-  reviewedBy             String?
-  createdAt              DateTime  @default(now())
-  updatedAt              DateTime  @updatedAt
+  validIdUrl             String?
+  bankStatementUrl       String?
+  utilityBillUrl         String?
+  passportPhotoUrl       String?
+  tinDocumentUrl         String?
+  collateralDocumentUrl  String?
+  taxClearanceUrl        String?
+
+  // ===== DECLARATION =====
+  applicantDeclarationName String?
+  declarationDate          String?
+
+  // ===== SCORING (Internal / Admin Only) =====
+  preQualScore       Int?      // 0-9 checklist score
+  revenueStrength    String?   // Low / Medium / High
+  repaymentCapacity  String?   // Low / Medium / High
+  creditHistory      String?   // Good / Fair / Poor
+  documentationLevel String?   // Low / Medium / High
+  preQualOutcome     String?   // Qualified / Conditionally Qualified / Not Qualified
+
+  // ===== STATUS & ADMIN =====
+  status     String    @default("PENDING") // PENDING, APPROVED, DECLINED
+  adminNote  String?
+  reviewedAt DateTime?
+  reviewedBy String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 
   // Relationships
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
