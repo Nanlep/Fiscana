@@ -38,6 +38,7 @@ export interface User {
     subscriptionStatus: 'ACTIVE' | 'PAST_DUE' | 'CANCELLED' | 'EXPIRED';
     trialEndsAt: string | null;
     subscriptionEndsAt: string | null;
+    invoiceLogo: string | null;
 }
 
 // Token management
@@ -833,18 +834,21 @@ export const billingApi = {
         }>('/billing/status'),
 
     initialize: (plan: 'MONTHLY' | 'ANNUAL') =>
-        apiRequest<{ paymentUrl: string; txRef: string }>('/billing/initialize', {
+        apiRequest<{ amount: number; currency: string; txRef: string; plan: string }>('/billing/initialize', {
             method: 'POST',
             body: JSON.stringify({ plan }),
         }),
 
-    verify: (txRef: string) =>
+    confirm: (data: { txRef: string; merchantRef: string; plan: string }) =>
         apiRequest<{
             subscriptionTier: string;
             subscriptionStatus: string;
             subscriptionEndsAt: string;
             active: boolean;
-        }>(`/billing/verify/${txRef}`),
+        }>('/billing/confirm', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        }),
 };
 
 // ==================== Support API ====================

@@ -151,6 +151,97 @@ const PersonalInfoTab: React.FC<{
                 </div>
             </div>
 
+            {/* Invoice / Receipt Logo */}
+            {(() => {
+                const canUseLogo = user?.subscriptionTier === 'ANNUAL' || user?.subscriptionTier === 'SANDBOX';
+                const logoFileRef = React.createRef<HTMLInputElement>();
+                return (
+                    <div className="bg-white rounded-2xl border border-slate-200 p-8">
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-lg font-bold text-slate-900">Invoice & Receipt Logo</h2>
+                            {!canUseLogo && (
+                                <span className="text-xs font-semibold bg-amber-100 text-amber-700 px-3 py-1 rounded-full flex items-center space-x-1">
+                                    <Crown size={12} />
+                                    <span>Annual Plan Required</span>
+                                </span>
+                            )}
+                        </div>
+                        {canUseLogo ? (
+                            <div className="flex items-center space-x-6">
+                                <div className="w-[80px] h-[80px] rounded-xl border-2 border-dashed border-slate-300 flex items-center justify-center bg-slate-50 overflow-hidden flex-shrink-0">
+                                    {user?.invoiceLogo ? (
+                                        <img src={user.invoiceLogo} alt="Logo" className="max-w-full max-h-full object-contain" />
+                                    ) : (
+                                        <span className="text-xs text-slate-400 text-center px-1">No logo</span>
+                                    )}
+                                </div>
+                                <div className="flex-1">
+                                    <p className="text-sm text-slate-600 mb-3">Upload your company or personal logo. It will appear on all generated invoices and receipts.</p>
+                                    <div className="flex items-center space-x-3">
+                                        <button
+                                            onClick={() => logoFileRef.current?.click()}
+                                            className="px-4 py-2 bg-green-600 text-white text-sm font-semibold rounded-lg hover:bg-green-700 transition-colors"
+                                        >
+                                            {user?.invoiceLogo ? 'Change Logo' : 'Upload Logo'}
+                                        </button>
+                                        {user?.invoiceLogo && (
+                                            <button
+                                                onClick={async () => {
+                                                    setSaving(true);
+                                                    const ok = await updateProfile({ invoiceLogo: null });
+                                                    if (ok) notify('SUCCESS', 'Logo removed');
+                                                    else notify('ERROR', 'Failed to remove logo');
+                                                    setSaving(false);
+                                                }}
+                                                className="px-4 py-2 bg-red-50 text-red-600 text-sm font-semibold rounded-lg hover:bg-red-100 transition-colors"
+                                            >
+                                                Remove
+                                            </button>
+                                        )}
+                                    </div>
+                                    <p className="text-xs text-slate-400 mt-2">Max 500KB • PNG or JPG recommended</p>
+                                    <input
+                                        ref={logoFileRef}
+                                        type="file"
+                                        accept="image/png,image/jpeg,image/jpg,image/webp"
+                                        className="hidden"
+                                        onChange={async (e) => {
+                                            const file = e.target.files?.[0];
+                                            if (!file) return;
+                                            if (file.size > 500 * 1024) {
+                                                notify('ERROR', 'Logo must be under 500KB');
+                                                return;
+                                            }
+                                            const reader = new FileReader();
+                                            reader.onload = async () => {
+                                                setSaving(true);
+                                                const dataUrl = reader.result as string;
+                                                const ok = await updateProfile({ invoiceLogo: dataUrl });
+                                                if (ok) notify('SUCCESS', 'Logo saved! It will appear on your invoices and receipts.');
+                                                else notify('ERROR', 'Failed to save logo');
+                                                setSaving(false);
+                                            };
+                                            reader.readAsDataURL(file);
+                                            e.target.value = '';
+                                        }}
+                                    />
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="flex items-center space-x-4 bg-slate-50 rounded-xl p-4">
+                                <div className="w-12 h-12 bg-slate-200 rounded-lg flex items-center justify-center flex-shrink-0 opacity-50">
+                                    <Camera size={20} className="text-slate-400" />
+                                </div>
+                                <div>
+                                    <p className="text-sm text-slate-600">Add your custom logo to invoices and receipts.</p>
+                                    <p className="text-xs text-slate-400 mt-1">Subscribe to the <strong>Annual plan</strong> to unlock this feature.</p>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                );
+            })()}
+
             {/* Basic Information */}
             <div className="bg-white rounded-2xl border border-slate-200 p-8">
                 <h2 className="text-lg font-bold text-slate-900 mb-6">Basic Information</h2>

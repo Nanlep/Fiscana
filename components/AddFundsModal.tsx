@@ -14,6 +14,7 @@ declare global {
             lastName: string;
             merchantKey: string;
             merchantRef?: string;
+            customerRef?: string;
             metadata?: string | Record<string, any>;
             onClose?: (response: any) => void;
             callback?: (response: any) => void;

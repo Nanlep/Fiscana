@@ -49,23 +49,6 @@ const SubscriptionGate: React.FC<SubscriptionGateProps> = ({ children, onNavigat
         checkSubscription();
     }, [user]);
 
-    // Also check for billing verification callback
-    useEffect(() => {
-        const params = new URLSearchParams(window.location.search);
-        const txRef = params.get('billing_verify');
-        if (txRef) {
-            // Clean up URL
-            window.history.replaceState({}, '', window.location.pathname);
-            // Verify payment
-            billingApi.verify(txRef).then(res => {
-                if (res.success && res.data?.active) {
-                    setIsActive(true);
-                    setShowTrialBanner(false);
-                    refreshUser();
-                }
-            });
-        }
-    }, [refreshUser]);
 
     if (checking) {
         return (

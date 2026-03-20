@@ -52,12 +52,12 @@ const KYCVerification: React.FC<KYCVerificationProps> = ({ user, onSubmit }) => 
                         <p className="text-xl font-bold text-slate-900">₦50,000,000</p>
                     </div>
                     <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
-                        <p className="text-xs font-bold text-slate-400 uppercase mb-1">Global Accounts</p>
-                        <p className="text-xl font-bold text-slate-900">USD, GBP, EUR</p>
+                        <p className="text-xs font-bold text-slate-400 uppercase mb-1">Your Account</p>
+                        <p className="text-xl font-bold text-slate-900">NGN</p>
                     </div>
                     <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
-                        <p className="text-xs font-bold text-slate-400 uppercase mb-1">Crypto Withdrawals</p>
-                        <p className="text-xl font-bold text-slate-900">Unlimited</p>
+                        <p className="text-xs font-bold text-slate-400 uppercase mb-1">SME Finance</p>
+                        <p className="text-xl font-bold text-slate-900">Apply for SME Finance</p>
                     </div>
                     <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
                         <p className="text-xs font-bold text-slate-400 uppercase mb-1">Verification Method</p>

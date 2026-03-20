@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { body, param } from 'express-validator';
+import { body } from 'express-validator';
 import { prisma } from '../config/database.js';
 import { authenticate } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
@@ -7,19 +7,9 @@ import { asyncHandler } from '../middleware/errorHandler.js';
 import { logger } from '../utils/logger.js';
 import { config } from '../config/index.js';
 import { sendSubscriptionConfirmationEmail, sendSubscriptionExpiredEmail } from '../services/emailService.js';
+import crypto from 'crypto';
 
 const router = Router();
-
-// Flutterwave API response types
-interface FlwPaymentResponse {
-    status: string;
-    data?: {
-        link?: string;
-        status?: string;
-        tx_ref?: string;
-        meta?: Record<string, any>;
-    };
-}
 
 // Helper: check if subscription is active
 export function isSubscriptionActive(user: {
@@ -64,53 +54,70 @@ export function isSubscriptionActive(user: {
     return { active: false, reason: 'NO_SUBSCRIPTION' };
 }
 
+// Helper: activate subscription after successful payment
+async function activateSubscription(userId: string, plan: string, txRef: string) {
+    const now = new Date();
+    let subscriptionEndsAt: Date;
+
+    if (plan === 'ANNUAL') {
+        subscriptionEndsAt = new Date(now);
+        subscriptionEndsAt.setFullYear(subscriptionEndsAt.getFullYear() + 1);
+    } else {
+        subscriptionEndsAt = new Date(now);
+        subscriptionEndsAt.setMonth(subscriptionEndsAt.getMonth() + 1);
+    }
+
+    const user = await prisma.user.update({
+        where: { id: userId },
+        data: {
+            subscriptionTier: plan,
+            subscriptionStatus: 'ACTIVE',
+            subscriptionEndsAt,
+            paymentReference: txRef,
+        },
+    });
+
+    // Send confirmation email
+    sendSubscriptionConfirmationEmail(user.email, user.name, plan, subscriptionEndsAt);
+
+    logger.info('[Billing] Subscription activated', { userId, plan, txRef });
+
+    return { user, subscriptionEndsAt };
+}
+
 // ==================== PUBLIC ENDPOINTS (webhook) ====================
 
 /**
- * POST /api/billing/webhook — Flutterwave webhook handler
+ * POST /api/billing/webhook — Bani webhook handler
+ * Bani sends webhooks for payment status updates.
  */
 router.post('/webhook', asyncHandler(async (req: Request, res: Response) => {
-    // Verify webhook signature
-    const hash = req.headers['verif-hash'] as string;
-    if (config.flutterwave.webhookHash && hash !== config.flutterwave.webhookHash) {
-        logger.warn('[Billing] Invalid webhook hash');
+    // Verify Bani webhook signature
+    const webhookKey = req.headers['bani_webhook_key'] as string;
+    if (config.bani.webhookKey && webhookKey !== config.bani.webhookKey) {
+        logger.warn('[Billing] Invalid Bani webhook key');
         return res.status(401).json({ status: 'error' });
     }
 
     const event = req.body;
-    logger.info('[Billing] Webhook received', { event: event.event });
+    logger.info('[Billing] Bani webhook received', { event: event.event, data: event.data });
 
-    if (event.event === 'charge.completed' && event.data?.status === 'successful') {
-        const txRef = event.data.tx_ref;
-        const metadata = event.data.meta;
+    // Handle successful payment collection
+    if (event.event === 'payment_collection' && event.data) {
+        const payStatus = event.data.pay_status;
+        const customData = event.data.custom_data;
 
-        if (metadata?.userId && metadata?.plan) {
-            const plan = metadata.plan as string;
-            const now = new Date();
-            let subscriptionEndsAt: Date;
+        if (payStatus === 'successful' && customData?.userId && customData?.plan) {
+            const userId = customData.userId as string;
+            const plan = customData.plan as string;
+            const txRef = event.data.pay_ref || event.data.pay_ext_ref || '';
 
-            if (plan === 'ANNUAL') {
-                subscriptionEndsAt = new Date(now);
-                subscriptionEndsAt.setFullYear(subscriptionEndsAt.getFullYear() + 1);
-            } else {
-                subscriptionEndsAt = new Date(now);
-                subscriptionEndsAt.setMonth(subscriptionEndsAt.getMonth() + 1);
+            try {
+                await activateSubscription(userId, plan, txRef);
+                logger.info('[Billing] Subscription activated via Bani webhook', { userId, plan, txRef });
+            } catch (err: any) {
+                logger.error('[Billing] Failed to activate subscription via webhook', { userId, plan, error: err.message });
             }
-
-            const user = await prisma.user.update({
-                where: { id: metadata.userId },
-                data: {
-                    subscriptionTier: plan,
-                    subscriptionStatus: 'ACTIVE',
-                    subscriptionEndsAt,
-                    paymentReference: txRef,
-                },
-            });
-
-            // Send confirmation email
-            sendSubscriptionConfirmationEmail(user.email, user.name, plan, subscriptionEndsAt);
-
-            logger.info('[Billing] Subscription activated via webhook', { userId: metadata.userId, plan, txRef });
         }
     }
 
@@ -162,7 +169,8 @@ router.get('/status', asyncHandler(async (req: Request, res: Response) => {
 }));
 
 /**
- * POST /api/billing/initialize — Create Flutterwave payment link
+ * POST /api/billing/initialize — Prepare payment data for Bani widget
+ * Returns amount, currency, and txRef for the frontend to launch BaniPopUp.
  */
 router.post('/initialize', [
     body('plan').isIn(['MONTHLY', 'ANNUAL']).withMessage('Plan must be MONTHLY or ANNUAL'),
@@ -177,124 +185,46 @@ router.post('/initialize', [
 
     const amount = plan === 'ANNUAL' ? config.subscription.annualPrice : config.subscription.monthlyPrice;
     const txRef = `FSC-${plan}-${userId.slice(0, 8)}-${Date.now()}`;
-    const planLabel = plan === 'ANNUAL' ? 'Annual (₦24,900/year)' : 'Monthly (₦2,500/month)';
 
-    // Create Flutterwave standard payment
-    const response = await fetch('https://api.flutterwave.com/v3/payments', {
-        method: 'POST',
-        headers: {
-            'Authorization': `Bearer ${config.flutterwave.secretKey}`,
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            tx_ref: txRef,
+    logger.info('[Billing] Payment initialized for Bani widget', { userId, plan, txRef, amount });
+
+    res.json({
+        success: true,
+        data: {
             amount,
             currency: config.subscription.currency,
-            redirect_url: `${config.frontendUrl}?billing_verify=${txRef}`,
-            customer: {
-                email: user.email,
-                name: user.name,
-            },
-            customizations: {
-                title: 'Fiscana Subscription',
-                description: `Fiscana ${planLabel}`,
-                logo: 'https://fiscana.pro/favicon.ico',
-            },
-            meta: {
-                userId: user.id,
-                plan,
-            },
-        }),
+            txRef,
+            plan,
+        },
     });
-
-    const data: FlwPaymentResponse = await response.json() as FlwPaymentResponse;
-
-    if (data.status === 'success' && data.data?.link) {
-        logger.info('[Billing] Payment initialized', { userId, plan, txRef });
-        res.json({
-            success: true,
-            data: {
-                paymentUrl: data.data.link,
-                txRef,
-            },
-        });
-    } else {
-        logger.error('[Billing] Payment initialization failed', { data });
-        res.status(500).json({
-            success: false,
-            error: 'Failed to initialize payment. Please try again.',
-        });
-    }
 }));
 
 /**
- * GET /api/billing/verify/:txRef — Verify payment after redirect
+ * POST /api/billing/confirm — Confirm payment after BaniPopUp callback
+ * Called by the frontend after BaniPopUp fires its success callback.
  */
-router.get('/verify/:txRef', [
-    param('txRef').trim().notEmpty(),
+router.post('/confirm', [
+    body('txRef').trim().notEmpty().withMessage('Transaction reference is required'),
+    body('merchantRef').trim().notEmpty().withMessage('Merchant reference is required'),
+    body('plan').isIn(['MONTHLY', 'ANNUAL']).withMessage('Plan must be MONTHLY or ANNUAL'),
 ], validate, asyncHandler(async (req: Request, res: Response) => {
-    const { txRef } = req.params;
     const userId = req.user!.id;
+    const { txRef, merchantRef, plan } = req.body;
 
-    // Verify with Flutterwave
-    const response = await fetch(`https://api.flutterwave.com/v3/transactions/verify_by_reference?tx_ref=${txRef}`, {
-        headers: {
-            'Authorization': `Bearer ${config.flutterwave.secretKey}`,
+    logger.info('[Billing] Confirming Bani payment', { userId, txRef, merchantRef, plan });
+
+    // Activate the subscription
+    const { subscriptionEndsAt } = await activateSubscription(userId, plan, merchantRef);
+
+    res.json({
+        success: true,
+        data: {
+            subscriptionTier: plan,
+            subscriptionStatus: 'ACTIVE',
+            subscriptionEndsAt,
+            active: true,
         },
     });
-
-    const data: FlwPaymentResponse = await response.json() as FlwPaymentResponse;
-
-    if (data.status === 'success' && data.data?.status === 'successful') {
-        const meta = data.data.meta || {};
-        const plan = (meta.plan as string) || 'MONTHLY';
-        const now = new Date();
-        let subscriptionEndsAt: Date;
-
-        if (plan === 'ANNUAL') {
-            subscriptionEndsAt = new Date(now);
-            subscriptionEndsAt.setFullYear(subscriptionEndsAt.getFullYear() + 1);
-        } else {
-            subscriptionEndsAt = new Date(now);
-            subscriptionEndsAt.setMonth(subscriptionEndsAt.getMonth() + 1);
-        }
-
-        // Verify the payment belongs to this user
-        if (meta.userId !== userId) {
-            return res.status(403).json({ success: false, error: 'Payment does not belong to this user' });
-        }
-
-        const user = await prisma.user.update({
-            where: { id: userId },
-            data: {
-                subscriptionTier: plan,
-                subscriptionStatus: 'ACTIVE',
-                subscriptionEndsAt,
-                paymentReference: txRef,
-            },
-        });
-
-        // Send confirmation email
-        sendSubscriptionConfirmationEmail(user.email, user.name, plan, subscriptionEndsAt);
-
-        logger.info('[Billing] Payment verified and subscription activated', { userId, plan, txRef });
-
-        res.json({
-            success: true,
-            data: {
-                subscriptionTier: plan,
-                subscriptionStatus: 'ACTIVE',
-                subscriptionEndsAt,
-                active: true,
-            },
-        });
-    } else {
-        logger.warn('[Billing] Payment verification failed', { txRef, data });
-        res.json({
-            success: false,
-            error: 'Payment could not be verified. If you were charged, please contact support.',
-        });
-    }
 }));
 
 export default router;

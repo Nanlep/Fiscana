@@ -81,6 +81,7 @@ router.post(
                     subscriptionStatus: result.user.subscriptionStatus,
                     trialEndsAt: result.user.trialEndsAt,
                     subscriptionEndsAt: result.user.subscriptionEndsAt,
+                    invoiceLogo: result.user.invoiceLogo,
                 },
                 accessToken: result.accessToken,
                 refreshToken: result.refreshToken
@@ -139,6 +140,7 @@ router.post(
                     subscriptionStatus: result.user.subscriptionStatus,
                     trialEndsAt: result.user.trialEndsAt,
                     subscriptionEndsAt: result.user.subscriptionEndsAt,
+                    invoiceLogo: result.user.invoiceLogo,
                 },
                 accessToken: result.accessToken,
                 refreshToken: result.refreshToken
@@ -181,6 +183,7 @@ router.post(
                     subscriptionStatus: result.user.subscriptionStatus,
                     trialEndsAt: result.user.trialEndsAt,
                     subscriptionEndsAt: result.user.subscriptionEndsAt,
+                    invoiceLogo: result.user.invoiceLogo,
                 },
                 accessToken: result.accessToken,
                 refreshToken: result.refreshToken
@@ -238,6 +241,7 @@ router.get(
                 subscriptionStatus: user.subscriptionStatus,
                 trialEndsAt: user.trialEndsAt,
                 subscriptionEndsAt: user.subscriptionEndsAt,
+                invoiceLogo: user.invoiceLogo,
             }
         });
     })
@@ -255,18 +259,20 @@ router.put(
         body('name').optional().trim().notEmpty().withMessage('Name cannot be empty'),
         body('type').optional().isIn(['INDIVIDUAL', 'CORPORATE']).withMessage('Type must be INDIVIDUAL or CORPORATE'),
         body('companyName').optional().trim(),
-        body('tin').optional().trim()
+        body('tin').optional().trim(),
+        body('invoiceLogo').optional({ nullable: true }),
     ],
     validate,
     asyncHandler(async (req: Request, res: Response) => {
         const userId = req.user!.id;
-        const { name, type, companyName, tin } = req.body;
+        const { name, type, companyName, tin, invoiceLogo } = req.body;
 
         const updatedUser = await authService.updateProfile(userId, {
             name,
             type,
             companyName,
-            tin
+            tin,
+            invoiceLogo,
         });
 
         res.json({
@@ -286,6 +292,7 @@ router.put(
                 subscriptionStatus: updatedUser.subscriptionStatus,
                 trialEndsAt: updatedUser.trialEndsAt,
                 subscriptionEndsAt: updatedUser.subscriptionEndsAt,
+                invoiceLogo: updatedUser.invoiceLogo,
             }
         });
     })

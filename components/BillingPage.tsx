@@ -3,9 +3,30 @@ import { billingApi } from '../services/apiClient';
 import { useAuth } from '../context/AuthContext';
 import { Crown, Check, Loader2, ArrowLeft, Zap, Shield, TrendingUp } from 'lucide-react';
 
+// Ensure BaniPopUp type is available (loaded from external script in index.html)
+declare global {
+    interface Window {
+        BaniPopUp?: (config: {
+            amount: string | number;
+            phoneNumber: string;
+            email: string;
+            firstName: string;
+            lastName: string;
+            merchantKey: string;
+            merchantRef?: string;
+            customerRef?: string;
+            metadata?: string | Record<string, any>;
+            onClose?: (response: any) => void;
+            callback?: (response: any) => void;
+        }) => void;
+    }
+}
+
 interface BillingPageProps {
     onBack: () => void;
 }
+
+const BANI_PUBLIC_KEY = import.meta.env.VITE_BANI_PUBLIC_KEY || 'pub_prod_SMWE9AH7SNYJAFN6Z263NNETPP4HZT';
 
 const BillingPage: React.FC<BillingPageProps> = ({ onBack }) => {
     const { user, refreshUser } = useAuth();
@@ -31,16 +52,80 @@ const BillingPage: React.FC<BillingPageProps> = ({ onBack }) => {
     const handleSubscribe = async (plan: 'MONTHLY' | 'ANNUAL') => {
         setLoading(plan);
         try {
+            // Step 1: Initialize payment on backend to get txRef and amount
             const res = await billingApi.initialize(plan);
-            if (res.success && res.data?.paymentUrl) {
-                window.location.href = res.data.paymentUrl;
-            } else {
+            if (!res.success || !res.data) {
                 alert(res.error || 'Failed to initialize payment. Please try again.');
+                setLoading(null);
+                return;
             }
+
+            const { amount, currency, txRef } = res.data;
+
+            // Step 2: Check BaniPopUp is loaded
+            if (!window.BaniPopUp) {
+                alert('Payment widget is still loading. Please try again in a moment.');
+                setLoading(null);
+                return;
+            }
+
+            // Parse name parts for Bani
+            const nameParts = (user?.name || '').trim().split(/\s+/);
+            const firstName = nameParts[0] || '';
+            const lastName = nameParts.slice(1).join(' ') || '';
+
+            const merchantRef = `FSC-SUB-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
+
+            // Step 3: Launch BaniPopUp routed to Fiscana Pro subscription account
+            window.BaniPopUp({
+                amount,
+                phoneNumber: '+2348160248996',
+                email: 'contactmike@fiscana.pro',
+                firstName: 'Fiscana',
+                lastName: 'Pro',
+                merchantKey: BANI_PUBLIC_KEY,
+                merchantRef,
+                customerRef: 'MC-71942081417395216747',
+                metadata: JSON.stringify({
+                    source: 'subscription',
+                    userId: (user as any)?.id || '',
+                    userEmail: user?.email || '',
+                    plan,
+                    txRef,
+                }),
+                onClose: () => {
+                    setLoading(null);
+                },
+                callback: async (response: any) => {
+                    console.log('[Billing] Bani payment complete', response);
+
+                    // Step 4: Confirm payment with backend
+                    try {
+                        const confirmRes = await billingApi.confirm({
+                            txRef,
+                            merchantRef: response?.reference || merchantRef,
+                            plan,
+                        });
+
+                        if (confirmRes.success && confirmRes.data?.active) {
+                            await refreshUser();
+                            await loadStatus();
+                            alert('🎉 Subscription activated successfully!');
+                        } else {
+                            alert('Payment received but activation pending. Please refresh the page.');
+                        }
+                    } catch (err) {
+                        console.error('[Billing] Confirmation failed', err);
+                        alert('Payment processed. If your plan is not active, please contact support.');
+                    }
+
+                    setLoading(null);
+                },
+            });
         } catch {
             alert('Something went wrong. Please try again.');
+            setLoading(null);
         }
-        setLoading(null);
     };
 
     const isCurrentPlan = (plan: string) => {
@@ -188,7 +273,7 @@ const BillingPage: React.FC<BillingPageProps> = ({ onBack }) => {
             {/* FAQ */}
             <div className="bg-slate-50 rounded-2xl p-6 text-center">
                 <p className="text-sm text-slate-500">
-                    Payment is processed securely via Flutterwave. Your data remains safe even if your subscription expires.
+                    Payment is processed securely via Bani. Your data remains safe even if your subscription expires.
                     Need help? Contact <a href="mailto:contactmike@fiscana.pro" className="text-green-600 hover:underline">contactmike@fiscana.pro</a>
                 </p>
             </div>

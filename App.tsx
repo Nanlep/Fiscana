@@ -40,6 +40,7 @@ function App() {
     subscriptionStatus: user.subscriptionStatus,
     trialEndsAt: user.trialEndsAt,
     subscriptionEndsAt: user.subscriptionEndsAt,
+    invoiceLogo: user.invoiceLogo,
   } : null;
 
   // --- Exchange Rate State (still localStorage — not user-specific data) ---

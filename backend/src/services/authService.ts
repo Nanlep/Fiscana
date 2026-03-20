@@ -25,6 +25,7 @@ export interface UpdateProfileInput {
     type?: 'INDIVIDUAL' | 'CORPORATE';
     companyName?: string;
     tin?: string;
+    invoiceLogo?: string | null;
 }
 
 export interface AuthResponse {
@@ -415,15 +416,17 @@ export class AuthService {
         }
 
         // Update user
+        // Build update data, only include defined fields
+        const updateData: Record<string, any> = { updatedAt: new Date() };
+        if (input.name !== undefined) updateData.name = input.name;
+        if (input.type !== undefined) updateData.type = input.type;
+        if (input.companyName !== undefined) updateData.companyName = input.companyName;
+        if (input.tin !== undefined) updateData.tin = input.tin;
+        if (input.invoiceLogo !== undefined) updateData.invoiceLogo = input.invoiceLogo;
+
         const updatedUser = await prisma.user.update({
             where: { id: userId },
-            data: {
-                name: input.name,
-                type: input.type,
-                companyName: input.companyName,
-                tin: input.tin,
-                updatedAt: new Date()
-            }
+            data: updateData,
         });
 
         // Also update Supabase user metadata

@@ -236,6 +236,9 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, user, addInvoice, recordP
                     {/* Header */}
                     <div className="flex justify-between items-start mb-8 border-b border-slate-100 pb-8">
                         <div>
+                            {user?.invoiceLogo && (user?.subscriptionTier === 'ANNUAL' || user?.subscriptionTier === 'SANDBOX') && (
+                                <img src={user.invoiceLogo} alt="Logo" style={{ maxHeight: '60px', maxWidth: '180px', objectFit: 'contain', marginBottom: '8px' }} />
+                            )}
                             <h2 className="text-2xl font-bold text-slate-900 tracking-tight mb-1">{issuerName}</h2>
                             <p className="text-sm text-slate-500">{issuerEmail}</p>
                             {user?.tin && <p className="text-xs text-slate-400 mt-1">Tax ID: {user.tin}</p>}
@@ -333,7 +336,7 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, user, addInvoice, recordP
                         </div>
                         <p className="text-xs text-slate-400">
                             {type === 'RECEIPT'
-                                ? 'This is a computer-generated receipt and is valid without a signature.'
+                                ? 'Thank you for your business.'
                                 : 'Please pay into the account details provided below.'}
                         </p>
                         {type === 'INVOICE' && inv.paymentDetails && (

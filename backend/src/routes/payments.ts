@@ -546,7 +546,61 @@ router.post(
             }
         }
 
-        // Process the webhook
+        const event = req.body;
+
+        // Handle subscription payments (from BillingPage BaniPopUp)
+        if (event.event === 'payment_collection' && event.data) {
+            let customData: any = {};
+            try {
+                customData = typeof event.data.custom_data === 'string'
+                    ? JSON.parse(event.data.custom_data)
+                    : (event.data.custom_data || {});
+            } catch { }
+
+            if (customData.source === 'subscription' && customData.userId && customData.plan) {
+                const payStatus = event.data.pay_status;
+                if (payStatus === 'successful') {
+                    try {
+                        const now = new Date();
+                        let subscriptionEndsAt: Date;
+                        if (customData.plan === 'ANNUAL') {
+                            subscriptionEndsAt = new Date(now);
+                            subscriptionEndsAt.setFullYear(subscriptionEndsAt.getFullYear() + 1);
+                        } else {
+                            subscriptionEndsAt = new Date(now);
+                            subscriptionEndsAt.setMonth(subscriptionEndsAt.getMonth() + 1);
+                        }
+
+                        await prisma.user.update({
+                            where: { id: customData.userId },
+                            data: {
+                                subscriptionTier: customData.plan,
+                                subscriptionStatus: 'ACTIVE',
+                                subscriptionEndsAt,
+                                paymentReference: event.data.pay_ref || event.data.pay_ext_ref || '',
+                            },
+                        });
+
+                        logger.info('[Webhook] Subscription activated', {
+                            userId: customData.userId,
+                            plan: customData.plan,
+                            ref: event.data.pay_ref,
+                        });
+                    } catch (err: any) {
+                        logger.error('[Webhook] Failed to activate subscription', {
+                            userId: customData.userId,
+                            error: err.message,
+                        });
+                    }
+                }
+
+                // Respond immediately — don't pass to wallet processWebhook
+                res.json({ success: true, message: 'Subscription webhook processed' });
+                return;
+            }
+        }
+
+        // Process wallet-related webhooks
         await paymentService.processWebhook(req.body);
 
         // Acknowledge receipt

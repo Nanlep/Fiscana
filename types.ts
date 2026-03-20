@@ -48,6 +48,7 @@ export interface UserProfile {
   subscriptionStatus?: SubscriptionStatus;
   trialEndsAt?: string | null;
   subscriptionEndsAt?: string | null;
+  invoiceLogo?: string | null;
 }
 
 export interface KYCRequest {

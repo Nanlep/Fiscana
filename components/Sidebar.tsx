@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { LayoutDashboard, Receipt, BookOpen, Landmark, BrainCircuit, Wallet, LogOut, User, Building2, X, FileBarChart, ShieldCheck, PiggyBank, Plus, Banknote } from 'lucide-react';
+import { LayoutDashboard, Receipt, BookOpen, Landmark, BrainCircuit, Wallet, LogOut, User, Building2, X, FileBarChart, ShieldCheck, PiggyBank, Plus, Banknote, Settings } from 'lucide-react';
 import { ViewState, UserProfile, WalletBalance } from '../types';
+import { useAuth } from '../context/AuthContext';
 
 interface SidebarProps {
     currentView: ViewState;
@@ -25,6 +26,8 @@ const Sidebar: React.FC<SidebarProps> = ({
     isOpen = false,
     onClose
 }) => {
+    const { user: authUser } = useAuth();
+
     const menuItems = [
         { id: 'DASHBOARD', label: 'Dashboard', icon: LayoutDashboard },
         { id: 'INVOICES', label: 'Invoices', icon: Receipt },
@@ -35,6 +38,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         { id: 'TAX_AI', label: 'Advisor AI', icon: BrainCircuit },
         { id: 'KYC', label: 'Verification', icon: ShieldCheck },
         { id: 'SME_FINANCE', label: 'SME Finance', icon: Banknote },
+        { id: 'SETTINGS', label: 'Settings', icon: Settings },
     ];
 
     const handleSignOut = () => {
@@ -74,13 +78,22 @@ const Sidebar: React.FC<SidebarProps> = ({
 
                 <div className="px-6 py-4 bg-slate-800/50">
                     <div className="flex items-center space-x-3">
-                        <button
-                            onClick={() => setView('SETTINGS' as ViewState)}
-                            title="Go to Settings"
-                            className="p-2 bg-slate-700 rounded-full hover:ring-2 hover:ring-green-500 transition-all cursor-pointer"
-                        >
-                            {user.type === 'CORPORATE' ? <Building2 size={16} /> : <User size={16} />}
-                        </button>
+                        {(() => {
+                            const profilePic = typeof window !== 'undefined' ? localStorage.getItem(`fiscana_profile_pic_${authUser?.id || ''}`) : null;
+                            const getInitials = (n: string) => {
+                                const parts = n.split(' ').filter(Boolean);
+                                return parts.length >= 2 ? `${parts[0][0]}${parts[1][0]}`.toUpperCase() : n.substring(0, 2).toUpperCase();
+                            };
+                            return (
+                                <div className="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center flex-shrink-0 shadow-lg shadow-green-900/20">
+                                    {profilePic ? (
+                                        <img src={profilePic} alt="Profile" className="w-full h-full object-cover" />
+                                    ) : (
+                                        <span className="text-sm font-bold text-white">{getInitials(user?.name || 'U')}</span>
+                                    )}
+                                </div>
+                            );
+                        })()}
                         <div className="overflow-hidden">
                             <div className="flex items-center space-x-1">
                                 <p className="text-sm font-semibold truncate">{user.name}</p>
