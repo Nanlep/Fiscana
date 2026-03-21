@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { UserProfile, SMEApplication, SMEApplicationStatus } from '../types';
 import { smeFinanceApi } from '../services/apiClient';
 import { 
@@ -119,6 +119,7 @@ const SMEFinance: React.FC<SMEFinanceProps> = ({ userProfile, notify, onNavigate
     const [showForm, setShowForm] = useState(false);
     const [expandedApp, setExpandedApp] = useState<string | null>(null);
     const [currentStep, setCurrentStep] = useState(1);
+    const [draftRestored, setDraftRestored] = useState(false);
 
     // File states
     const [cacDocument, setCacDocument] = useState<File | null>(null);
@@ -130,6 +131,72 @@ const SMEFinance: React.FC<SMEFinanceProps> = ({ userProfile, notify, onNavigate
     const [collateralDocument, setCollateralDocument] = useState<File | null>(null);
 
     const [formData, setFormData] = useState<FormData>({ ...INITIAL_FORM, businessName: userProfile?.companyName || '' });
+
+    // ==================== DRAFT AUTO-SAVE ====================
+    const DRAFT_KEY = `fiscana_sme_draft_${userProfile?.email || 'anonymous'}`;
+    const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const isRestoringRef = useRef(false);
+
+    const saveDraft = useCallback((data: FormData, step: number) => {
+        try {
+            localStorage.setItem(DRAFT_KEY, JSON.stringify({ formData: data, currentStep: step, savedAt: new Date().toISOString() }));
+        } catch (e) { console.warn('Failed to save SME form draft:', e); }
+    }, [DRAFT_KEY]);
+
+    const loadDraft = useCallback((): { formData: FormData; currentStep: number } | null => {
+        try {
+            const raw = localStorage.getItem(DRAFT_KEY);
+            if (raw) {
+                const parsed = JSON.parse(raw);
+                if (parsed?.formData) return { formData: parsed.formData, currentStep: parsed.currentStep || 1 };
+            }
+        } catch (e) { console.warn('Failed to load SME form draft:', e); }
+        return null;
+    }, [DRAFT_KEY]);
+
+    const clearDraft = useCallback(() => {
+        try { localStorage.removeItem(DRAFT_KEY); } catch (e) { /* ignore */ }
+        setDraftRestored(false);
+    }, [DRAFT_KEY]);
+
+    const hasDraft = useCallback((): boolean => {
+        try { return !!localStorage.getItem(DRAFT_KEY); } catch { return false; }
+    }, [DRAFT_KEY]);
+
+    // Auto-save formData changes (debounced 500ms)
+    useEffect(() => {
+        if (!showForm || isRestoringRef.current) return;
+        if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = setTimeout(() => saveDraft(formData, currentStep), 500);
+        return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
+    }, [formData, currentStep, showForm, saveDraft]);
+
+    // Restore draft when form opens
+    useEffect(() => {
+        if (showForm) {
+            const draft = loadDraft();
+            if (draft) {
+                isRestoringRef.current = true;
+                setFormData(draft.formData);
+                setCurrentStep(draft.currentStep);
+                setDraftRestored(true);
+                // Allow auto-save after restoration settles
+                setTimeout(() => { isRestoringRef.current = false; }, 100);
+            }
+        } else {
+            setDraftRestored(false);
+        }
+    }, [showForm, loadDraft]);
+
+    const discardDraft = () => {
+        clearDraft();
+        setFormData({ ...INITIAL_FORM, businessName: userProfile?.companyName || '' });
+        setCurrentStep(1);
+        setCacDocument(null); setValidId(null); setBankStatement(null);
+        setUtilityBill(null); setPassportPhoto(null); setTinDocument(null);
+        setCollateralDocument(null);
+        notify('INFO', 'Draft discarded. Starting fresh.');
+    };
 
     const isKYCVerified = userProfile?.kycStatus === 'VERIFIED';
     const hasAnnualPlan = userProfile?.subscriptionTier === 'ANNUAL' || userProfile?.subscriptionTier === 'SANDBOX';
@@ -209,6 +276,7 @@ const SMEFinance: React.FC<SMEFinanceProps> = ({ userProfile, notify, onNavigate
 
             const res = await smeFinanceApi.apply(payload);
             if (res.success && res.data) {
+                clearDraft();
                 setApplications(prev => [res.data, ...prev]);
                 setShowForm(false);
                 setCurrentStep(1);
@@ -744,10 +812,10 @@ const SMEFinance: React.FC<SMEFinanceProps> = ({ userProfile, notify, onNavigate
                     </h1>
                     <p className="text-slate-500">Apply for business loans and track your applications</p>
                 </div>
-                <button onClick={() => { setShowForm(!showForm); setCurrentStep(1); }}
+                <button onClick={() => { if (showForm) { setShowForm(false); setCurrentStep(1); } else { setShowForm(true); } }}
                     className="px-5 py-2.5 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 transition-colors shadow-lg shadow-green-600/20 flex items-center space-x-2">
                     {showForm ? <X size={18} /> : <ArrowRight size={18} />}
-                    <span>{showForm ? 'Cancel' : 'New Application'}</span>
+                    <span>{showForm ? 'Cancel' : (hasDraft() ? 'Resume Application' : 'New Application')}</span>
                 </button>
             </div>
 
@@ -755,8 +823,25 @@ const SMEFinance: React.FC<SMEFinanceProps> = ({ userProfile, notify, onNavigate
             {showForm && (
                 <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
                     <div className="p-6 border-b border-slate-100 bg-gradient-to-r from-green-50 to-emerald-50">
-                        <h2 className="text-lg font-bold text-slate-900">SME Finance Application & Pre-Qualification Form</h2>
-                        <p className="text-sm text-slate-500">Complete all sections below. Fields marked with * are required.</p>
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <h2 className="text-lg font-bold text-slate-900">SME Finance Application & Pre-Qualification Form</h2>
+                                <p className="text-sm text-slate-500">Complete all sections below. Fields marked with * are required.</p>
+                            </div>
+                            {showForm && <span className="text-xs text-green-600 bg-green-100 px-2.5 py-1 rounded-full font-semibold flex items-center space-x-1"><CheckCircle size={12} /><span>Auto-saved</span></span>}
+                        </div>
+                        {draftRestored && (
+                            <div className="mt-3 flex items-center justify-between bg-blue-50 border border-blue-200 rounded-xl px-4 py-2.5">
+                                <div className="flex items-center space-x-2">
+                                    <Clock size={14} className="text-blue-600" />
+                                    <span className="text-xs font-medium text-blue-800">Your previous progress has been restored.</span>
+                                </div>
+                                <button type="button" onClick={discardDraft}
+                                    className="text-xs font-bold text-red-600 hover:text-red-700 hover:underline transition-colors">
+                                    Discard & Start Fresh
+                                </button>
+                            </div>
+                        )}
                     </div>
 
                     <div className="p-6">
