@@ -44,12 +44,12 @@ const KYCVerification: React.FC<KYCVerificationProps> = ({ user, onSubmit }) => 
                         <ShieldCheck size={48} />
                     </div>
                     <h2 className="text-3xl font-bold text-slate-900 mb-2">Identity Verified</h2>
-                    <p className="text-slate-500 mb-8">Your account is upgraded to <strong>{user.tier.replace('_', ' ')}</strong>. You now have access to high-value transaction limits and global features.</p>
+                    <p className="text-slate-500 mb-8">Your account is upgraded to <strong>{user.tier.replace('_', ' ')}</strong>. You now have access to additional features.</p>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
                         <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
-                            <p className="text-xs font-bold text-slate-400 uppercase mb-1">Daily Transaction Limit</p>
-                            <p className="text-xl font-bold text-slate-900">₦50,000,000</p>
+                            <p className="text-xs font-bold text-slate-400 uppercase mb-1">Daily Transactions</p>
+                            <p className="text-xl font-bold text-slate-900">Your transactions syncronized and properly documented</p>
                         </div>
                         <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
                             <p className="text-xs font-bold text-slate-400 uppercase mb-1">Your Account</p>
