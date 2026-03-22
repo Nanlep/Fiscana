@@ -398,7 +398,7 @@ export async function sendKYCApprovedEmail(email: string, name: string) {
         <p style="margin:0 0 20px;color:#64748b;font-size:15px;">Congratulations ${name}! Your KYC verification has been approved.</p>
         <div style="background:#f0fdf4;border-left:4px solid #16a34a;padding:16px 20px;border-radius:0 8px 8px 0;margin:0 0 20px;">
             <p style="margin:0;color:#166534;font-size:14px;font-weight:600;">Your account has been upgraded to Tier 2</p>
-            <p style="margin:8px 0 0;color:#64748b;font-size:13px;">You now have access to higher transaction limits and additional features.</p>
+            <p style="margin:8px 0 0;color:#64748b;font-size:13px;">You now have access to additional features.</p>
         </div>
         <a href="https://fiscana.pro" style="display:inline-block;background:#16a34a;color:#ffffff;font-weight:700;padding:14px 32px;border-radius:10px;text-decoration:none;font-size:15px;">Go to Dashboard →</a>
     `);
