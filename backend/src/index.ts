@@ -129,6 +129,11 @@ const server = app.listen(PORT, () => {
     logger.info(`🚀 Fiscana Backend API running on port ${PORT}`);
     logger.info(`📝 Environment: ${config.nodeEnv}`);
     logger.info(`🌐 Frontend URL: ${config.frontendUrl}`);
+
+    // Start email automation scheduler
+    import('./services/emailAutomationService.js').then(({ startEmailScheduler }) => {
+        startEmailScheduler();
+    }).catch(err => logger.error('Failed to start email scheduler:', err));
 });
 
 // Graceful shutdown handling

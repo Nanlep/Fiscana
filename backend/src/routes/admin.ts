@@ -349,4 +349,174 @@ router.post('/cleanup', asyncHandler(async (req: Request, res: Response) => {
     });
 }));
 
+// ==================== EMAIL QUEUE ====================
+
+/** GET /api/admin/email-queue — List queued emails with filters + pagination */
+router.get('/email-queue', [
+    query('status').optional().isIn(['PENDING', 'SENT', 'FAILED', 'CANCELLED']),
+    query('emailType').optional().trim(),
+    query('userId').optional().trim(),
+    query('limit').optional().isInt({ min: 1, max: 100 }),
+    query('offset').optional().isInt({ min: 0 }),
+], validate, asyncHandler(async (req: Request, res: Response) => {
+    const status = req.query.status as string | undefined;
+    const emailType = req.query.emailType as string | undefined;
+    const userId = req.query.userId as string | undefined;
+    const limit = parseInt(req.query.limit as string) || 50;
+    const offset = parseInt(req.query.offset as string) || 0;
+
+    const where: any = {};
+    if (status) where.status = status;
+    if (emailType) where.emailType = emailType;
+    if (userId) where.userId = userId;
+
+    const [emails, total] = await Promise.all([
+        prisma.emailQueue.findMany({
+            where,
+            orderBy: { scheduledFor: 'desc' },
+            take: limit,
+            skip: offset,
+        }),
+        prisma.emailQueue.count({ where }),
+    ]);
+
+    // Also return summary counts
+    const [pending, sent, failed, cancelled] = await Promise.all([
+        prisma.emailQueue.count({ where: { status: 'PENDING' } }),
+        prisma.emailQueue.count({ where: { status: 'SENT' } }),
+        prisma.emailQueue.count({ where: { status: 'FAILED' } }),
+        prisma.emailQueue.count({ where: { status: 'CANCELLED' } }),
+    ]);
+
+    res.json({
+        success: true,
+        data: {
+            emails,
+            total,
+            limit,
+            offset,
+            summary: { pending, sent, failed, cancelled },
+        },
+    });
+}));
+
+/** POST /api/admin/email-queue/:id/cancel — Cancel a pending email */
+router.post('/email-queue/:id/cancel', [
+    param('id').isUUID(),
+], validate, asyncHandler(async (req: Request, res: Response) => {
+    const { id } = req.params;
+
+    const email = await prisma.emailQueue.findUnique({ where: { id } });
+    if (!email) {
+        return res.status(404).json({ success: false, error: 'Email not found' });
+    }
+    if (email.status !== 'PENDING') {
+        return res.status(400).json({ success: false, error: `Cannot cancel email with status: ${email.status}` });
+    }
+
+    const updated = await prisma.emailQueue.update({
+        where: { id },
+        data: { status: 'CANCELLED' },
+    });
+
+    logger.info('[ADMIN] Email cancelled', { emailId: id, emailType: email.emailType, adminId: req.user!.id });
+    res.json({ success: true, data: updated });
+}));
+
+/** POST /api/admin/email-queue/:id/retry — Retry a failed email */
+router.post('/email-queue/:id/retry', [
+    param('id').isUUID(),
+], validate, asyncHandler(async (req: Request, res: Response) => {
+    const { id } = req.params;
+
+    const email = await prisma.emailQueue.findUnique({ where: { id } });
+    if (!email) {
+        return res.status(404).json({ success: false, error: 'Email not found' });
+    }
+    if (email.status !== 'FAILED') {
+        return res.status(400).json({ success: false, error: `Can only retry emails with status FAILED, got: ${email.status}` });
+    }
+
+    const updated = await prisma.emailQueue.update({
+        where: { id },
+        data: {
+            status: 'PENDING',
+            attempts: 0,
+            error: null,
+            scheduledFor: new Date(), // Schedule for immediate processing
+        },
+    });
+
+    logger.info('[ADMIN] Email queued for retry', { emailId: id, emailType: email.emailType, adminId: req.user!.id });
+    res.json({ success: true, data: updated });
+}));
+
+// ==================== BROADCAST EMAIL ====================
+
+/** POST /api/admin/broadcast-email — Send a custom email to all active users */
+router.post('/broadcast-email', [
+    body('subject').trim().notEmpty().withMessage('Subject is required'),
+    body('body').trim().notEmpty().withMessage('Email body is required'),
+], validate, asyncHandler(async (req: Request, res: Response) => {
+    const { subject, body: emailBody } = req.body;
+
+    // Import email utilities
+    const { wrapHTML, sendMail } = await import('../services/emailService.js');
+
+    // Get all active users with email addresses
+    const users = await prisma.user.findMany({
+        where: { status: 'ACTIVE' },
+        select: { id: true, email: true, name: true },
+    });
+
+    if (users.length === 0) {
+        return res.json({ success: true, data: { sent: 0, failed: 0, total: 0 } });
+    }
+
+    // Convert plain text body to HTML paragraphs (preserve line breaks)
+    const htmlBody = emailBody
+        .split('\n')
+        .map((line: string) => line.trim())
+        .filter((line: string) => line.length > 0)
+        .map((line: string) => `<p style="margin:0 0 16px;color:#334155;font-size:15px;line-height:1.7;">${line}</p>`)
+        .join('\n');
+
+    const html = wrapHTML(subject, `
+        <h1 style="margin:0 0 8px;font-size:24px;color:#0f172a;">${subject}</h1>
+        <hr style="border:none;border-top:1px solid #e2e8f0;margin:16px 0 24px;" />
+        ${htmlBody}
+        <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0 16px;" />
+        <p style="margin:0;color:#64748b;font-size:13px;">— The Fiscana Team</p>
+    `);
+
+    let sent = 0;
+    let failed = 0;
+
+    // Send in batches of 10 to avoid overwhelming the mail service
+    const BATCH_SIZE = 10;
+    for (let i = 0; i < users.length; i += BATCH_SIZE) {
+        const batch = users.slice(i, i + BATCH_SIZE);
+        const results = await Promise.allSettled(
+            batch.map(user => sendMail(user.email, subject, html))
+        );
+        results.forEach(r => {
+            if (r.status === 'fulfilled') sent++;
+            else failed++;
+        });
+    }
+
+    logger.info('[ADMIN] Broadcast email sent', {
+        subject,
+        total: users.length,
+        sent,
+        failed,
+        adminId: req.user!.id,
+    });
+
+    res.json({
+        success: true,
+        data: { sent, failed, total: users.length },
+    });
+}));
+
 export default router;

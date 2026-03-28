@@ -162,7 +162,7 @@ const Reports: React.FC<ReportsProps> = ({ transactions, assets, liabilities, co
                 {/* Standard Header */}
                 <div className="text-center mb-6 md:mb-12 border-b border-slate-900 pb-4 md:pb-8">
                     <div className="flex items-center justify-center space-x-2 mb-4">
-                        <div className="w-6 h-6 bg-slate-900 rounded-md"></div>
+                        <img src="/Fiscana.svg" alt="Fiscana Logo" className="w-6 h-6 object-contain" />
                         <span className="font-bold text-lg tracking-tight">Fiscana</span>
                     </div>
                     <h2 className="text-lg md:text-2xl font-bold text-slate-900 uppercase tracking-widest mb-1">{companyName || 'Taiwo Doe (Individual)'}</h2>
@@ -177,7 +177,6 @@ const Reports: React.FC<ReportsProps> = ({ transactions, assets, liabilities, co
                             : `As of ${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}`
                         }
                     </p>
-                    <p className="text-xs text-slate-500 mt-1">Currency: NGN | Exchange Rate: ₦{exchangeRate}/$</p>
                 </div>
 
                 {reportType === 'PL' && (

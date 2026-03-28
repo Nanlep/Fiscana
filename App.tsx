@@ -13,6 +13,7 @@ import SubscriptionGate from './components/SubscriptionGate';
 import BillingPage from './components/BillingPage';
 import SettingsPage from './components/SettingsPage';
 import LandingPage from './components/LandingPage';
+import FAQPage from './components/FAQPage';
 import AdminDashboard from './components/AdminDashboard';
 import WithdrawModal from './components/WithdrawModal';
 import AddFundsModal from './components/AddFundsModal';
@@ -68,6 +69,7 @@ function App() {
   const [isAddFundsModalOpen, setIsAddFundsModalOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [walletBalances, setWalletBalances] = useState<WalletBalance[]>([]);
+  const [unauthView, setUnauthView] = useState<'LANDING' | 'FAQ'>('LANDING');
 
   // Toast State
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
@@ -544,10 +546,13 @@ function App() {
 
   // Render logic
   if (!isAuthenticated) {
+    if (unauthView === 'FAQ') {
+      return <FAQPage onBack={() => setUnauthView('LANDING')} />;
+    }
     return (
       <>
         <Toast toasts={toasts} removeToast={removeToast} />
-        <LandingPage onLoginSuccess={() => notify('SUCCESS', `Welcome to Fiscana!`)} />
+        <LandingPage onLoginSuccess={() => notify('SUCCESS', `Welcome to Fiscana!`)} onNavigateFAQ={() => setUnauthView('FAQ')} />
       </>
     );
   }

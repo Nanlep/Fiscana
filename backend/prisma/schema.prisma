@@ -409,3 +409,24 @@ model TicketMessage {
 
   @@index([ticketId])
 }
+
+model EmailQueue {
+  id           String    @id @default(uuid())
+  userId       String
+  userEmail    String
+  userName     String
+  emailType    String    // PAID_CONFIRM_ANNUAL, PAID_CONFIRM_MONTHLY, PAID_ENGAGEMENT, PAID_FINANCE_READY, PAID_RETENTION, PAID_FOLLOW_UP, FREE_WELCOME, FREE_EDUCATION, FREE_FINANCE_PATH, FREE_ACTIVATION_NUDGE, FREE_CONVERSION
+  status       String    @default("PENDING") // PENDING, SENT, FAILED, CANCELLED
+  scheduledFor DateTime  // When this email should be sent
+  sentAt       DateTime?
+  attempts     Int       @default(0)
+  maxAttempts  Int       @default(3)
+  error        String?   // Last error message if failed
+  metadata     String?   // JSON string for extra data (e.g. plan type)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([status, scheduledFor])
+  @@index([userId, emailType])
+  @@index([userId, status])
+}

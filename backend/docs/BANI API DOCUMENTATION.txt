@@ -867,10 +867,12 @@ BAD REQUEST - 400
 
 
    }
+
+
+
+
+
 Mobile Money
-
-
-
 
 List Supported Momo (Payout)
 This endpoint can be used to get the list of countries you can send money to via mobile money

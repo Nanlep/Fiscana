@@ -65,9 +65,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             <div className={sidebarClasses}>
                 <div className="p-6 border-b border-slate-800 flex items-center justify-between">
                     <div className="flex items-center space-x-2">
-                        <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center">
-                            <span className="font-bold text-slate-900">F</span>
-                        </div>
+                        <img src="/Fiscana.svg" alt="Fiscana Logo" className="w-8 h-8 object-contain" />
                         <span className="text-xl font-bold tracking-tight">Fiscana</span>
                     </div>
                     {/* Mobile Close Button */}

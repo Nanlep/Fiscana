@@ -69,11 +69,6 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, invoices, user, exc
           <h1 className="text-3xl font-bold text-slate-900">Financial Overview</h1>
           <p className="text-slate-500">Welcome back, {user?.name.split(' ')[0] || 'User'}</p>
         </div>
-        <div className="flex flex-col items-end">
-          <span className="text-xs text-slate-400 font-mono">
-            Base Rate: ₦{exchangeRate}/$
-          </span>
-        </div>
       </header>
 
       {/* Stats Cards */}

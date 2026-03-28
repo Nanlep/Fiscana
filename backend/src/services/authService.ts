@@ -4,6 +4,7 @@ import { AuthenticationError, ValidationError, ConflictError, NotFoundError } fr
 import { logger } from '../utils/logger.js';
 import { config } from '../config/index.js';
 import { emailService } from './emailService.js';
+import { queueFreeUserSequence } from './emailAutomationService.js';
 import type { User } from '@prisma/client';
 
 // Types for auth operations
@@ -194,8 +195,9 @@ export class AuthService {
 
         logger.info(`[SIGNUP] User registered successfully: ${email}`);
 
-        // Send welcome email + admin notification (fire-and-forget)
-        emailService.sendWelcomeEmail(email, record.name).catch(() => { });
+        // Queue the free-user onboarding email sequence (fire-and-forget)
+        queueFreeUserSequence(user.id, email, record.name).catch(() => { });
+        // Send admin notification (fire-and-forget)
         emailService.sendAdminNewUserAlert(record.name, email, record.type).catch(() => { });
 
         return {
@@ -255,8 +257,9 @@ export class AuthService {
 
         logger.info(`[SIGNUP] User registered successfully: ${email}`);
 
-        // Send welcome email + admin notification
-        emailService.sendWelcomeEmail(email, name).catch(() => { });
+        // Queue the free-user onboarding email sequence (fire-and-forget)
+        queueFreeUserSequence(user.id, email, name).catch(() => { });
+        // Send admin notification (fire-and-forget)
         emailService.sendAdminNewUserAlert(name, email, type).catch(() => { });
 
         return {

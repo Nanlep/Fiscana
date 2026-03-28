@@ -6,9 +6,10 @@ import { authApi } from '../services/apiClient';
 
 interface LandingPageProps {
     onLoginSuccess: () => void;
+    onNavigateFAQ?: () => void;
 }
 
-const LandingPage: React.FC<LandingPageProps> = ({ onLoginSuccess }) => {
+const LandingPage: React.FC<LandingPageProps> = ({ onLoginSuccess, onNavigateFAQ }) => {
     const { login, refreshUser } = useAuth();
     const [authMode, setAuthMode] = useState<'LOGIN' | 'SIGNUP' | 'FORGOT_PASSWORD' | 'VERIFY_CODE' | 'RESET_NEW_PASSWORD'>('LOGIN');
     const [resetSent, setResetSent] = useState(false);
@@ -125,9 +126,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginSuccess }) => {
             {/* Navigation */}
             <nav className="flex items-center justify-between px-8 py-6 border-b border-slate-100 sticky top-0 bg-white/80 backdrop-blur-md z-50">
                 <div className="flex items-center space-x-2">
-                    <div className="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center">
-                        <span className="font-bold text-white">F</span>
-                    </div>
+                    <img src="/Fiscana.svg" alt="Fiscana Logo" className="w-8 h-8 object-contain" />
                     <span className="text-xl font-bold tracking-tight">Fiscana</span>
                 </div>
 
@@ -177,6 +176,17 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginSuccess }) => {
                             <h3 className="font-bold">SME Finance Origination</h3>
                             <p className="text-sm text-slate-500">Access working capital financing easily</p>
                         </div>
+                    </div>
+
+                    <div className="mt-12">
+                        <button 
+                            onClick={onNavigateFAQ}
+                            className="inline-flex items-center space-x-2 bg-slate-900 hover:bg-slate-800 text-white font-medium px-5 py-3 rounded-xl transition-colors shadow-md hover:shadow-lg"
+                        >
+                            <span className="text-xl">📚</span>
+                            <span>Read our FAQ</span>
+                            <ArrowRight size={16} />
+                        </button>
                     </div>
                 </div>
 

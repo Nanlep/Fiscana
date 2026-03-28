@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Users, Activity, Server, AlertTriangle, LogOut, Search, Building2, User, Trash2, Ban, CheckCircle, RefreshCw, Terminal, DollarSign, ShieldCheck, TrendingUp, Save, Loader2, Banknote, Clock, ChevronDown, ChevronUp, MessageSquare, Send, HelpCircle } from 'lucide-react';
+import { Users, Activity, Server, AlertTriangle, LogOut, Search, Building2, User, Trash2, Ban, CheckCircle, RefreshCw, Terminal, DollarSign, ShieldCheck, TrendingUp, Save, Loader2, Banknote, Clock, ChevronDown, ChevronUp, MessageSquare, Send, HelpCircle, Mail, Inbox, XCircle, RotateCw } from 'lucide-react';
 import { UserProfile, KYCRequest, SMEApplicationStatus } from '../types';
 import { adminApi, AdminUser, PlatformStats, HealthStatus, smeFinanceApi, supportApi, SupportTicket, TicketMessageType } from '../services/apiClient';
 
@@ -12,7 +12,7 @@ interface AdminDashboardProps {
     onUpdateExchangeRate: (rate: number) => void;
 }
 
-type AdminView = 'OVERVIEW' | 'USERS' | 'HEALTH' | 'KYC' | 'SME' | 'SUPPORT';
+type AdminView = 'OVERVIEW' | 'USERS' | 'HEALTH' | 'KYC' | 'SME' | 'SUPPORT' | 'BROADCAST' | 'EMAIL_QUEUE';
 
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, adminProfile, kycRequests, onReviewKYC, exchangeRate, onUpdateExchangeRate }) => {
     const [currentView, setCurrentView] = useState<AdminView>('OVERVIEW');
@@ -54,6 +54,19 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, adminProfile,
     const [adminReplying, setAdminReplying] = useState<string | null>(null);
 
     const logsEndRef = useRef<HTMLDivElement>(null);
+
+    // Broadcast Email State
+    const [broadcastSubject, setBroadcastSubject] = useState('');
+    const [broadcastBody, setBroadcastBody] = useState('');
+    const [broadcastStatus, setBroadcastStatus] = useState<'IDLE' | 'SENDING' | 'SENT' | 'ERROR'>('IDLE');
+    const [broadcastResult, setBroadcastResult] = useState<{ sent: number; failed: number; total: number } | null>(null);
+
+    // Email Queue State
+    type EmailQueueItem = { id: string; userId: string; emailType: string; status: string; scheduledFor: string; sentAt: string | null; attempts: number; error: string | null; createdAt: string };
+    const [emailQueue, setEmailQueue] = useState<EmailQueueItem[]>([]);
+    const [emailQueueLoading, setEmailQueueLoading] = useState(false);
+    const [emailQueueFilter, setEmailQueueFilter] = useState<string>('ALL');
+    const [emailQueueSummary, setEmailQueueSummary] = useState<{ pending: number; sent: number; failed: number; cancelled: number }>({ pending: 0, sent: 0, failed: 0, cancelled: 0 });
 
     // ---------- DATA FETCHING ----------
 
@@ -169,6 +182,29 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, adminProfile,
             fetchSupportTickets();
         }
     }, [currentView, fetchSupportTickets]);
+
+    // Fetch email queue
+    const fetchEmailQueue = useCallback(async () => {
+        setEmailQueueLoading(true);
+        try {
+            const statusParam = emailQueueFilter === 'ALL' ? undefined : emailQueueFilter;
+            const res = await adminApi.getEmailQueue({ status: statusParam, limit: 50 });
+            if (res.success && res.data) {
+                setEmailQueue(res.data.emails);
+                setEmailQueueSummary(res.data.summary);
+            }
+        } catch (e) {
+            console.error('Failed to fetch email queue:', e);
+        } finally {
+            setEmailQueueLoading(false);
+        }
+    }, [emailQueueFilter]);
+
+    useEffect(() => {
+        if (currentView === 'EMAIL_QUEUE') {
+            fetchEmailQueue();
+        }
+    }, [currentView, fetchEmailQueue]);
 
     // Sync exchange rate prop
     useEffect(() => {
@@ -378,85 +414,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, adminProfile,
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Revenue Configuration */}
-                <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-                    <div className="flex justify-between items-start mb-6">
-                        <div>
-                            <h3 className="text-lg font-bold text-slate-900 flex items-center">
-                                <DollarSign className="mr-2 text-green-600" size={24} /> Revenue Configuration
-                            </h3>
-                            <p className="text-slate-500 text-sm mt-1">Set global transaction markup for invoices.</p>
-                        </div>
-                    </div>
-
-                    <div className="space-y-6">
-                        <div>
-                            <label className="block text-sm font-semibold text-slate-700 mb-2">Platform Commission Markup</label>
-                            <div className="flex gap-4">
-                                <div className="relative flex-1">
-                                    <input
-                                        type="number"
-                                        value={commissionRate}
-                                        onChange={(e) => setCommissionRate(parseFloat(e.target.value))}
-                                        step="0.1"
-                                        min="0"
-                                        className="w-full pl-4 pr-12 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-green-500 outline-none font-mono text-lg font-bold text-slate-900"
-                                    />
-                                    <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-slate-400 font-bold">%</div>
-                                </div>
-                                <button
-                                    onClick={handleSaveRate}
-                                    disabled={saveStatus === 'SAVING'}
-                                    className={`px-6 py-3 rounded-xl font-bold text-white transition-all shadow-lg flex items-center gap-2 ${saveStatus === 'SAVED' ? 'bg-green-600' : saveStatus === 'SAVING' ? 'bg-slate-600' : 'bg-slate-900 hover:bg-slate-800'}`}
-                                >
-                                    {saveStatus === 'SAVED' ? <CheckCircle size={20} /> : saveStatus === 'SAVING' ? <Loader2 size={20} className="animate-spin" /> : 'Save Rate'}
-                                </button>
-                            </div>
-                            <p className="text-xs text-slate-400 mt-2">Applied to all settled invoices automatically via Bani Rails.</p>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Exchange Rate Settings */}
-                <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-                    <div className="flex justify-between items-start mb-6">
-                        <div>
-                            <h3 className="text-lg font-bold text-slate-900 flex items-center">
-                                <TrendingUp className="mr-2 text-blue-600" size={24} /> Exchange Rate Settings
-                            </h3>
-                            <p className="text-slate-500 text-sm mt-1">Update global conversion rate (USD to NGN).</p>
-                        </div>
-                    </div>
-
-                    <div className="space-y-6">
-                        <div>
-                            <label className="block text-sm font-semibold text-slate-700 mb-2">Current Rate (1 USD = NGN)</label>
-                            <div className="flex gap-4">
-                                <div className="relative flex-1">
-                                    <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400 font-bold">₦</span>
-                                    <input
-                                        type="number"
-                                        value={tempExchangeRate}
-                                        onChange={(e) => setTempExchangeRate(e.target.value)}
-                                        step="1"
-                                        min="1"
-                                        className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none font-mono text-lg font-bold text-slate-900"
-                                    />
-                                </div>
-                                <button
-                                    onClick={handleSaveExchangeRate}
-                                    disabled={rateSaveStatus === 'SAVING'}
-                                    className={`px-6 py-3 rounded-xl font-bold text-white transition-all shadow-lg flex items-center gap-2 ${rateSaveStatus === 'SAVED' ? 'bg-green-600' : rateSaveStatus === 'SAVING' ? 'bg-slate-600' : 'bg-blue-600 hover:bg-blue-700'}`}
-                                >
-                                    {rateSaveStatus === 'SAVED' ? <CheckCircle size={20} /> : rateSaveStatus === 'SAVING' ? <Loader2 size={20} className="animate-spin" /> : <><Save size={18} /> Update</>}
-                                </button>
-                            </div>
-                            <p className="text-xs text-slate-400 mt-2">Updates reporting base currency and asset valuations instantly across the platform.</p>
-                        </div>
-                    </div>
-                </div>
-
+            <div className="grid grid-cols-1 gap-6">
                 {/* KYC Preview */}
                 <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm lg:col-span-2">
                     <div className="flex justify-between items-center mb-6">
@@ -1138,6 +1096,253 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, adminProfile,
             </div>
         </div>
     );
+
+    const renderEmailQueue = () => (
+        <div className="space-y-6 animate-fade-in">
+            {/* Summary Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {[
+                    { label: 'Pending', count: emailQueueSummary.pending, color: 'bg-amber-100 text-amber-800', dot: 'bg-amber-500' },
+                    { label: 'Sent', count: emailQueueSummary.sent, color: 'bg-green-100 text-green-800', dot: 'bg-green-500' },
+                    { label: 'Failed', count: emailQueueSummary.failed, color: 'bg-red-100 text-red-800', dot: 'bg-red-500' },
+                    { label: 'Cancelled', count: emailQueueSummary.cancelled, color: 'bg-slate-100 text-slate-800', dot: 'bg-slate-500' },
+                ].map(item => (
+                    <div key={item.label} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                        <div className="flex items-center space-x-2 mb-1">
+                            <div className={`w-2 h-2 rounded-full ${item.dot}`}></div>
+                            <span className="text-xs font-semibold text-slate-500 uppercase">{item.label}</span>
+                        </div>
+                        <p className="text-2xl font-bold text-slate-900">{item.count}</p>
+                    </div>
+                ))}
+            </div>
+
+            {/* Filter Tabs */}
+            <div className="flex items-center space-x-2 bg-white p-2 rounded-xl border border-slate-100 shadow-sm">
+                {['ALL', 'PENDING', 'SENT', 'FAILED', 'CANCELLED'].map(status => (
+                    <button
+                        key={status}
+                        onClick={() => setEmailQueueFilter(status)}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                            emailQueueFilter === status
+                                ? 'bg-slate-900 text-white'
+                                : 'text-slate-500 hover:bg-slate-100'
+                        }`}
+                    >
+                        {status === 'ALL' ? 'All' : status.charAt(0) + status.slice(1).toLowerCase()}
+                    </button>
+                ))}
+                <div className="flex-1"></div>
+                <button
+                    onClick={fetchEmailQueue}
+                    disabled={emailQueueLoading}
+                    className="p-2 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                    title="Refresh"
+                >
+                    <RefreshCw size={18} className={emailQueueLoading ? 'animate-spin' : ''} />
+                </button>
+            </div>
+
+            {/* Email Table */}
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                {emailQueueLoading ? (
+                    <div className="flex items-center justify-center py-16">
+                        <Loader2 size={24} className="animate-spin text-slate-400" />
+                        <span className="ml-3 text-slate-500">Loading queue...</span>
+                    </div>
+                ) : emailQueue.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-16 text-slate-400">
+                        <Inbox size={40} className="mb-3 opacity-50" />
+                        <p className="text-lg font-medium">No emails found</p>
+                        <p className="text-sm">Try a different filter, or no emails have been queued yet.</p>
+                    </div>
+                ) : (
+                    <div className="overflow-x-auto">
+                        <table className="w-full">
+                            <thead className="bg-slate-50 border-b border-slate-200">
+                                <tr>
+                                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Type</th>
+                                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Status</th>
+                                    <th className="hidden md:table-cell px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Scheduled</th>
+                                    <th className="hidden md:table-cell px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Sent</th>
+                                    <th className="hidden md:table-cell px-4 py-3 text-center text-xs font-semibold text-slate-500 uppercase">Attempts</th>
+                                    <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {emailQueue.map(email => {
+                                    const statusColors: Record<string, string> = {
+                                        PENDING: 'bg-amber-100 text-amber-800',
+                                        SENT: 'bg-green-100 text-green-800',
+                                        FAILED: 'bg-red-100 text-red-800',
+                                        CANCELLED: 'bg-slate-100 text-slate-600',
+                                    };
+                                    return (
+                                        <tr key={email.id} className="hover:bg-slate-50/80 transition-colors">
+                                            <td className="px-4 py-3">
+                                                <p className="text-sm font-medium text-slate-900">{email.emailType.replace(/_/g, ' ')}</p>
+                                                <p className="text-[10px] text-slate-400 font-mono">{email.id.slice(0, 8)}...</p>
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColors[email.status] || 'bg-slate-100 text-slate-600'}`}>
+                                                    {email.status}
+                                                </span>
+                                                {email.error && (
+                                                    <p className="text-[10px] text-red-500 mt-1 max-w-[200px] truncate" title={email.error}>{email.error}</p>
+                                                )}
+                                            </td>
+                                            <td className="hidden md:table-cell px-4 py-3 text-xs text-slate-500">
+                                                {new Date(email.scheduledFor).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                                            </td>
+                                            <td className="hidden md:table-cell px-4 py-3 text-xs text-slate-500">
+                                                {email.sentAt ? new Date(email.sentAt).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—'}
+                                            </td>
+                                            <td className="hidden md:table-cell px-4 py-3 text-center text-xs font-mono text-slate-500">
+                                                {email.attempts}
+                                            </td>
+                                            <td className="px-4 py-3 text-right">
+                                                <div className="flex justify-end space-x-1">
+                                                    {email.status === 'PENDING' && (
+                                                        <button
+                                                            onClick={async () => {
+                                                                if (!confirm('Cancel this pending email?')) return;
+                                                                await adminApi.cancelEmail(email.id);
+                                                                fetchEmailQueue();
+                                                            }}
+                                                            className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                            title="Cancel"
+                                                        >
+                                                            <XCircle size={16} />
+                                                        </button>
+                                                    )}
+                                                    {email.status === 'FAILED' && (
+                                                        <button
+                                                            onClick={async () => {
+                                                                await adminApi.retryEmail(email.id);
+                                                                fetchEmailQueue();
+                                                            }}
+                                                            className="p-1.5 text-blue-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                                            title="Retry"
+                                                        >
+                                                            <RotateCw size={16} />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+
+    const renderBroadcast = () => (
+        <div className="space-y-6 animate-fade-in">
+            <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                <div className="flex items-center space-x-3 mb-6">
+                    <div className="p-3 bg-green-50 rounded-xl">
+                        <Mail className="text-green-600" size={24} />
+                    </div>
+                    <div>
+                        <h3 className="text-lg font-bold text-slate-900">Compose Broadcast Email</h3>
+                        <p className="text-slate-500 text-sm">This will be sent to all active users with the Fiscana email template (logo + header included).</p>
+                    </div>
+                </div>
+
+                {/* Preview Banner */}
+                <div className="mb-6 bg-gradient-to-r from-green-600 to-green-700 rounded-xl p-4 flex items-center space-x-3">
+                    <img src="/Fiscana.svg" alt="Fiscana" className="w-8 h-8" />
+                    <span className="text-white font-bold text-lg">Fiscana</span>
+                    <span className="text-green-200 text-sm ml-auto">Email Header Preview</span>
+                </div>
+
+                <div className="space-y-4">
+                    <div>
+                        <label className="block text-sm font-semibold text-slate-700 mb-2">Subject Line</label>
+                        <input
+                            type="text"
+                            value={broadcastSubject}
+                            onChange={(e) => setBroadcastSubject(e.target.value)}
+                            placeholder="e.g. Important Update: New Feature Launch"
+                            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-green-500 outline-none text-slate-900 font-medium"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-semibold text-slate-700 mb-2">Email Body</label>
+                        <textarea
+                            value={broadcastBody}
+                            onChange={(e) => setBroadcastBody(e.target.value)}
+                            placeholder="Type your message here...\n\nEach paragraph will be formatted automatically. The Fiscana header (logo + brand) and footer (copyright + link) are included automatically."
+                            rows={10}
+                            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-green-500 outline-none text-slate-900 resize-y"
+                        />
+                        <p className="text-xs text-slate-400 mt-1">Each line break creates a new paragraph. The Fiscana branded header and footer are added automatically.</p>
+                    </div>
+                </div>
+
+                {broadcastStatus === 'SENT' && broadcastResult && (
+                    <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-xl">
+                        <p className="text-green-700 font-semibold">✅ Broadcast sent successfully!</p>
+                        <p className="text-green-600 text-sm mt-1">
+                            {broadcastResult.sent} of {broadcastResult.total} emails delivered.
+                            {broadcastResult.failed > 0 && <span className="text-red-600"> ({broadcastResult.failed} failed)</span>}
+                        </p>
+                    </div>
+                )}
+
+                {broadcastStatus === 'ERROR' && (
+                    <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-xl">
+                        <p className="text-red-700 font-semibold">❌ Failed to send broadcast. Please try again.</p>
+                    </div>
+                )}
+
+                <div className="flex items-center justify-between mt-6 pt-6 border-t border-slate-100">
+                    <p className="text-sm text-slate-500">
+                        This will send to <strong>all active users</strong> on the platform.
+                    </p>
+                    <button
+                        onClick={async () => {
+                            if (!broadcastSubject.trim() || !broadcastBody.trim()) {
+                                alert('Please fill in both the subject and body.');
+                                return;
+                            }
+                            if (!confirm(`Are you sure you want to send this email to ALL active users?\n\nSubject: ${broadcastSubject}`)) return;
+                            setBroadcastStatus('SENDING');
+                            setBroadcastResult(null);
+                            try {
+                                const res = await adminApi.broadcastEmail({ subject: broadcastSubject, body: broadcastBody });
+                                if (res.success && res.data) {
+                                    setBroadcastStatus('SENT');
+                                    setBroadcastResult(res.data);
+                                    setBroadcastSubject('');
+                                    setBroadcastBody('');
+                                } else {
+                                    setBroadcastStatus('ERROR');
+                                }
+                            } catch {
+                                setBroadcastStatus('ERROR');
+                            }
+                        }}
+                        disabled={broadcastStatus === 'SENDING' || !broadcastSubject.trim() || !broadcastBody.trim()}
+                        className={`flex items-center space-x-2 px-6 py-3 rounded-xl font-bold text-white transition-all shadow-lg ${
+                            broadcastStatus === 'SENDING' ? 'bg-slate-600' : 'bg-green-600 hover:bg-green-700'
+                        } disabled:opacity-50 disabled:cursor-not-allowed`}
+                    >
+                        {broadcastStatus === 'SENDING' ? (
+                            <><Loader2 size={18} className="animate-spin" /> <span>Sending...</span></>
+                        ) : (
+                            <><Send size={18} /> <span>Send to All Users</span></>
+                        )}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+
     return (
         <div className="min-h-screen bg-slate-50 flex">
             {/* Admin Sidebar */}
@@ -1201,6 +1406,20 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, adminProfile,
                         <Server size={20} />
                         <span className="font-medium">System Health</span>
                     </button>
+                    <button
+                        onClick={() => setCurrentView('BROADCAST')}
+                        className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-colors ${currentView === 'BROADCAST' ? 'bg-slate-800 text-white border-l-4 border-red-600' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
+                    >
+                        <Mail size={20} />
+                        <span className="font-medium">Broadcast Email</span>
+                    </button>
+                    <button
+                        onClick={() => setCurrentView('EMAIL_QUEUE')}
+                        className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-colors ${currentView === 'EMAIL_QUEUE' ? 'bg-slate-800 text-white border-l-4 border-red-600' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
+                    >
+                        <Inbox size={20} />
+                        <span className="font-medium">Email Queue</span>
+                    </button>
                 </nav>
 
                 <div className="p-4 border-t border-slate-800">
@@ -1227,14 +1446,18 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, adminProfile,
                                 currentView === 'USERS' ? 'User Administration' :
                                     currentView === 'KYC' ? 'Verification Queue' :
                                         currentView === 'SME' ? 'SME Finance Applications' :
-                                            currentView === 'SUPPORT' ? 'Support Tickets' : 'System Health'}
+                                            currentView === 'SUPPORT' ? 'Support Tickets' :
+                                                currentView === 'BROADCAST' ? 'Broadcast Email' :
+                                                    currentView === 'EMAIL_QUEUE' ? 'Email Queue' : 'System Health'}
                         </h1>
                         <p className="text-slate-500">
                             {currentView === 'OVERVIEW' ? 'Real-time platform monitoring' :
                                 currentView === 'USERS' ? 'Manage global user access' :
                                     currentView === 'KYC' ? 'Review identity documents' :
                                         currentView === 'SME' ? 'Review and manage loan applications' :
-                                            currentView === 'SUPPORT' ? 'View and respond to user support requests' : 'Infrastructure and logs'}
+                                            currentView === 'SUPPORT' ? 'View and respond to user support requests' :
+                                                currentView === 'BROADCAST' ? 'Send updates to all users' :
+                                                    currentView === 'EMAIL_QUEUE' ? 'Monitor and manage automated emails' : 'Infrastructure and logs'}
                         </p>
                     </div>
                     <div className="flex items-center space-x-2 bg-white border border-slate-200 rounded-lg px-3 py-1.5">
@@ -1251,6 +1474,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, adminProfile,
                 {currentView === 'SME' && renderSME()}
                 {currentView === 'SUPPORT' && renderSupport()}
                 {currentView === 'HEALTH' && renderHealth()}
+                {currentView === 'BROADCAST' && renderBroadcast()}
+                {currentView === 'EMAIL_QUEUE' && renderEmailQueue()}
 
             </main>
         </div>

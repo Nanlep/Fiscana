@@ -647,6 +647,40 @@ export const adminApi = {
             method: 'PUT',
             body: JSON.stringify({ subscriptionTier }),
         }),
+
+    broadcastEmail: (data: { subject: string; body: string }) =>
+        apiRequest<{ sent: number; failed: number; total: number }>('/admin/broadcast-email', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        }),
+
+    getEmailQueue: (params?: { status?: string; limit?: number; offset?: number }) => {
+        const q = new URLSearchParams();
+        if (params?.status) q.append('status', params.status);
+        if (params?.limit) q.append('limit', params.limit.toString());
+        if (params?.offset) q.append('offset', params.offset.toString());
+        return apiRequest<{
+            emails: Array<{
+                id: string;
+                userId: string;
+                emailType: string;
+                status: string;
+                scheduledFor: string;
+                sentAt: string | null;
+                attempts: number;
+                error: string | null;
+                createdAt: string;
+            }>;
+            total: number;
+            summary: { pending: number; sent: number; failed: number; cancelled: number };
+        }>(`/admin/email-queue?${q.toString()}`);
+    },
+
+    cancelEmail: (id: string) =>
+        apiRequest(`/admin/email-queue/${id}/cancel`, { method: 'POST' }),
+
+    retryEmail: (id: string) =>
+        apiRequest(`/admin/email-queue/${id}/retry`, { method: 'POST' }),
 };
 
 // ==================== PAYMENTS API ====================

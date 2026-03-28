@@ -19,7 +19,7 @@ if (RESEND_API_KEY) {
 // Shared HTML Wrapper
 // ============================================================
 
-function wrapHTML(title: string, body: string): string {
+export function wrapHTML(title: string, body: string): string {
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -35,7 +35,7 @@ function wrapHTML(title: string, body: string): string {
 <tr>
 <td style="background:linear-gradient(135deg,#16a34a,#15803d);padding:32px 40px;">
 <table width="100%"><tr>
-<td><span style="font-size:24px;font-weight:800;color:#ffffff;letter-spacing:-0.5px;">Fiscana</span></td>
+<td><img src="https://fiscana.pro/Fiscana.svg" alt="Fiscana" width="32" height="32" style="display:inline-block;vertical-align:middle;margin-right:10px;" /><span style="font-size:24px;font-weight:800;color:#ffffff;letter-spacing:-0.5px;vertical-align:middle;">Fiscana</span></td>
 </tr></table>
 </td>
 </tr>
@@ -65,7 +65,7 @@ ${body}
 // Helper: send mail with error handling
 // ============================================================
 
-async function sendMail(to: string, subject: string, html: string, attachments?: any[]) {
+export async function sendMail(to: string, subject: string, html: string, attachments?: any[]) {
     try {
         const body: any = {
             from: config.email.from,
@@ -120,40 +120,8 @@ export async function sendVerificationCode(email: string, code: string, name: st
     sendMail(email, `${code} — Your Fiscana Verification Code`, html);
 }
 
-// ============================================================
-// 2. Welcome Email
-// ============================================================
-
-export async function sendWelcomeEmail(email: string, name: string) {
-    const html = wrapHTML('Welcome to Fiscana', `
-        <h1 style="margin:0 0 8px;font-size:24px;color:#0f172a;">Welcome to Fiscana, ${name}! 🎉</h1>
-        <p style="margin:0 0 20px;color:#64748b;font-size:15px;">We're thrilled to have you on board. Here's what you can do with Fiscana:</p>
-        <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px;">
-            <tr><td style="padding:12px 16px;background:#f0fdf4;border-radius:8px;margin-bottom:8px;">
-                <strong style="color:#16a34a;">💰SME Financing</strong>
-                <p style="margin:4px 0 0;color:#64748b;font-size:13px;">Access flexible financing options to scale your business with ease.</p>
-            </td></tr>
-            <tr><td style="height:8px;"></td></tr>
-            <tr><td style="padding:12px 16px;background:#eff6ff;border-radius:8px;">
-                <strong style="color:#2563eb;">📄 Professional Invoicing</strong>
-                <p style="margin:4px 0 0;color:#64748b;font-size:13px;">Create, send, and track invoices with automatic tax calculations.</p>
-            </td></tr>
-            <tr><td style="height:8px;"></td></tr>
-            <tr><td style="padding:12px 16px;background:#fdf4ff;border-radius:8px;">
-                <strong style="color:#9333ea;">📊 Tax &amp; Compliance</strong>
-                <p style="margin:4px 0 0;color:#64748b;font-size:13px;">Stay compliant with Nigeria's 2026 tax reforms. AI-powered tax advice built in.</p>
-            </td></tr>
-            <tr><td style="height:8px;"></td></tr>
-            <tr><td style="padding:12px 16px;background:#fefce8;border-radius:8px;">
-                <strong style="color:#ca8a04;">🏦 Banking Integration</strong>
-                <p style="margin:4px 0 0;color:#64748b;font-size:13px;">Fund your wallet, withdraw to your bank, and manage all your finances in one place.</p>
-            </td></tr>
-        </table>
-        <a href="https://fiscana.pro" style="display:inline-block;background:#16a34a;color:#ffffff;font-weight:700;padding:14px 32px;border-radius:10px;text-decoration:none;font-size:15px;">Go to Dashboard →</a>
-        <p style="margin:24px 0 0;color:#94a3b8;font-size:12px;">Need help getting started? Reply to this email and our team will be happy to assist.</p>
-    `);
-    await sendMail(email, 'Welcome to Fiscana — Your Financial OS', html);
-}
+// Note: Welcome email has been replaced by the FREE_WELCOME automation template
+// (see emailTemplates.ts and emailAutomationService.ts)
 
 // ============================================================
 // 3. Admin New User Alert
@@ -394,28 +362,69 @@ export async function sendKYCAdminAlert(userName: string, userEmail: string) {
 
 export async function sendKYCApprovedEmail(email: string, name: string) {
     const html = wrapHTML('KYC Approved', `
-        <h1 style="margin:0 0 8px;font-size:24px;color:#0f172a;">KYC Approved! 🎉</h1>
-        <p style="margin:0 0 20px;color:#64748b;font-size:15px;">Congratulations ${name}! Your KYC verification has been approved.</p>
-        <div style="background:#f0fdf4;border-left:4px solid #16a34a;padding:16px 20px;border-radius:0 8px 8px 0;margin:0 0 20px;">
-            <p style="margin:0;color:#166534;font-size:14px;font-weight:600;">Your account has been upgraded to Tier 2</p>
-            <p style="margin:8px 0 0;color:#64748b;font-size:13px;">You now have access to additional features.</p>
+        <h1 style="margin:0 0 8px;font-size:24px;color:#0f172a;">You're Verified! 🎉</h1>
+        <p style="margin:0 0 20px;color:#64748b;font-size:15px;">👋🏾 Hi ${name},</p>
+        <p style="margin:0 0 20px;color:#64748b;font-size:15px;">Great news — your KYC verification has been <strong style="color:#16a34a;">approved</strong>. Your Fiscana account has been upgraded to <strong>Tier 2</strong>.</p>
+
+        <div style="background:#f0fdf4;border-left:4px solid #16a34a;padding:16px 20px;border-radius:0 8px 8px 0;margin:0 0 24px;">
+            <p style="margin:0;color:#166534;font-size:14px;font-weight:600;">✅ What You've Just Unlocked:</p>
         </div>
-        <a href="https://fiscana.pro" style="display:inline-block;background:#16a34a;color:#ffffff;font-weight:700;padding:14px 32px;border-radius:10px;text-decoration:none;font-size:15px;">Go to Dashboard →</a>
+
+        <p style="margin:4px 0;color:#334155;font-size:14px;line-height:1.6;">• <strong>Higher transaction limits</strong> across all features</p>
+        <p style="margin:4px 0;color:#334155;font-size:14px;line-height:1.6;">• <strong>Full SME Finance eligibility</strong> — you can now apply for ₦1M – ₦50M in funding</p>
+        <p style="margin:4px 0;color:#334155;font-size:14px;line-height:1.6;">• <strong>Enhanced trust score</strong> with lenders and partners</p>
+        <p style="margin:4px 0;color:#334155;font-size:14px;line-height:1.6;">• <strong>Priority support access</strong> from the Fiscana team</p>
+
+        <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0;" />
+
+        <h3 style="margin:0 0 12px;font-size:16px;color:#0f172a;font-weight:700;">🚀 What We Recommend You Do Next:</h3>
+        <p style="margin:4px 0;color:#334155;font-size:14px;line-height:1.6;">1. Keep your <strong>Smart Ledger</strong> active — consistent records strengthen your credit profile</p>
+        <p style="margin:4px 0;color:#334155;font-size:14px;line-height:1.6;">2. Send invoices through Fiscana to build <strong>verifiable revenue history</strong></p>
+        <p style="margin:4px 0;color:#334155;font-size:14px;line-height:1.6;">3. Explore the <strong>SME Finance</strong> module if you're ready to apply for funding</p>
+
+        <a href="https://fiscana.pro" style="display:inline-block;background:#16a34a;color:#ffffff;font-weight:700;padding:14px 32px;border-radius:10px;text-decoration:none;font-size:15px;margin:24px 0;">Go to Dashboard →</a>
+
+        <div style="background:#f0fdf4;border-left:4px solid #16a34a;padding:16px 20px;border-radius:0 8px 8px 0;margin:20px 0;">
+            <p style="margin:0;color:#166534;font-size:14px;">💡 <strong>Your verified status</strong> is a signal to lenders that your business is serious, structured, and trustworthy. Keep building on this momentum.</p>
+        </div>
+
+        <p style="margin:20px 0 0;color:#334155;font-size:14px;font-weight:600;">Congratulations — let's keep growing your business!</p>
+        <p style="margin:4px 0 0;color:#64748b;font-size:13px;">— The Fiscana Team</p>
     `);
-    await sendMail(email, 'KYC Approved — Welcome to Tier 2!', html);
+    await sendMail(email, 'KYC Approved — You\'re Verified! 🎉', html);
 }
 
 export async function sendKYCRejectedEmail(email: string, name: string) {
-    const html = wrapHTML('KYC Status Update', `
+    const html = wrapHTML('KYC Verification Update', `
         <h1 style="margin:0 0 8px;font-size:24px;color:#0f172a;">KYC Verification Update</h1>
-        <p style="margin:0 0 20px;color:#64748b;font-size:15px;">Hi ${name}, unfortunately your KYC verification could not be approved at this time.</p>
-        <div style="background:#fef2f2;border-left:4px solid #dc2626;padding:16px 20px;border-radius:0 8px 8px 0;margin:0 0 20px;">
-            <p style="margin:0;color:#991b1b;font-size:14px;font-weight:600;">What can you do?</p>
-            <p style="margin:8px 0 0;color:#64748b;font-size:13px;">Please ensure your BVN and NIN details are correct and resubmit your KYC verification. If you believe this is an error, contact our support team.</p>
+        <p style="margin:0 0 20px;color:#64748b;font-size:15px;">Hi ${name},</p>
+        <p style="margin:0 0 20px;color:#64748b;font-size:15px;">Unfortunately, we were unable to verify your identity at this time. This doesn't mean your journey stops — it just means we need a bit more from you.</p>
+
+        <div style="background:#fef2f2;border-left:4px solid #dc2626;padding:16px 20px;border-radius:0 8px 8px 0;margin:0 0 24px;">
+            <p style="margin:0;color:#991b1b;font-size:14px;font-weight:600;">⚠️ Common Reasons for KYC Decline:</p>
         </div>
-        <a href="https://fiscana.pro" style="display:inline-block;background:#0f172a;color:#ffffff;font-weight:700;padding:12px 28px;border-radius:10px;text-decoration:none;font-size:14px;">Resubmit KYC →</a>
+
+        <p style="margin:4px 0;color:#334155;font-size:14px;line-height:1.6;">• BVN or NIN details <strong>don't match</strong> the name on your account</p>
+        <p style="margin:4px 0;color:#334155;font-size:14px;line-height:1.6;">• Submitted details were <strong>incomplete or had errors</strong></p>
+        <p style="margin:4px 0;color:#334155;font-size:14px;line-height:1.6;">• Information could not be <strong>validated</strong> against government records</p>
+
+        <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0;" />
+
+        <h3 style="margin:0 0 12px;font-size:16px;color:#0f172a;font-weight:700;">🔧 How to Fix This:</h3>
+        <p style="margin:4px 0;color:#334155;font-size:14px;line-height:1.6;">1. Double-check that your <strong>BVN</strong> and <strong>NIN</strong> are entered correctly</p>
+        <p style="margin:4px 0;color:#334155;font-size:14px;line-height:1.6;">2. Ensure the <strong>name on your Fiscana account</strong> matches your government-issued ID exactly</p>
+        <p style="margin:4px 0;color:#334155;font-size:14px;line-height:1.6;">3. Resubmit your verification from the <strong>KYC section</strong> in your dashboard</p>
+
+        <a href="https://fiscana.pro" style="display:inline-block;background:#0f172a;color:#ffffff;font-weight:700;padding:14px 32px;border-radius:10px;text-decoration:none;font-size:15px;margin:24px 0;">Resubmit KYC →</a>
+
+        <div style="background:#eff6ff;border-left:4px solid #2563eb;padding:16px 20px;border-radius:0 8px 8px 0;margin:20px 0;">
+            <p style="margin:0;color:#1e40af;font-size:14px;">💡 <strong>Need help?</strong> If you believe this is an error or need assistance, reach out via the <strong>Support</strong> tab in your dashboard. Our team is happy to help you get verified.</p>
+        </div>
+
+        <p style="margin:20px 0 0;color:#334155;font-size:14px;font-weight:600;">We're rooting for you — verification is just one step away.</p>
+        <p style="margin:4px 0 0;color:#64748b;font-size:13px;">— The Fiscana Team</p>
     `);
-    await sendMail(email, 'KYC Verification Update — Fiscana', html);
+    await sendMail(email, 'KYC Verification Update — Action Required', html);
 }
 
 // ============================================================
@@ -476,19 +485,8 @@ export async function sendPasswordResetEmail(email: string, name: string, resetL
 // 8. Subscription Emails
 // ============================================================
 
-export async function sendSubscriptionConfirmationEmail(email: string, name: string, plan: string, expiresAt: Date) {
-    const planLabel = plan === 'ANNUAL' ? 'Annual (₦24,900/year)' : 'Monthly (₦2,500/month)';
-    const html = wrapHTML('Subscription Confirmed', `
-        <h1 style="margin:0 0 8px;font-size:24px;color:#0f172a;">Subscription Confirmed ✅</h1>
-        <p style="margin:0 0 20px;color:#64748b;font-size:15px;">Hi ${name}, your Fiscana subscription has been activated!</p>
-        <table style="width:100%;border-collapse:collapse;margin:0 0 24px;background:#f8fafc;border-radius:8px;">
-            <tr><td style="padding:10px 16px;color:#64748b;font-size:13px;">Plan</td><td style="padding:10px 16px;font-weight:700;color:#0f172a;">${planLabel}</td></tr>
-            <tr><td style="padding:10px 16px;color:#64748b;font-size:13px;">Active Until</td><td style="padding:10px 16px;font-weight:700;color:#16a34a;">${expiresAt.toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' })}</td></tr>
-        </table>
-        <a href="https://fiscana.pro" style="display:inline-block;background:#16a34a;color:#ffffff;font-weight:700;padding:12px 28px;border-radius:10px;text-decoration:none;font-size:14px;">Go to Dashboard →</a>
-    `);
-    await sendMail(email, `Subscription Confirmed — Fiscana ${plan}`, html);
-}
+// Note: Subscription confirmation has been replaced by PAID_CONFIRM_ANNUAL / PAID_CONFIRM_MONTHLY
+// automation templates (see emailTemplates.ts and emailAutomationService.ts)
 
 export async function sendSubscriptionExpiredEmail(email: string, name: string) {
     const html = wrapHTML('Subscription Expired', `
@@ -521,7 +519,6 @@ export async function sendTrialExpiringEmail(email: string, name: string, daysLe
 
 export const emailService = {
     sendVerificationCode,
-    sendWelcomeEmail,
     sendAdminNewUserAlert,
     sendInvoiceEmail,
     sendInvoiceToClient,
@@ -535,7 +532,6 @@ export const emailService = {
     sendPasswordResetEmail,
     sendSMEApplicationEmail,
     sendSMEStatusUpdateEmail,
-    sendSubscriptionConfirmationEmail,
     sendSubscriptionExpiredEmail,
     sendTrialExpiringEmail,
 };

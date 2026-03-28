@@ -703,36 +703,45 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, user, addInvoice, recordP
                                             <div className="flex justify-end space-x-1 md:space-x-2">
                                                 {/* Receipt Button */}
                                                 {paid > 0 && (
-                                                    <button
-                                                        onClick={() => handleGenerateReceipt(inv)}
-                                                        disabled={!!downloadingId}
-                                                        className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors disabled:opacity-50"
-                                                        title="Download Receipt PDF"
-                                                    >
-                                                        {downloadingId && downloadingId.includes(inv.id) && downloadingId.includes('Receipt') ? <Loader2 size={18} className="animate-spin" /> : <FileCheck size={18} />}
-                                                    </button>
+                                                    <div className="flex flex-col items-center">
+                                                        <button
+                                                            onClick={() => handleGenerateReceipt(inv)}
+                                                            disabled={!!downloadingId}
+                                                            className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors disabled:opacity-50"
+                                                            title="Download Receipt PDF"
+                                                        >
+                                                            {downloadingId && downloadingId.includes(inv.id) && downloadingId.includes('Receipt') ? <Loader2 size={18} className="animate-spin" /> : <FileCheck size={18} />}
+                                                        </button>
+                                                        <span className="text-[9px] text-green-600 font-medium leading-none">Receipt</span>
+                                                    </div>
                                                 )}
 
                                                 {/* Record Payment Button */}
                                                 {balance > 0 && (
-                                                    <button
-                                                        onClick={() => openPaymentModal(inv)}
-                                                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                                        title="Record Payment"
-                                                    >
-                                                        <CreditCard size={18} />
-                                                    </button>
+                                                    <div className="flex flex-col items-center">
+                                                        <button
+                                                            onClick={() => openPaymentModal(inv)}
+                                                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                                            title="Record Payment"
+                                                        >
+                                                            <CreditCard size={18} />
+                                                        </button>
+                                                        <span className="text-[9px] text-blue-600 font-medium leading-none">Pay</span>
+                                                    </div>
                                                 )}
 
                                                 {/* Invoice Download */}
-                                                <button
-                                                    onClick={() => handleDownloadInvoice(inv)}
-                                                    disabled={!!downloadingId}
-                                                    className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50"
-                                                    title="Download Invoice PDF"
-                                                >
-                                                    {downloadingId && downloadingId.includes(inv.id) && downloadingId.includes('Invoice') ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />}
-                                                </button>
+                                                <div className="flex flex-col items-center">
+                                                    <button
+                                                        onClick={() => handleDownloadInvoice(inv)}
+                                                        disabled={!!downloadingId}
+                                                        className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50"
+                                                        title="Download Invoice PDF"
+                                                    >
+                                                        {downloadingId && downloadingId.includes(inv.id) && downloadingId.includes('Invoice') ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />}
+                                                    </button>
+                                                    <span className="text-[9px] text-slate-400 font-medium leading-none">Invoice</span>
+                                                </div>
                                             </div>
                                         </td>
                                     </tr>

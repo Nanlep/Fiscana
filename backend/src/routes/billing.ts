@@ -6,7 +6,8 @@ import { validate } from '../middleware/validate.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 import { logger } from '../utils/logger.js';
 import { config } from '../config/index.js';
-import { sendSubscriptionConfirmationEmail, sendSubscriptionExpiredEmail } from '../services/emailService.js';
+import { sendSubscriptionExpiredEmail } from '../services/emailService.js';
+import { cancelPendingEmails, queuePaidUserSequence } from '../services/emailAutomationService.js';
 import crypto from 'crypto';
 
 const router = Router();
@@ -77,8 +78,10 @@ async function activateSubscription(userId: string, plan: string, txRef: string)
         },
     });
 
-    // Send confirmation email
-    sendSubscriptionConfirmationEmail(user.email, user.name, plan, subscriptionEndsAt);
+    // Cancel any pending free-user emails and start paid sequence
+    const FREE_EMAIL_TYPES = ['FREE_WELCOME', 'FREE_EDUCATION', 'FREE_FINANCE_PATH', 'FREE_ACTIVATION_NUDGE', 'FREE_CONVERSION'];
+    cancelPendingEmails(userId, FREE_EMAIL_TYPES).catch(() => {});
+    queuePaidUserSequence(userId, user.email, user.name, plan as 'MONTHLY' | 'ANNUAL').catch(() => {});
 
     logger.info('[Billing] Subscription activated', { userId, plan, txRef });
 
