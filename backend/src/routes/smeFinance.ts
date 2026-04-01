@@ -324,8 +324,42 @@ router.post('/apply', [
 router.get('/my-applications', asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user!.id;
 
+    // Exclude base64 document fields — they are large (2-10MB each) and served
+    // individually via /applications/:id/documents/:docType
     const applications = await prisma.sMEApplication.findMany({
         where: { userId },
+        select: {
+            id: true, userId: true, status: true, adminNote: true,
+            businessName: true, businessType: true, industrySector: true,
+            businessAddress: true, state: true, rcNumber: true,
+            registeredWithCAC: true, yearEstablished: true, numberOfEmployees: true,
+            contactPersonName: true, contactPhone: true, contactEmail: true,
+            ownerFullName: true, ownerDOB: true, ownerGender: true,
+            ownerBVN: true, ownerNationalId: true, ownerResidentialAddress: true,
+            ownerPercentageOwnership: true, ownerPhone: true, ownerEmail: true,
+            businessActivities: true, productsServices: true, majorCustomers: true,
+            hasExistingContracts: true, monthlySalesRevenue: true,
+            monthlyExpenses: true, monthlyProfitEstimate: true,
+            loanAmount: true, loanPurpose: true, loanTenorMonths: true,
+            expectedMonthlyRepayment: true, hasPreviousLoan: true,
+            previousLoanSource: true, previousLoanStatus: true, repaymentPeriod: true,
+            keepsFinancialRecords: true, hasBankStatements: true,
+            hasFinancialStatements: true, hasTIN: true,
+            primaryBankName: true, bankAccountNumber: true,
+            hasCollateral: true, collateralType: true,
+            collateralEstimatedValue: true, willingToProvideGuarantor: true,
+            applicantDeclarationName: true, declarationDate: true,
+            preQualScore: true, revenueStrength: true, repaymentCapacity: true,
+            creditHistory: true, documentationLevel: true, preQualOutcome: true,
+            annualRevenue: true, guarantorName: true, guarantorPhone: true,
+            guarantorEmail: true, guarantorRelationship: true,
+            reviewedAt: true, reviewedBy: true,
+            createdAt: true, updatedAt: true,
+            // Document presence flags (boolean - not the base64 data)
+            cacDocumentUrl: false, validIdUrl: false, bankStatementUrl: false,
+            utilityBillUrl: false, passportPhotoUrl: false,
+            tinDocumentUrl: false, collateralDocumentUrl: false, taxClearanceUrl: false,
+        },
         orderBy: { createdAt: 'desc' },
     });
 
@@ -350,13 +384,45 @@ router.get('/applications', requireAdmin, [
     const where: any = {};
     if (status) where.status = status;
 
+    // IMPORTANT: Exclude all base64 document URL fields from list queries.
+    // Each document can be 2-10MB; fetching 50 records × 7 docs = hundreds of MB,
+    // causing OOM crashes. Documents are streamed individually via /documents/:docType.
     const [applications, total] = await Promise.all([
         prisma.sMEApplication.findMany({
             where,
-            include: {
-                user: {
-                    select: { id: true, name: true, email: true, kycStatus: true, type: true },
-                },
+            select: {
+                id: true, userId: true, status: true, adminNote: true,
+                businessName: true, businessType: true, industrySector: true,
+                businessAddress: true, state: true, rcNumber: true,
+                registeredWithCAC: true, yearEstablished: true, numberOfEmployees: true,
+                contactPersonName: true, contactPhone: true, contactEmail: true,
+                ownerFullName: true, ownerDOB: true, ownerGender: true,
+                ownerBVN: true, ownerNationalId: true, ownerResidentialAddress: true,
+                ownerPercentageOwnership: true, ownerPhone: true, ownerEmail: true,
+                businessActivities: true, productsServices: true, majorCustomers: true,
+                hasExistingContracts: true, monthlySalesRevenue: true,
+                monthlyExpenses: true, monthlyProfitEstimate: true,
+                loanAmount: true, loanPurpose: true, loanTenorMonths: true,
+                expectedMonthlyRepayment: true, hasPreviousLoan: true,
+                previousLoanSource: true, previousLoanStatus: true, repaymentPeriod: true,
+                keepsFinancialRecords: true, hasBankStatements: true,
+                hasFinancialStatements: true, hasTIN: true,
+                primaryBankName: true, bankAccountNumber: true,
+                hasCollateral: true, collateralType: true,
+                collateralEstimatedValue: true, willingToProvideGuarantor: true,
+                applicantDeclarationName: true, declarationDate: true,
+                preQualScore: true, revenueStrength: true, repaymentCapacity: true,
+                creditHistory: true, documentationLevel: true, preQualOutcome: true,
+                annualRevenue: true, guarantorName: true, guarantorPhone: true,
+                guarantorEmail: true, guarantorRelationship: true,
+                reviewedAt: true, reviewedBy: true,
+                createdAt: true, updatedAt: true,
+                // Exclude all base64 *Url document fields (served via /documents/:docType)
+                cacDocumentUrl: false, validIdUrl: false, bankStatementUrl: false,
+                utilityBillUrl: false, passportPhotoUrl: false,
+                tinDocumentUrl: false, collateralDocumentUrl: false, taxClearanceUrl: false,
+                // Include user relation
+                user: { select: { id: true, name: true, email: true, kycStatus: true, type: true } },
             },
             orderBy: { createdAt: 'desc' },
             take: limit,
