@@ -7,9 +7,7 @@ import { asyncHandler } from '../middleware/errorHandler.js';
 import { emailService } from '../services/emailService.js';
 import { logger } from '../utils/logger.js';
 import { config } from '../config/index.js';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { prisma } from '../config/database.js';
 
 const router = Router();
 
@@ -137,7 +135,6 @@ router.post(
         // Send withdrawal confirmation email (fire-and-forget)
         (async () => {
             try {
-                const { prisma } = await import('../config/database.js');
                 const user = await prisma.user.findUnique({ where: { id: userId } });
                 if (user) {
                     await emailService.sendTransactionEmail(user.email, user.name, {
@@ -280,7 +277,6 @@ router.get(
             return;
         }
 
-        const { prisma } = await import('../config/database.js');
         const user = await prisma.user.findUnique({
             where: { id: userId },
             select: { baniCustomerRef: true, phone: true },
@@ -380,7 +376,6 @@ router.post(
             return;
         }
 
-        const { prisma } = await import('../config/database.js');
         const user = await prisma.user.findUnique({
             where: { id: userId },
             select: { baniCustomerRef: true },
@@ -432,7 +427,6 @@ router.post(
             return;
         }
 
-        const { prisma } = await import('../config/database.js');
         const user = await prisma.user.findUnique({
             where: { id: userId },
             select: { baniCustomerRef: true },
@@ -496,7 +490,6 @@ router.post(
             // Send add-funds confirmation email (fire-and-forget)
             (async () => {
                 try {
-                    const { prisma } = await import('../config/database.js');
                     const user = await prisma.user.findUnique({ where: { id: userId } });
                     if (user) {
                         await emailService.sendTransactionEmail(user.email, user.name, {

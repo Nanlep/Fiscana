@@ -7,7 +7,7 @@ services:
     env: node
     plan: starter
     buildCommand: npm install && npm run build && npm run prisma:generate
-    startCommand: npm start
+    startCommand: npm start  # Starts with --max-old-space-size=384 (see package.json)
     healthCheckPath: /health
     envVars:
       - key: NODE_ENV

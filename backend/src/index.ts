@@ -52,8 +52,8 @@ const limiter = rateLimit({
 app.use('/api/', limiter);
 
 // Body parsing middleware
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
 // Request logging middleware (all environments)
 app.use((req, res, next) => {
@@ -136,9 +136,20 @@ const server = app.listen(PORT, () => {
     }).catch(err => logger.error('Failed to start email scheduler:', err));
 });
 
+// Store email scheduler module reference for shutdown
+let emailSchedulerModule: { stopEmailScheduler: () => void } | null = null;
+import('./services/emailAutomationService.js').then(mod => {
+    emailSchedulerModule = mod;
+}).catch(() => {});
+
 // Graceful shutdown handling
 const gracefulShutdown = async (signal: string) => {
     logger.info(`${signal} received. Starting graceful shutdown...`);
+
+    // Stop email scheduler
+    if (emailSchedulerModule) {
+        emailSchedulerModule.stopEmailScheduler();
+    }
 
     server.close(() => {
         logger.info('HTTP server closed');
