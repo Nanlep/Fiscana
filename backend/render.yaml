@@ -1,4 +1,8 @@
 # Render Deployment Configuration
+# NOTE: DATABASE_URL and DIRECT_URL must point to the Supabase database.
+# Set them manually in the Render dashboard (Environment tab), NOT from a Render database.
+# Supabase pooler URL format:
+#   postgresql://postgres.[PROJECT-REF]:[PASSWORD]@aws-0-us-east-1.pooler.supabase.com:5432/postgres
 
 services:
   # Web Service (Backend API)
@@ -7,7 +11,7 @@ services:
     env: node
     plan: starter
     buildCommand: npm install && npm run build && npm run prisma:generate
-    startCommand: npm start  # Starts with --max-old-space-size=384 (see package.json)
+    startCommand: npm start  # Starts with --max-old-space-size=256 (see package.json)
     healthCheckPath: /health
     envVars:
       - key: NODE_ENV
@@ -17,13 +21,9 @@ services:
       - key: FRONTEND_URL
         sync: false # Set manually in Render dashboard
       - key: DATABASE_URL
-        fromDatabase:
-          name: fiscana-db
-          property: connectionString
+        sync: false # Set manually in Render dashboard → Supabase pooler URL
       - key: DIRECT_URL
-        fromDatabase:
-          name: fiscana-db
-          property: connectionString
+        sync: false # Set manually in Render dashboard → Supabase direct URL
       - key: SUPABASE_URL
         sync: false
       - key: SUPABASE_ANON_KEY
@@ -43,7 +43,7 @@ services:
       - key: MONO_SECRET_KEY
         sync: false
 
-databases:
-  - name: fiscana-db
-    databaseName: fiscana
-    plan: starter
+# IMPORTANT: Do NOT define a Render database here.
+# The application uses Supabase (PostgreSQL) as its database.
+# Defining a Render database and using fromDatabase: would point
+# the app to an empty Render DB instead of Supabase where data lives.
