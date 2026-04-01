@@ -1,4 +1,5 @@
-import { google } from 'googleapis';
+// Note: googleapis is dynamically imported in getClient() to avoid loading
+// 165MB+ of JS into V8 heap on every cold start (lazy-load optimisation)
 import { logger } from '../utils/logger.js';
 
 // Google Sheets configuration from environment variables
@@ -56,6 +57,10 @@ async function getClient() {
     }
 
     try {
+        // Lazy-load googleapis: deferred until first Sheets usage to avoid loading
+        // 165MB+ of JS into V8 heap on cold start
+        const { google } = await import('googleapis');
+
         const auth = new google.auth.JWT({
             email: SERVICE_ACCOUNT_EMAIL,
             key: PRIVATE_KEY,

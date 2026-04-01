@@ -453,19 +453,98 @@ router.post('/email-queue/:id/retry', [
 
 // ==================== BROADCAST EMAIL ====================
 
-/** POST /api/admin/broadcast-email — Send a custom email to all active users */
+/**
+ * POST /api/admin/broadcast-email
+ * Send a custom email to a filtered audience.
+ *
+ * Body:
+ *   subject        string   (required)
+ *   body           string   (required)
+ *   targetGroup    string   (required)
+ *     - ALL              → all active users
+ *     - PAID_ALL         → users with MONTHLY or ANNUAL subscription
+ *     - PAID_MONTHLY     → MONTHLY subscribers only
+ *     - PAID_ANNUAL      → ANNUAL subscribers only
+ *     - UNPAID_ALL       → TRIAL + SANDBOX users
+ *     - UNPAID_TRIAL     → TRIAL users only
+ *     - UNPAID_SANDBOX   → SANDBOX users only
+ *     - SINGLE           → a single user (requires targetEmail)
+ *     - SELECTED         → specific users (requires targetUserIds array)
+ *   targetEmail    string?  (required if targetGroup === 'SINGLE')
+ *   targetUserIds  string[] (required if targetGroup === 'SELECTED')
+ */
 router.post('/broadcast-email', [
     body('subject').trim().notEmpty().withMessage('Subject is required'),
     body('body').trim().notEmpty().withMessage('Email body is required'),
+    body('targetGroup')
+        .isIn(['ALL', 'PAID_ALL', 'PAID_MONTHLY', 'PAID_ANNUAL', 'UNPAID_ALL', 'UNPAID_TRIAL', 'UNPAID_SANDBOX', 'SINGLE', 'SELECTED'])
+        .withMessage('Invalid targetGroup'),
+    body('targetEmail').optional({ nullable: true }).isEmail().withMessage('Invalid target email'),
+    body('targetUserIds').optional({ nullable: true }).isArray().withMessage('targetUserIds must be an array'),
 ], validate, asyncHandler(async (req: Request, res: Response) => {
-    const { subject, body: emailBody } = req.body;
+    const { subject, body: emailBody, targetGroup, targetEmail, targetUserIds } = req.body;
 
-    // Import email utilities
+    // Build Prisma where clause based on targetGroup
+    let where: Record<string, any> = { status: 'ACTIVE' };
+
+    switch (targetGroup as string) {
+        case 'ALL':
+            // all active users — where clause is already { status: ACTIVE }
+            break;
+
+        case 'PAID_ALL':
+            where = { status: 'ACTIVE', subscriptionTier: { in: ['MONTHLY', 'ANNUAL'] }, subscriptionStatus: 'ACTIVE' };
+            break;
+
+        case 'PAID_MONTHLY':
+            where = { status: 'ACTIVE', subscriptionTier: 'MONTHLY', subscriptionStatus: 'ACTIVE' };
+            break;
+
+        case 'PAID_ANNUAL':
+            where = { status: 'ACTIVE', subscriptionTier: 'ANNUAL', subscriptionStatus: 'ACTIVE' };
+            break;
+
+        case 'UNPAID_ALL':
+            where = { status: 'ACTIVE', subscriptionTier: { in: ['TRIAL', 'SANDBOX'] } };
+            break;
+
+        case 'UNPAID_TRIAL':
+            where = { status: 'ACTIVE', subscriptionTier: 'TRIAL' };
+            break;
+
+        case 'UNPAID_SANDBOX':
+            where = { status: 'ACTIVE', subscriptionTier: 'SANDBOX' };
+            break;
+
+        case 'SINGLE': {
+            if (!targetEmail) {
+                res.status(400).json({ success: false, error: 'targetEmail is required for SINGLE targeting' });
+                return;
+            }
+            where = { status: 'ACTIVE', email: targetEmail };
+            break;
+        }
+
+        case 'SELECTED': {
+            if (!Array.isArray(targetUserIds) || targetUserIds.length === 0) {
+                res.status(400).json({ success: false, error: 'targetUserIds must be a non-empty array for SELECTED targeting' });
+                return;
+            }
+            where = { status: 'ACTIVE', id: { in: targetUserIds } };
+            break;
+        }
+
+        default:
+            res.status(400).json({ success: false, error: 'Invalid targetGroup' });
+            return;
+    }
+
+    // Import email utilities (lazy import to avoid circular deps at module load)
     const { wrapHTML, sendMail } = await import('../services/emailService.js');
 
-    // Get all active users with email addresses
+    // Fetch matching users — only select the fields we need
     const users = await prisma.user.findMany({
-        where: { status: 'ACTIVE' },
+        where,
         select: { id: true, email: true, name: true },
     });
 
@@ -473,7 +552,7 @@ router.post('/broadcast-email', [
         return res.json({ success: true, data: { sent: 0, failed: 0, total: 0 } });
     }
 
-    // Convert plain text body to HTML paragraphs (preserve line breaks)
+    // Build HTML
     const htmlBody = emailBody
         .split('\n')
         .map((line: string) => line.trim())
@@ -492,7 +571,7 @@ router.post('/broadcast-email', [
     let sent = 0;
     let failed = 0;
 
-    // Send in batches of 10 to avoid overwhelming the mail service
+    // Send in batches of 10 to avoid overwhelming the email service
     const BATCH_SIZE = 10;
     for (let i = 0; i < users.length; i += BATCH_SIZE) {
         const batch = users.slice(i, i + BATCH_SIZE);
@@ -507,6 +586,7 @@ router.post('/broadcast-email', [
 
     logger.info('[ADMIN] Broadcast email sent', {
         subject,
+        targetGroup,
         total: users.length,
         sent,
         failed,
@@ -515,7 +595,12 @@ router.post('/broadcast-email', [
 
     res.json({
         success: true,
-        data: { sent, failed, total: users.length },
+        data: {
+            sent,
+            failed,
+            total: users.length,
+            targetGroup,
+        },
     });
 }));
 

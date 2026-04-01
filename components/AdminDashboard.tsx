@@ -56,10 +56,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, adminProfile,
     const logsEndRef = useRef<HTMLDivElement>(null);
 
     // Broadcast Email State
+    type BroadcastTargetGroup = 'ALL' | 'PAID_ALL' | 'PAID_MONTHLY' | 'PAID_ANNUAL' | 'UNPAID_ALL' | 'UNPAID_TRIAL' | 'UNPAID_SANDBOX' | 'SINGLE' | 'SELECTED';
     const [broadcastSubject, setBroadcastSubject] = useState('');
     const [broadcastBody, setBroadcastBody] = useState('');
     const [broadcastStatus, setBroadcastStatus] = useState<'IDLE' | 'SENDING' | 'SENT' | 'ERROR'>('IDLE');
-    const [broadcastResult, setBroadcastResult] = useState<{ sent: number; failed: number; total: number } | null>(null);
+    const [broadcastResult, setBroadcastResult] = useState<{ sent: number; failed: number; total: number; targetGroup?: string } | null>(null);
+    const [broadcastTargetGroup, setBroadcastTargetGroup] = useState<BroadcastTargetGroup>('ALL');
+    const [broadcastTargetEmail, setBroadcastTargetEmail] = useState('');
+    const [broadcastSelectedUsers, setBroadcastSelectedUsers] = useState<string[]>([]);
+    const [broadcastUserSearch, setBroadcastUserSearch] = useState('');
 
     // Email Queue State
     type EmailQueueItem = { id: string; userId: string; emailType: string; status: string; scheduledFor: string; sentAt: string | null; attempts: number; error: string | null; createdAt: string };
@@ -1240,21 +1245,183 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, adminProfile,
         </div>
     );
 
+    // Audience option config for the broadcast filter
+    const broadcastAudienceOptions: Array<{
+        value: string;
+        label: string;
+        description: string;
+        color: string;
+        badge: string;
+    }> = [
+        { value: 'ALL',           label: '👥 All Users',            description: 'Every active user on the platform',          color: 'border-slate-300 bg-slate-50',   badge: 'bg-slate-100 text-slate-700' },
+        { value: 'PAID_ALL',      label: '💳 All Paid Users',       description: 'Monthly + Annual subscribers',               color: 'border-green-300 bg-green-50',   badge: 'bg-green-100 text-green-700' },
+        { value: 'PAID_MONTHLY',  label: '📅 Paid — Monthly',       description: 'Active monthly subscribers only',            color: 'border-blue-300 bg-blue-50',     badge: 'bg-blue-100 text-blue-700' },
+        { value: 'PAID_ANNUAL',   label: '🏆 Paid — Annual',        description: 'Active annual subscribers only',             color: 'border-purple-300 bg-purple-50', badge: 'bg-purple-100 text-purple-700' },
+        { value: 'UNPAID_ALL',    label: '🆓 All Unpaid Users',     description: 'Trial + Sandbox users',                      color: 'border-amber-300 bg-amber-50',   badge: 'bg-amber-100 text-amber-700' },
+        { value: 'UNPAID_TRIAL',  label: '⏳ Trial Users',          description: 'Users on the free trial period',             color: 'border-orange-300 bg-orange-50', badge: 'bg-orange-100 text-orange-700' },
+        { value: 'UNPAID_SANDBOX','label': '🧪 Sandbox Users',      description: 'Users with sandbox/demo access',             color: 'border-rose-300 bg-rose-50',     badge: 'bg-rose-100 text-rose-700' },
+        { value: 'SINGLE',        label: '👤 Single User',          description: 'Send to one specific user by email',         color: 'border-cyan-300 bg-cyan-50',     badge: 'bg-cyan-100 text-cyan-700' },
+        { value: 'SELECTED',      label: '☑️ Select Users',         description: 'Hand-pick specific users from the list',     color: 'border-indigo-300 bg-indigo-50', badge: 'bg-indigo-100 text-indigo-700' },
+    ];
+
+    const selectedOption = broadcastAudienceOptions.find(o => o.value === broadcastTargetGroup);
+
+    // Filtered user list for SELECTED mode
+    const filteredUsersForBroadcast = users.filter(u =>
+        broadcastUserSearch === '' ||
+        u.name.toLowerCase().includes(broadcastUserSearch.toLowerCase()) ||
+        u.email.toLowerCase().includes(broadcastUserSearch.toLowerCase())
+    );
+
+    const broadcastCanSend = broadcastSubject.trim() !== '' &&
+        broadcastBody.trim() !== '' &&
+        broadcastStatus !== 'SENDING' &&
+        (broadcastTargetGroup !== 'SINGLE' || broadcastTargetEmail.trim() !== '') &&
+        (broadcastTargetGroup !== 'SELECTED' || broadcastSelectedUsers.length > 0);
+
+    const getConfirmMsg = () => {
+        switch (broadcastTargetGroup) {
+            case 'ALL':           return 'ALL active users';
+            case 'PAID_ALL':      return 'all PAID users (Monthly + Annual)';
+            case 'PAID_MONTHLY':  return 'all MONTHLY subscribers';
+            case 'PAID_ANNUAL':   return 'all ANNUAL subscribers';
+            case 'UNPAID_ALL':    return 'all unpaid users (Trial + Sandbox)';
+            case 'UNPAID_TRIAL':  return 'all TRIAL users';
+            case 'UNPAID_SANDBOX':return 'all SANDBOX users';
+            case 'SINGLE':        return `${broadcastTargetEmail}`;
+            case 'SELECTED':      return `${broadcastSelectedUsers.length} selected user(s)`;
+            default:              return 'selected recipients';
+        }
+    };
+
     const renderBroadcast = () => (
         <div className="space-y-6 animate-fade-in">
+            {/* Step 1 — Audience Selector */}
             <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-                <div className="flex items-center space-x-3 mb-6">
-                    <div className="p-3 bg-green-50 rounded-xl">
-                        <Mail className="text-green-600" size={24} />
+                <div className="flex items-center space-x-3 mb-5">
+                    <div className="w-7 h-7 bg-green-600 text-white rounded-full flex items-center justify-center text-sm font-bold">1</div>
+                    <h3 className="text-base font-bold text-slate-900">Choose Audience</h3>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {broadcastAudienceOptions.map(opt => (
+                        <button
+                            key={opt.value}
+                            onClick={() => {
+                                setBroadcastTargetGroup(opt.value as any);
+                                setBroadcastStatus('IDLE');
+                                setBroadcastResult(null);
+                                setBroadcastSelectedUsers([]);
+                                setBroadcastTargetEmail('');
+                                setBroadcastUserSearch('');
+                            }}
+                            className={`relative p-3 rounded-xl border-2 text-left transition-all ${
+                                broadcastTargetGroup === opt.value
+                                    ? opt.color + ' shadow-sm ring-2 ring-offset-1 ring-green-500'
+                                    : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
+                            }`}
+                        >
+                            <p className="text-sm font-semibold text-slate-800 leading-tight">{opt.label}</p>
+                            <p className="text-xs text-slate-500 mt-0.5 leading-snug">{opt.description}</p>
+                            {broadcastTargetGroup === opt.value && (
+                                <span className="absolute top-2 right-2">
+                                    <CheckCircle size={14} className="text-green-600" />
+                                </span>
+                            )}
+                        </button>
+                    ))}
+                </div>
+
+                {/* SINGLE — email input */}
+                {broadcastTargetGroup === 'SINGLE' && (
+                    <div className="mt-4">
+                        <label className="block text-sm font-semibold text-slate-700 mb-1.5">Recipient Email</label>
+                        <input
+                            type="email"
+                            value={broadcastTargetEmail}
+                            onChange={e => setBroadcastTargetEmail(e.target.value)}
+                            placeholder="user@example.com"
+                            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-green-500 outline-none text-sm text-slate-900"
+                        />
                     </div>
-                    <div>
-                        <h3 className="text-lg font-bold text-slate-900">Compose Broadcast Email</h3>
-                        <p className="text-slate-500 text-sm">This will be sent to all active users with the Fiscana email template (logo + header included).</p>
+                )}
+
+                {/* SELECTED — user search + checkboxes */}
+                {broadcastTargetGroup === 'SELECTED' && (
+                    <div className="mt-4 space-y-3">
+                        <div className="flex items-center justify-between">
+                            <label className="text-sm font-semibold text-slate-700">Select Recipients</label>
+                            {broadcastSelectedUsers.length > 0 && (
+                                <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-green-100 text-green-700">
+                                    {broadcastSelectedUsers.length} selected
+                                </span>
+                            )}
+                        </div>
+                        <div className="relative">
+                            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                            <input
+                                type="text"
+                                value={broadcastUserSearch}
+                                onChange={e => setBroadcastUserSearch(e.target.value)}
+                                placeholder="Search users by name or email..."
+                                className="w-full pl-8 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-green-500 outline-none text-sm"
+                            />
+                        </div>
+                        <div className="max-h-56 overflow-y-auto border border-slate-200 rounded-xl divide-y divide-slate-100">
+                            {filteredUsersForBroadcast.length === 0 ? (
+                                <div className="p-4 text-center text-sm text-slate-400">No users found</div>
+                            ) : (
+                                filteredUsersForBroadcast.map(u => {
+                                    const checked = broadcastSelectedUsers.includes(u.id);
+                                    return (
+                                        <label key={u.id} className={`flex items-center space-x-3 px-4 py-2.5 cursor-pointer transition-colors ${checked ? 'bg-green-50' : 'hover:bg-slate-50'}`}>
+                                            <input
+                                                type="checkbox"
+                                                checked={checked}
+                                                onChange={() => {
+                                                    setBroadcastSelectedUsers(prev =>
+                                                        checked ? prev.filter(id => id !== u.id) : [...prev, u.id]
+                                                    );
+                                                }}
+                                                className="w-4 h-4 rounded accent-green-600"
+                                            />
+                                            <div className="min-w-0 flex-1">
+                                                <p className="text-sm font-medium text-slate-800 truncate">{u.name}</p>
+                                                <p className="text-xs text-slate-400 truncate">{u.email}</p>
+                                            </div>
+                                            <span className={`flex-shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                                                u.subscriptionTier === 'MONTHLY' || u.subscriptionTier === 'ANNUAL'
+                                                    ? 'bg-green-100 text-green-700'
+                                                    : 'bg-slate-100 text-slate-500'
+                                            }`}>
+                                                {u.subscriptionTier || 'TRIAL'}
+                                            </span>
+                                        </label>
+                                    );
+                                })
+                            )}
+                        </div>
+                        {broadcastSelectedUsers.length > 0 && (
+                            <button
+                                onClick={() => setBroadcastSelectedUsers([])}
+                                className="text-xs text-red-500 hover:text-red-700 transition-colors"
+                            >
+                                Clear selection
+                            </button>
+                        )}
                     </div>
+                )}
+            </div>
+
+            {/* Step 2 — Compose */}
+            <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                <div className="flex items-center space-x-3 mb-5">
+                    <div className="w-7 h-7 bg-green-600 text-white rounded-full flex items-center justify-center text-sm font-bold">2</div>
+                    <h3 className="text-base font-bold text-slate-900">Compose Message</h3>
                 </div>
 
                 {/* Preview Banner */}
-                <div className="mb-6 bg-gradient-to-r from-green-600 to-green-700 rounded-xl p-4 flex items-center space-x-3">
+                <div className="mb-5 bg-gradient-to-r from-green-600 to-green-700 rounded-xl p-4 flex items-center space-x-3">
                     <img src="/Fiscana.svg" alt="Fiscana" className="w-8 h-8" />
                     <span className="text-white font-bold text-lg">Fiscana</span>
                     <span className="text-green-200 text-sm ml-auto">Email Header Preview</span>
@@ -1276,7 +1443,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, adminProfile,
                         <textarea
                             value={broadcastBody}
                             onChange={(e) => setBroadcastBody(e.target.value)}
-                            placeholder="Type your message here...\n\nEach paragraph will be formatted automatically. The Fiscana header (logo + brand) and footer (copyright + link) are included automatically."
+                            placeholder={"Type your message here...\n\nEach paragraph will be formatted automatically. The Fiscana header (logo + brand) and footer (copyright + link) are included automatically."}
                             rows={10}
                             className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-green-500 outline-none text-slate-900 resize-y"
                         />
@@ -1284,6 +1451,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, adminProfile,
                     </div>
                 </div>
 
+                {/* Result banners */}
                 {broadcastStatus === 'SENT' && broadcastResult && (
                     <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-xl">
                         <p className="text-green-700 font-semibold">✅ Broadcast sent successfully!</p>
@@ -1293,33 +1461,57 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, adminProfile,
                         </p>
                     </div>
                 )}
-
                 {broadcastStatus === 'ERROR' && (
                     <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-xl">
                         <p className="text-red-700 font-semibold">❌ Failed to send broadcast. Please try again.</p>
                     </div>
                 )}
 
-                <div className="flex items-center justify-between mt-6 pt-6 border-t border-slate-100">
-                    <p className="text-sm text-slate-500">
-                        This will send to <strong>all active users</strong> on the platform.
-                    </p>
+                {/* Footer — recipient summary + send button */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mt-6 pt-6 border-t border-slate-100">
+                    <div className="space-y-1">
+                        <p className="text-xs font-semibold text-slate-500 uppercase">Sending to</p>
+                        <div className="flex items-center space-x-2">
+                            <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${selectedOption?.badge || 'bg-slate-100 text-slate-600'}`}>
+                                {selectedOption?.label}
+                            </span>
+                            {broadcastTargetGroup === 'SINGLE' && broadcastTargetEmail && (
+                                <span className="text-sm text-slate-600 font-medium">{broadcastTargetEmail}</span>
+                            )}
+                            {broadcastTargetGroup === 'SELECTED' && broadcastSelectedUsers.length > 0 && (
+                                <span className="text-sm text-slate-600 font-medium">{broadcastSelectedUsers.length} user(s)</span>
+                            )}
+                        </div>
+                    </div>
+
                     <button
                         onClick={async () => {
                             if (!broadcastSubject.trim() || !broadcastBody.trim()) {
                                 alert('Please fill in both the subject and body.');
                                 return;
                             }
-                            if (!confirm(`Are you sure you want to send this email to ALL active users?\n\nSubject: ${broadcastSubject}`)) return;
+                            if (!confirm(`Send this email to ${getConfirmMsg()}?\n\nSubject: ${broadcastSubject}`)) return;
                             setBroadcastStatus('SENDING');
                             setBroadcastResult(null);
                             try {
-                                const res = await adminApi.broadcastEmail({ subject: broadcastSubject, body: broadcastBody });
+                                const payload: Parameters<typeof adminApi.broadcastEmail>[0] = {
+                                    subject: broadcastSubject,
+                                    body: broadcastBody,
+                                    targetGroup: broadcastTargetGroup,
+                                };
+                                if (broadcastTargetGroup === 'SINGLE') payload.targetEmail = broadcastTargetEmail;
+                                if (broadcastTargetGroup === 'SELECTED') payload.targetUserIds = broadcastSelectedUsers;
+
+                                const res = await adminApi.broadcastEmail(payload);
                                 if (res.success && res.data) {
                                     setBroadcastStatus('SENT');
                                     setBroadcastResult(res.data);
                                     setBroadcastSubject('');
                                     setBroadcastBody('');
+                                    if (broadcastTargetGroup !== 'SINGLE') {
+                                        setBroadcastSelectedUsers([]);
+                                        setBroadcastTargetEmail('');
+                                    }
                                 } else {
                                     setBroadcastStatus('ERROR');
                                 }
@@ -1327,15 +1519,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, adminProfile,
                                 setBroadcastStatus('ERROR');
                             }
                         }}
-                        disabled={broadcastStatus === 'SENDING' || !broadcastSubject.trim() || !broadcastBody.trim()}
+                        disabled={!broadcastCanSend}
                         className={`flex items-center space-x-2 px-6 py-3 rounded-xl font-bold text-white transition-all shadow-lg ${
-                            broadcastStatus === 'SENDING' ? 'bg-slate-600' : 'bg-green-600 hover:bg-green-700'
+                            broadcastStatus === 'SENDING' ? 'bg-slate-500 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'
                         } disabled:opacity-50 disabled:cursor-not-allowed`}
                     >
                         {broadcastStatus === 'SENDING' ? (
-                            <><Loader2 size={18} className="animate-spin" /> <span>Sending...</span></>
+                            <><Loader2 size={18} className="animate-spin" /><span>Sending...</span></>
                         ) : (
-                            <><Send size={18} /> <span>Send to All Users</span></>
+                            <><Send size={18} /><span>Send Email</span></>
                         )}
                     </button>
                 </div>

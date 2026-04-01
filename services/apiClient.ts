@@ -648,8 +648,14 @@ export const adminApi = {
             body: JSON.stringify({ subscriptionTier }),
         }),
 
-    broadcastEmail: (data: { subject: string; body: string }) =>
-        apiRequest<{ sent: number; failed: number; total: number }>('/admin/broadcast-email', {
+    broadcastEmail: (data: {
+        subject: string;
+        body: string;
+        targetGroup: 'ALL' | 'PAID_ALL' | 'PAID_MONTHLY' | 'PAID_ANNUAL' | 'UNPAID_ALL' | 'UNPAID_TRIAL' | 'UNPAID_SANDBOX' | 'SINGLE' | 'SELECTED';
+        targetEmail?: string;
+        targetUserIds?: string[];
+    }) =>
+        apiRequest<{ sent: number; failed: number; total: number; targetGroup: string }>('/admin/broadcast-email', {
             method: 'POST',
             body: JSON.stringify(data),
         }),
